@@ -28,15 +28,16 @@
 Linux で通せるものは手元で、それ以外は PR の CI（`.github/workflows/app-build.yml`）で確かめる。
 
 ```sh
-cargo test -p desktop-cli                     # Linux で通るのはこれだけ
-gh pr checks <PR> --watch                     # Windows と macOS の clippy -D warnings とテスト
+cargo fmt --all --check
+cargo test -p desktop-cli                     # Linux で通るテストはこれだけ
+gh pr checks <PR> --watch                     # Linux（fmt・desktop-cli）と Windows・macOS の clippy -D warnings とテスト
 ```
 
-- CI の 2 ジョブ（Windows・macOS）がどちらも通ること。CI を通す前に「動く」と報告しない。
+- CI の 3 ジョブ（Linux・Windows・macOS）がすべて通ること。CI を通す前に「動く」と報告しない。
 - Windows の CI は、実際の音声デバイスが要るテスト `control_server::tests::status_start_status_stop_round_trip`
   を飛ばしている。録音の開始・停止に触れたら、PR 本文に「実機確認が必要」と書く。
 - 新しい挙動にはテストを付け、そのテストが落ちる変更（手書きの変異でよい）を 1 つ確かめる。
-- rustfmt と全体の clippy はまだ整備していない。触っていないファイルを整形しない（差分が膨らむ）。
+- `cargo fmt --all` をかけてからコミットする。触った crate で clippy の警告を増やさない（CI が `-D warnings`）。
 
 ## 2 つの repo のつながり
 
