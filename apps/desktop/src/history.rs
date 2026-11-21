@@ -82,7 +82,9 @@ const STYLE: &str = r#"
 /// are stored as UTC (`schema.rs`'s `TEXT` columns hold RFC 3339), but a wall
 /// clock time is more useful to scan in a list than UTC.
 fn format_datetime(dt: DateTime<Utc>) -> String {
-    dt.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M:%S").to_string()
+    dt.with_timezone(&chrono::Local)
+        .format("%Y-%m-%d %H:%M:%S")
+        .to_string()
 }
 
 /// `mm:ss` recording duration from `started_at`/`ended_at`, or a "still in
@@ -112,8 +114,12 @@ fn describe_capture_state(state: &CaptureState) -> &'static str {
         CaptureState::Stopping => "停止処理中",
         CaptureState::Finalizing => "確定処理中",
         CaptureState::Finalized => "完了",
-        CaptureState::Failed { recoverable: true, .. } => "failed (recoverable)",
-        CaptureState::Failed { recoverable: false, .. } => "failed",
+        CaptureState::Failed {
+            recoverable: true, ..
+        } => "failed (recoverable)",
+        CaptureState::Failed {
+            recoverable: false, ..
+        } => "failed",
     }
 }
 
@@ -122,7 +128,10 @@ fn is_failed_state(state: &CaptureState) -> bool {
 }
 
 #[component]
-pub fn History(mut screen: Signal<Screen>, mut selected_session_id: Signal<Option<SessionId>>) -> Element {
+pub fn History(
+    mut screen: Signal<Screen>,
+    mut selected_session_id: Signal<Option<SessionId>>,
+) -> Element {
     let state = use_context::<Arc<AppState>>();
     let sessions = use_signal({
         let state = state.clone();
@@ -181,7 +190,9 @@ mod tests {
     use super::*;
 
     fn sample_started_at() -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339("2026-07-18T14:30:22Z").unwrap().with_timezone(&Utc)
+        DateTime::parse_from_rfc3339("2026-07-18T14:30:22Z")
+            .unwrap()
+            .with_timezone(&Utc)
     }
 
     #[test]
@@ -198,27 +209,51 @@ mod tests {
 
     #[test]
     fn describe_capture_state_distinguishes_recoverable_from_plain_failed() {
-        let recoverable = CaptureState::Failed { recoverable: true, reason: "crash".to_string() };
-        let not_recoverable = CaptureState::Failed { recoverable: false, reason: "denied".to_string() };
+        let recoverable = CaptureState::Failed {
+            recoverable: true,
+            reason: "crash".to_string(),
+        };
+        let not_recoverable = CaptureState::Failed {
+            recoverable: false,
+            reason: "denied".to_string(),
+        };
         assert_eq!(describe_capture_state(&recoverable), "failed (recoverable)");
         assert_eq!(describe_capture_state(&not_recoverable), "failed");
-        assert_ne!(describe_capture_state(&recoverable), describe_capture_state(&not_recoverable));
+        assert_ne!(
+            describe_capture_state(&recoverable),
+            describe_capture_state(&not_recoverable)
+        );
     }
 
     #[test]
     fn describe_capture_state_covers_every_non_failed_variant() {
         assert_eq!(describe_capture_state(&CaptureState::Idle), "idle");
         assert_eq!(describe_capture_state(&CaptureState::Preparing), "準備中");
-        assert_eq!(describe_capture_state(&CaptureState::Recording), "recording中");
-        assert_eq!(describe_capture_state(&CaptureState::Stopping), "停止処理中");
-        assert_eq!(describe_capture_state(&CaptureState::Finalizing), "確定処理中");
+        assert_eq!(
+            describe_capture_state(&CaptureState::Recording),
+            "recording中"
+        );
+        assert_eq!(
+            describe_capture_state(&CaptureState::Stopping),
+            "停止処理中"
+        );
+        assert_eq!(
+            describe_capture_state(&CaptureState::Finalizing),
+            "確定処理中"
+        );
         assert_eq!(describe_capture_state(&CaptureState::Finalized), "完了");
     }
 
     #[test]
     fn is_failed_state_is_true_only_for_failed_variants() {
-        assert!(is_failed_state(&CaptureState::Failed { recoverable: true, reason: String::new() }));
-        assert!(is_failed_state(&CaptureState::Failed { recoverable: false, reason: String::new() }));
+        assert!(is_failed_state(&CaptureState::Failed {
+            recoverable: true,
+            reason: String::new()
+        }));
+        assert!(is_failed_state(&CaptureState::Failed {
+            recoverable: false,
+            reason: String::new()
+        }));
         assert!(!is_failed_state(&CaptureState::Recording));
         assert!(!is_failed_state(&CaptureState::Finalized));
     }

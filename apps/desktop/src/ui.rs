@@ -314,7 +314,12 @@ fn setup_tray() {
 
     let window = use_window();
     use_tray_icon_event_handler(move |event| {
-        if let trayicon::TrayIconEvent::Click { button: trayicon::MouseButton::Left, button_state: trayicon::MouseButtonState::Up, .. } = event {
+        if let trayicon::TrayIconEvent::Click {
+            button: trayicon::MouseButton::Left,
+            button_state: trayicon::MouseButtonState::Up,
+            ..
+        } = event
+        {
             window.set_visible(true);
             window.set_focus();
         }
@@ -348,7 +353,10 @@ fn GapMarker(
     let gap_closed = gap.end_ms.is_some();
     let track_label = transcript::track_label(Some(gap.track));
     let label = match gap.end_ms {
-        Some(end_ms) => format!("⚠ {track_label}: この区間({})は文字起こしできませんでした", format_elapsed(end_ms.saturating_sub(gap.start_ms))),
+        Some(end_ms) => format!(
+            "⚠ {track_label}: この区間({})は文字起こしできませんでした",
+            format_elapsed(end_ms.saturating_sub(gap.start_ms))
+        ),
         None => format!("⚠ {track_label}: この区間は文字起こしできませんでした"),
     };
 
@@ -365,7 +373,14 @@ fn GapMarker(
             gap_retranscribe_state.with_mut(|m| {
                 m.insert(gap_id, GapRetranscribeState::Loading);
             });
-            match gap_retranscription::retranscribe(gap, provider_kind, &state.store, state.credential_store.as_ref()).await {
+            match gap_retranscription::retranscribe(
+                gap,
+                provider_kind,
+                &state.store,
+                state.credential_store.as_ref(),
+            )
+            .await
+            {
                 Ok(new_segments) => {
                     // The gap is resolved server-side too (`retranscribe_gap`
                     // already called `SessionStore::discard_gap` — see task #91's
@@ -489,16 +504,25 @@ pub fn App() -> Element {
         // text), not the raw poll tick — an unchanged view shouldn't re-check
         // scroll position every 250ms.
         let _ = visible_transcript_key();
-        let Some(el) = transcript_panel_mounted() else { return };
+        let Some(el) = transcript_panel_mounted() else {
+            return;
+        };
         spawn(async move {
-            let (Ok(offset), Ok(scroll_size), Ok(client_rect)) =
-                (el.get_scroll_offset().await, el.get_scroll_size().await, el.get_client_rect().await)
-            else {
+            let (Ok(offset), Ok(scroll_size), Ok(client_rect)) = (
+                el.get_scroll_offset().await,
+                el.get_scroll_size().await,
+                el.get_client_rect().await,
+            ) else {
                 return;
             };
             let distance_from_bottom = scroll_size.height - offset.y - client_rect.size.height;
             if distance_from_bottom <= AUTO_SCROLL_NEAR_BOTTOM_PX {
-                let _ = el.scroll(PixelsVector2D::new(0.0, scroll_size.height), ScrollBehavior::Smooth).await;
+                let _ = el
+                    .scroll(
+                        PixelsVector2D::new(0.0, scroll_size.height),
+                        ScrollBehavior::Smooth,
+                    )
+                    .await;
             }
         });
     });
@@ -535,7 +559,10 @@ pub fn App() -> Element {
                 last_recording = new_status.recording;
                 last_session_id = new_status.last_session_id.clone();
                 if just_started || just_stopped {
-                    if let Some(parsed) = last_session_id.as_ref().and_then(|s| s.parse::<SessionId>().ok()) {
+                    if let Some(parsed) = last_session_id
+                        .as_ref()
+                        .and_then(|s| s.parse::<SessionId>().ok())
+                    {
                         selected_session_id.set(Some(parsed));
                     }
                 }
@@ -559,7 +586,10 @@ pub fn App() -> Element {
                             let active = current.as_ref().unwrap();
                             (active.transcript_buffer.take(), active.hint_buffer.take())
                         } else {
-                            (state.store.list_transcript_segments(id).unwrap_or_default(), None)
+                            (
+                                state.store.list_transcript_segments(id).unwrap_or_default(),
+                                None,
+                            )
                         }
                     };
                     transcript_segments.set(segments);
@@ -596,12 +626,27 @@ pub fn App() -> Element {
         let session_id = selected_session_id();
         summary_message.set(None);
         export_message.set(None);
-        let latest = session_id.and_then(|id| selection_reload_state.store.get_latest_summary(id).ok().flatten());
+        let latest = session_id.and_then(|id| {
+            selection_reload_state
+                .store
+                .get_latest_summary(id)
+                .ok()
+                .flatten()
+        });
         summary_text.set(latest.map(|s| s.text));
 
-        let segments = session_id.and_then(|id| selection_reload_state.store.list_transcript_segments(id).ok()).unwrap_or_default();
+        let segments = session_id
+            .and_then(|id| {
+                selection_reload_state
+                    .store
+                    .list_transcript_segments(id)
+                    .ok()
+            })
+            .unwrap_or_default();
         transcript_segments.set(segments);
-        let session_gaps = session_id.and_then(|id| selection_reload_state.store.gaps_for_session(id).ok()).unwrap_or_default();
+        let session_gaps = session_id
+            .and_then(|id| selection_reload_state.store.gaps_for_session(id).ok())
+            .unwrap_or_default();
         gaps.set(session_gaps);
         gap_retranscribe_state.set(HashMap::new());
         // Hints are ephemeral (see `current_hint`'s doc comment) — a picked
@@ -620,9 +665,23 @@ pub fn App() -> Element {
         let state = state.clone();
         tokio::spawn(async move {
             let sessions_root = state.config.sessions_root.clone();
-            match app_service::recover_incomplete_sessions(&state.store, state.adapter.as_ref(), &sessions_root, 30_000, 48_000, 1, Duration::from_secs(2), 10).await {
+            match app_service::recover_incomplete_sessions(
+                &state.store,
+                state.adapter.as_ref(),
+                &sessions_root,
+                30_000,
+                48_000,
+                1,
+                Duration::from_secs(2),
+                10,
+            )
+            .await
+            {
                 Ok(recovered) if !recovered.is_empty() => {
-                    tracing::info!(count = recovered.len(), "recovered incomplete sessions from a previous run");
+                    tracing::info!(
+                        count = recovered.len(),
+                        "recovered incomplete sessions from a previous run"
+                    );
                 }
                 Ok(_) => {}
                 Err(e) => tracing::warn!(error = %e, "startup session recovery failed"),
@@ -645,7 +704,11 @@ pub fn App() -> Element {
                 // ui_consumer/auto-summary/Rhai plugin dispatch are spawned by
                 // `actions::start_recording` itself now, so both this button and
                 // the control-server-backed CLI get identical wiring.
-                if let Some(id) = s.last_session_id.as_deref().and_then(|id| id.parse::<SessionId>().ok()) {
+                if let Some(id) = s
+                    .last_session_id
+                    .as_deref()
+                    .and_then(|id| id.parse::<SessionId>().ok())
+                {
                     selected_session_id.set(Some(id));
                 }
                 status.set(s);
@@ -669,7 +732,11 @@ pub fn App() -> Element {
                     // this session was still recording (matches this module's
                     // documented "a history pick overrides auto-follow until the
                     // next start/stop" behavior, without waiting on the next poll).
-                    if let Some(id) = s.last_session_id.as_deref().and_then(|id| id.parse::<SessionId>().ok()) {
+                    if let Some(id) = s
+                        .last_session_id
+                        .as_deref()
+                        .and_then(|id| id.parse::<SessionId>().ok())
+                    {
                         selected_session_id.set(Some(id));
                     }
                     status.set(s);
@@ -697,14 +764,20 @@ pub fn App() -> Element {
                 return;
             };
 
-            match state.summary_consumer.generate_summary_now(session_id).await {
+            match state
+                .summary_consumer
+                .generate_summary_now(session_id)
+                .await
+            {
                 Ok(text) => {
                     summary_text.set(Some(text));
                 }
                 Err(e) => summary_message.set(Some(format!("要約に失敗しました: {e}"))),
             }
             // Also trigger via Rhai plugins
-            state.rhai_engine.trigger_manual_summary(&state.broker, session_id);
+            state
+                .rhai_engine
+                .trigger_manual_summary(&state.broker, session_id);
             summary_busy.set(false);
         }
     };
@@ -724,7 +797,9 @@ pub fn App() -> Element {
         };
 
         match export::export_session(&export_state, session_id) {
-            Ok(path) => export_message.set(Some(format!("エクスポートしました: {}", path.display()))),
+            Ok(path) => {
+                export_message.set(Some(format!("エクスポートしました: {}", path.display())))
+            }
             Err(e) => export_message.set(Some(format!("エクスポートに失敗しました: {e}"))),
         }
     };
@@ -748,10 +823,17 @@ pub fn App() -> Element {
     // stuck `Waiting`/`Failed` mid-session otherwise only shows as a silently
     // flatlined level meter.
     let capture_health_line = capture_health::describe(&current.capture_health);
-    let last_session_line = current.last_session_id.clone().map(|session_id| match current.last_total_duration_ms {
-        Some(duration_ms) => format!("Last session: {session_id} ({})", format_elapsed(duration_ms)),
-        None => format!("Last session: {session_id}"),
-    });
+    let last_session_line =
+        current
+            .last_session_id
+            .clone()
+            .map(|session_id| match current.last_total_duration_ms {
+                Some(duration_ms) => format!(
+                    "Last session: {session_id} ({})",
+                    format_elapsed(duration_ms)
+                ),
+                None => format!("Last session: {session_id}"),
+            });
     // Task #69: gates the summary/export buttons on the *selected* session, not
     // merely "a session exists somewhere" — a session picked from
     // `history::History` still enables these even with no session recorded in
@@ -774,8 +856,10 @@ pub fn App() -> Element {
     // necessarily the one that was connected when the gap itself was recorded;
     // see `retranscribe_gap`'s own doc comment) needs a `BatchSttProvider`
     // adapter (#91) for that to make sense.
-    let selected_provider_kind = gap_retranscription::selected_provider_kind(state.credential_store.as_ref());
-    let can_retranscribe = gap_retranscription::supports_batch_retranscription(selected_provider_kind);
+    let selected_provider_kind =
+        gap_retranscription::selected_provider_kind(state.credential_store.as_ref());
+    let can_retranscribe =
+        gap_retranscription::supports_batch_retranscription(selected_provider_kind);
 
     if screen() == Screen::Settings {
         return rsx! {

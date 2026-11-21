@@ -14,7 +14,12 @@ pub struct LevelSnapshot {
 #[cfg(windows)]
 impl From<app_service::LevelSnapshot> for LevelSnapshot {
     fn from(s: app_service::LevelSnapshot) -> Self {
-        Self { self_rms: s.self_rms, self_peak: s.self_peak, remote_rms: s.remote_rms, remote_peak: s.remote_peak }
+        Self {
+            self_rms: s.self_rms,
+            self_peak: s.self_peak,
+            remote_rms: s.remote_rms,
+            remote_peak: s.remote_peak,
+        }
     }
 }
 
@@ -24,7 +29,12 @@ impl From<app_service::LevelSnapshot> for LevelSnapshot {
 #[cfg(target_os = "macos")]
 impl From<app_service::macos_frame_collector::LevelSnapshot> for LevelSnapshot {
     fn from(s: app_service::macos_frame_collector::LevelSnapshot) -> Self {
-        Self { self_rms: s.self_rms, self_peak: s.self_peak, remote_rms: s.remote_rms, remote_peak: s.remote_peak }
+        Self {
+            self_rms: s.self_rms,
+            self_peak: s.self_peak,
+            remote_rms: s.remote_rms,
+            remote_peak: s.remote_peak,
+        }
     }
 }
 
@@ -48,5 +58,10 @@ pub fn dev_placeholder_level(elapsed: std::time::Duration) -> LevelSnapshot {
     let remote_envelope = 0.5 + 0.5 * ((t + 1.5) * 0.25).sin();
     let remote_rms = (remote_envelope * 0.5).clamp(0.0, 1.0);
     let remote_peak = (remote_rms + 0.1).clamp(0.0, 1.0);
-    LevelSnapshot { self_rms, self_peak, remote_rms, remote_peak }
+    LevelSnapshot {
+        self_rms,
+        self_peak,
+        remote_rms,
+        remote_peak,
+    }
 }

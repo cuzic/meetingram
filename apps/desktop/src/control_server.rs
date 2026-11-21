@@ -44,7 +44,9 @@ pub fn spawn(state: Arc<AppState>) {
                 tracing::info!("control server listening");
                 accept_loop(listener, state).await;
             }
-            Err(err) => tracing::warn!(%err, "control server failed to start; CLI control unavailable this run"),
+            Err(err) => {
+                tracing::warn!(%err, "control server failed to start; CLI control unavailable this run")
+            }
         }
     });
 }
@@ -67,9 +69,15 @@ pub fn spawn(state: Arc<AppState>) {
 /// second GUI instance) and this bind backs off rather than displacing it.
 async fn bind(name: Name<'static>) -> std::io::Result<Listener> {
     match ListenerOptions::new().name(name.clone()).create_tokio() {
-        Err(err) if err.kind() == std::io::ErrorKind::AddrInUse && control_protocol::uses_filesystem_path() => {
+        Err(err)
+            if err.kind() == std::io::ErrorKind::AddrInUse
+                && control_protocol::uses_filesystem_path() =>
+        {
             if is_alive(name.clone()).await {
-                Err(std::io::Error::new(std::io::ErrorKind::AddrInUse, "another instance's control server is already running"))
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::AddrInUse,
+                    "another instance's control server is already running",
+                ))
             } else {
                 let _ = std::fs::remove_file(control_protocol::control_socket_path());
                 ListenerOptions::new().name(name).create_tokio()
@@ -80,7 +88,10 @@ async fn bind(name: Name<'static>) -> std::io::Result<Listener> {
 }
 
 async fn is_alive(name: Name<'static>) -> bool {
-    tokio::time::timeout(Duration::from_millis(200), Stream::connect(name)).await.map(|r| r.is_ok()).unwrap_or(false)
+    tokio::time::timeout(Duration::from_millis(200), Stream::connect(name))
+        .await
+        .map(|r| r.is_ok())
+        .unwrap_or(false)
 }
 
 async fn accept_loop(listener: Listener, state: Arc<AppState>) {
@@ -103,7 +114,10 @@ async fn handle_conn(conn: Stream, state: Arc<AppState>) {
 
     let response = match serde_json::from_str::<Command>(line.trim_end()) {
         Ok(cmd) => dispatch(cmd, &state).await,
-        Err(err) => Response::Err { message: format!("invalid request: {err}"), status: status_dto(&state) },
+        Err(err) => Response::Err {
+            message: format!("invalid request: {err}"),
+            status: status_dto(&state),
+        },
     };
 
     let mut payload = match serde_json::to_string(&response) {
@@ -134,12 +148,18 @@ async fn dispatch(cmd: Command, state: &AppState) -> Response {
             actions::confirm_consent(state);
             match actions::start_recording(state) {
                 Ok(status) => Response::Ok(status.into()),
-                Err(message) => Response::Err { message, status: status_dto(state) },
+                Err(message) => Response::Err {
+                    message,
+                    status: status_dto(state),
+                },
             }
         }
         Command::Stop => match actions::stop_recording(state).await {
             Ok(status) => Response::Ok(status.into()),
-            Err(message) => Response::Err { message, status: status_dto(state) },
+            Err(message) => Response::Err {
+                message,
+                status: status_dto(state),
+            },
         },
     }
 }
@@ -206,7 +226,9 @@ mod tests {
     use std::io::{BufRead, BufReader as StdBufReader, Write};
     use std::sync::Mutex;
 
-    use interprocess::local_socket::{prelude::*, GenericNamespaced, ListenerOptions as SyncListenerOptions, Stream as SyncStream};
+    use interprocess::local_socket::{
+        prelude::*, GenericNamespaced, ListenerOptions as SyncListenerOptions, Stream as SyncStream,
+    };
 
     use super::*;
     use crate::app_settings::AppSettings;
@@ -219,18 +241,41 @@ mod tests {
     /// Dioxus context, so this exercises the exact same code path
     /// `control_server::dispatch` runs against in the real app.
     fn test_state(dir: &std::path::Path) -> Arc<AppState> {
-        let store = Arc::new(session_store::SessionStore::open(&dir.join("sessions.db")).expect("open session-store"));
-        let credential_store = Arc::new(credential_store::FallbackCredentialStore::new(dir.join("credentials")).expect("open credential-store"));
+        let store = Arc::new(
+            session_store::SessionStore::open(&dir.join("sessions.db"))
+                .expect("open session-store"),
+        );
+        let credential_store = Arc::new(
+            credential_store::FallbackCredentialStore::new(dir.join("credentials"))
+                .expect("open credential-store"),
+        );
         let adapter = Arc::new(upload_client::HttpUploadClient::new(
             "http://127.0.0.1:0".to_string(),
             Duration::from_secs(1),
-            Arc::new(credential_store::CredentialStoreTokenProvider::new(credential_store.clone(), "meetingram-test".to_string(), "upload-token".to_string())),
+            Arc::new(credential_store::CredentialStoreTokenProvider::new(
+                credential_store.clone(),
+                "meetingram-test".to_string(),
+                "upload-token".to_string(),
+            )),
         ));
         let app_settings = Arc::new(Mutex::new(AppSettings::load(dir)));
         let broker = local_broker::LocalBroker::new();
-        let summary_consumer = SummaryConsumer::new(broker.clone(), store.clone(), credential_store.clone(), app_settings.clone());
-        let settings_provider = Arc::new(crate::AppSettingsProvider { app_settings: app_settings.clone(), credential_store: credential_store.clone() });
-        let rhai_engine = rhai_engine::RhaiEngine::new(broker.clone(), store.clone(), credential_store.clone(), settings_provider);
+        let summary_consumer = SummaryConsumer::new(
+            broker.clone(),
+            store.clone(),
+            credential_store.clone(),
+            app_settings.clone(),
+        );
+        let settings_provider = Arc::new(crate::AppSettingsProvider {
+            app_settings: app_settings.clone(),
+            credential_store: credential_store.clone(),
+        });
+        let rhai_engine = rhai_engine::RhaiEngine::new(
+            broker.clone(),
+            store.clone(),
+            credential_store.clone(),
+            settings_provider,
+        );
 
         Arc::new(AppState {
             store,
@@ -273,7 +318,10 @@ mod tests {
         let state = test_state(dir.path());
         let name = test_socket_name("roundtrip");
 
-        let listener = SyncListenerOptions::new().name(name.clone()).create_tokio().expect("bind test control socket");
+        let listener = SyncListenerOptions::new()
+            .name(name.clone())
+            .create_tokio()
+            .expect("bind test control socket");
         tokio::spawn(accept_loop(listener, state));
         // Give the accept loop a moment to start `listener.accept().await`.
         tokio::time::sleep(Duration::from_millis(20)).await;

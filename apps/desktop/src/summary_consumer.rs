@@ -39,7 +39,12 @@ impl SummaryConsumer {
         credential_store: Arc<credential_store::FallbackCredentialStore>,
         app_settings: Arc<Mutex<AppSettings>>,
     ) -> Self {
-        Self { broker, store, credential_store, app_settings }
+        Self {
+            broker,
+            store,
+            credential_store,
+            app_settings,
+        }
     }
 
     /// Spawns an auto-summary task for `session_id`. Returns immediately; the
@@ -66,7 +71,8 @@ impl SummaryConsumer {
 
         let mut segment_sub = Subscription::new(self.broker.clone(), segment_subject);
         let mut utterance_sub = Subscription::new(self.broker.clone(), utterance_subject);
-        let mut stop_sub = Subscription::new(self.broker.clone(), session_stopped_subject(session_id));
+        let mut stop_sub =
+            Subscription::new(self.broker.clone(), session_stopped_subject(session_id));
 
         // 1. Load existing finalized segments from SessionStore (late-join support)
         let mut turns: FinalizedTurns<TranscriptTurn> = FinalizedTurns::new();
@@ -149,79 +155,114 @@ impl SummaryConsumer {
     /// Reads segments from `SessionStore` directly and generates the summary
     /// synchronously (within the async context). Publishes SummaryEvent results.
     pub async fn generate_summary_now(&self, session_id: SessionId) -> Result<String, String> {
-        let segments = self.store.list_transcript_segments(session_id)
+        let segments = self
+            .store
+            .list_transcript_segments(session_id)
             .map_err(|e| format!("文字起こしの取得に失敗しました: {e}"))?;
         let turns = transcript::to_turns(&segments);
         if turns.is_empty() {
             return Err("要約対象の文字起こしがありません".to_string());
         }
 
-        self.broker.publish(
-            &transcript_event::summary_subject_for(
-                &SummaryEvent::Started { session_id }, session_id,
-            ),
-            &EventEnvelope::new(session_id, SummaryEvent::Started { session_id }),
-        ).ok();
+        self.broker
+            .publish(
+                &transcript_event::summary_subject_for(
+                    &SummaryEvent::Started { session_id },
+                    session_id,
+                ),
+                &EventEnvelope::new(session_id, SummaryEvent::Started { session_id }),
+            )
+            .ok();
 
         match self.summarize(&turns).await {
-            Ok(text) => {
-                Ok(text)
-            }
+            Ok(text) => Ok(text),
             Err(e) => {
-                self.broker.publish(
-                    &transcript_event::summary_subject_for(
-                        &SummaryEvent::Failed { session_id, error: e.clone() }, session_id,
-                    ),
-                    &EventEnvelope::new(session_id, SummaryEvent::Failed {
-                        session_id,
-                        error: e.clone(),
-                    }),
-                ).ok();
+                self.broker
+                    .publish(
+                        &transcript_event::summary_subject_for(
+                            &SummaryEvent::Failed {
+                                session_id,
+                                error: e.clone(),
+                            },
+                            session_id,
+                        ),
+                        &EventEnvelope::new(
+                            session_id,
+                            SummaryEvent::Failed {
+                                session_id,
+                                error: e.clone(),
+                            },
+                        ),
+                    )
+                    .ok();
                 Err(e)
             }
         }
     }
 
     async fn generate_and_publish(&self, session_id: SessionId, turns: &[TranscriptTurn]) {
-        self.broker.publish(
-            &transcript_event::summary_subject_for(
-                &SummaryEvent::Started { session_id }, session_id,
-            ),
-            &EventEnvelope::new(session_id, SummaryEvent::Started { session_id }),
-        ).ok();
+        self.broker
+            .publish(
+                &transcript_event::summary_subject_for(
+                    &SummaryEvent::Started { session_id },
+                    session_id,
+                ),
+                &EventEnvelope::new(session_id, SummaryEvent::Started { session_id }),
+            )
+            .ok();
 
         match self.summarize(turns).await {
             Ok(text) => {
                 let provider_model = self.provider_model_string();
-                self.store.insert_summary(&Summary {
-                    session_id,
-                    text: text.clone(),
-                    provider_model: provider_model.clone(),
-                    generated_at: chrono::Utc::now(),
-                }).ok();
+                self.store
+                    .insert_summary(&Summary {
+                        session_id,
+                        text: text.clone(),
+                        provider_model: provider_model.clone(),
+                        generated_at: chrono::Utc::now(),
+                    })
+                    .ok();
 
-                self.broker.publish(
-                    &transcript_event::summary_subject_for(
-                        &SummaryEvent::Completed { session_id, text: text.clone(), provider_model: provider_model.clone() },
-                        session_id,
-                    ),
-                    &EventEnvelope::new(session_id, SummaryEvent::Completed {
-                        session_id,
-                        text,
-                        provider_model,
-                    }),
-                ).ok();
+                self.broker
+                    .publish(
+                        &transcript_event::summary_subject_for(
+                            &SummaryEvent::Completed {
+                                session_id,
+                                text: text.clone(),
+                                provider_model: provider_model.clone(),
+                            },
+                            session_id,
+                        ),
+                        &EventEnvelope::new(
+                            session_id,
+                            SummaryEvent::Completed {
+                                session_id,
+                                text,
+                                provider_model,
+                            },
+                        ),
+                    )
+                    .ok();
             }
             Err(e) => {
-                self.broker.publish(
-                    &transcript_event::summary_subject_for(
-                        &SummaryEvent::Failed { session_id, error: e.to_string() }, session_id,
-                    ),
-                    &EventEnvelope::new(session_id, SummaryEvent::Failed {
-                        session_id,
-                        error: e.to_string(),
-                    }),
-                ).ok();
+                self.broker
+                    .publish(
+                        &transcript_event::summary_subject_for(
+                            &SummaryEvent::Failed {
+                                session_id,
+                                error: e.to_string(),
+                            },
+                            session_id,
+                        ),
+                        &EventEnvelope::new(
+                            session_id,
+                            SummaryEvent::Failed {
+                                session_id,
+                                error: e.to_string(),
+                            },
+                        ),
+                    )
+                    .ok();
             }
         }
     }
@@ -229,17 +270,25 @@ impl SummaryConsumer {
     async fn summarize(&self, turns: &[TranscriptTurn]) -> Result<String, String> {
         let provider = self
             .credential_store
-            .load(summarize::CREDENTIAL_SERVICE, summarize::SELECTED_PROVIDER_ACCOUNT)
+            .load(
+                summarize::CREDENTIAL_SERVICE,
+                summarize::SELECTED_PROVIDER_ACCOUNT,
+            )
             .ok()
             .map(|key| SummaryProvider::from_key(&key))
             .unwrap_or(SummaryProvider::Claude);
         let model = self
             .credential_store
-            .load(summarize::CREDENTIAL_SERVICE, summarize::SELECTED_MODEL_ACCOUNT)
+            .load(
+                summarize::CREDENTIAL_SERVICE,
+                summarize::SELECTED_MODEL_ACCOUNT,
+            )
             .unwrap_or_else(|_| provider.default_model().to_string());
 
-        let stored_credential = provider.api_key_account()
-            .map(|account| self.credential_store.load(summarize::CREDENTIAL_SERVICE, account));
+        let stored_credential = provider.api_key_account().map(|account| {
+            self.credential_store
+                .load(summarize::CREDENTIAL_SERVICE, account)
+        });
         if matches!(stored_credential, Some(Err(_))) {
             let message = if provider.is_vertex() {
                 "設定画面でGoogle Vertex AIの認証情報を設定してください"
@@ -250,9 +299,12 @@ impl SummaryConsumer {
         }
 
         let summary_template = self.app_settings.lock().unwrap().summary_template.clone();
-        let options = crate::summary_template::summarize_options_for(model.clone(), summary_template);
+        let options =
+            crate::summary_template::summarize_options_for(model.clone(), summary_template);
 
-        let summarizer: Result<Box<dyn Summarizer>, String> = if let Some(backend) = provider.cli_backend() {
+        let summarizer: Result<Box<dyn Summarizer>, String> = if let Some(backend) =
+            provider.cli_backend()
+        {
             Ok(Box::new(summarize::CliSummarizer(backend)))
         } else if provider == SummaryProvider::ClaudeOAuth {
             genai_summarizer(summarize::build_claude_oauth_client())
@@ -266,14 +318,22 @@ impl SummaryConsumer {
             let base_url = self.app_settings.lock().unwrap().ollama_base_url.clone();
             genai_summarizer(summarize::build_ollama_client(base_url))
         } else if let Some(account) = provider.api_key_account() {
-            let resolver = summarize::credential_store_auth_resolver(self.credential_store.clone(), account);
-            genai_summarizer(genai::Client::builder().with_auth_resolver(resolver).build())
+            let resolver =
+                summarize::credential_store_auth_resolver(self.credential_store.clone(), account);
+            genai_summarizer(
+                genai::Client::builder()
+                    .with_auth_resolver(resolver)
+                    .build(),
+            )
         } else {
             genai_summarizer(genai::Client::builder().build())
         };
 
         match summarizer {
-            Ok(summarizer) => summarizer.summarize(turns, &options).await.map_err(|e| e.to_string()),
+            Ok(summarizer) => summarizer
+                .summarize(turns, &options)
+                .await
+                .map_err(|e| e.to_string()),
             Err(e) => Err(e),
         }
     }
@@ -281,13 +341,19 @@ impl SummaryConsumer {
     fn provider_model_string(&self) -> String {
         let provider = self
             .credential_store
-            .load(summarize::CREDENTIAL_SERVICE, summarize::SELECTED_PROVIDER_ACCOUNT)
+            .load(
+                summarize::CREDENTIAL_SERVICE,
+                summarize::SELECTED_PROVIDER_ACCOUNT,
+            )
             .ok()
             .map(|key| SummaryProvider::from_key(&key))
             .unwrap_or(SummaryProvider::Claude);
         let model = self
             .credential_store
-            .load(summarize::CREDENTIAL_SERVICE, summarize::SELECTED_MODEL_ACCOUNT)
+            .load(
+                summarize::CREDENTIAL_SERVICE,
+                summarize::SELECTED_MODEL_ACCOUNT,
+            )
             .unwrap_or_else(|_| provider.default_model().to_string());
         format!("{}/{}", provider.key(), model)
     }
@@ -303,23 +369,33 @@ fn load_finalized_from_store(
     session_id: SessionId,
     turns: &mut FinalizedTurns<TranscriptTurn>,
 ) {
-    let segments = store.list_transcript_segments(session_id).unwrap_or_default();
+    let segments = store
+        .list_transcript_segments(session_id)
+        .unwrap_or_default();
     for seg in &segments {
         if seg.is_final {
             let sid = transcript_event::segment_id_for_segment(
-                seg.session_id, seg.track, seg.start_ms, seg.end_ms,
+                seg.session_id,
+                seg.track,
+                seg.start_ms,
+                seg.end_ms,
             );
-            turns.insert_if_new(sid, TranscriptTurn {
-                speaker: Some(transcript::speaker_label(seg.track, seg.speaker)),
-                text: seg.text.clone(),
-            });
+            turns.insert_if_new(
+                sid,
+                TranscriptTurn {
+                    speaker: Some(transcript::speaker_label(seg.track, seg.speaker)),
+                    text: seg.text.clone(),
+                },
+            );
         }
     }
 }
 /// Wraps a freshly built genai client as a [`Summarizer`]. Building only fails
 /// when the HTTP client can't be initialized (e.g. TLS setup), which is shown
 /// to the user like any other summary error.
-fn genai_summarizer(client: Result<genai::Client, genai::Error>) -> Result<Box<dyn Summarizer>, String> {
+fn genai_summarizer(
+    client: Result<genai::Client, genai::Error>,
+) -> Result<Box<dyn Summarizer>, String> {
     client
         .map(|client| Box::new(summarize::GenaiSummarizer(client)) as Box<dyn Summarizer>)
         .map_err(|e| format!("AIクライアントの作成に失敗しました: {e}"))

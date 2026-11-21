@@ -80,7 +80,10 @@ fn connect_or_launch() -> std::io::Result<Stream> {
     }
 
     let gui_path = locate_gui_binary()?;
-    eprintln!("meetingram is not running; starting {}...", gui_path.display());
+    eprintln!(
+        "meetingram is not running; starting {}...",
+        gui_path.display()
+    );
     std::process::Command::new(&gui_path).spawn()?;
 
     let deadline = Instant::now() + LAUNCH_WAIT_TIMEOUT;
@@ -100,8 +103,15 @@ fn connect_or_launch() -> std::io::Result<Stream> {
 /// packaging status). Not resolved via `PATH`: the GUI isn't meant to be a
 /// general-purpose CLI tool someone would put there.
 fn locate_gui_binary() -> std::io::Result<std::path::PathBuf> {
-    let exe_dir = std::env::current_exe()?.parent().map(|p| p.to_path_buf()).unwrap_or_default();
-    let name = if cfg!(windows) { "desktop.exe" } else { "desktop" };
+    let exe_dir = std::env::current_exe()?
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_default();
+    let name = if cfg!(windows) {
+        "desktop.exe"
+    } else {
+        "desktop"
+    };
     let candidate = exe_dir.join(name);
     if candidate.is_file() {
         Ok(candidate)
@@ -137,10 +147,14 @@ fn print_status(status: &StatusDto, json: bool) {
         if let Some(id) = &status.last_session_id {
             println!("session: {id}");
         }
-        println!("segments: 送信済み {} / 保留 {}", status.uploaded_segments, status.pending_segments);
+        println!(
+            "segments: 送信済み {} / 保留 {}",
+            status.uploaded_segments, status.pending_segments
+        );
     } else {
         println!("recording: 停止中");
-        if let (Some(id), Some(total_ms)) = (&status.last_session_id, status.last_total_duration_ms) {
+        if let (Some(id), Some(total_ms)) = (&status.last_session_id, status.last_total_duration_ms)
+        {
             println!("last session: {id} ({})", format_duration(total_ms));
         }
     }
@@ -151,7 +165,12 @@ fn print_status(status: &StatusDto, json: bool) {
 
 fn format_duration(ms: u64) -> String {
     let total_secs = ms / 1000;
-    format!("{:02}:{:02}:{:02}", total_secs / 3600, (total_secs % 3600) / 60, total_secs % 60)
+    format!(
+        "{:02}:{:02}:{:02}",
+        total_secs / 3600,
+        (total_secs % 3600) / 60,
+        total_secs % 60
+    )
 }
 
 #[cfg(test)]
@@ -173,9 +192,11 @@ mod tests {
 
     #[test]
     fn json_flag_can_appear_before_or_after_subcommand() {
-        let (_, json) = parse_args(&mut vec!["--json".to_string(), "status".to_string()].into_iter()).unwrap();
+        let (_, json) =
+            parse_args(&mut vec!["--json".to_string(), "status".to_string()].into_iter()).unwrap();
         assert!(json);
-        let (_, json) = parse_args(&mut vec!["status".to_string(), "--json".to_string()].into_iter()).unwrap();
+        let (_, json) =
+            parse_args(&mut vec!["status".to_string(), "--json".to_string()].into_iter()).unwrap();
         assert!(json);
     }
 
@@ -184,7 +205,9 @@ mod tests {
         assert!(parse_args(&mut std::iter::empty()).is_err());
         assert!(parse_args(&mut vec!["bogus".to_string()].into_iter()).is_err());
         // A second subcommand-shaped token is rejected too, not silently ignored.
-        assert!(parse_args(&mut vec!["start".to_string(), "stop".to_string()].into_iter()).is_err());
+        assert!(
+            parse_args(&mut vec!["start".to_string(), "stop".to_string()].into_iter()).is_err()
+        );
     }
 
     #[test]

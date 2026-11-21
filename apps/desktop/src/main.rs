@@ -36,7 +36,9 @@ const ICON_BYTES: &[u8] = include_bytes!("../assets/icon.png");
 /// `dirs`'s platform data dir is not app-specific, so the app name is appended
 /// here (`.../meetingram/sessions`, `.../credentials`, etc).
 fn app_data_dir() -> std::path::PathBuf {
-    dirs::data_dir().unwrap_or_else(std::env::temp_dir).join("meetingram")
+    dirs::data_dir()
+        .unwrap_or_else(std::env::temp_dir)
+        .join("meetingram")
 }
 
 /// Logs to `<app_data_dir>/app.log` in addition to stdout — a GUI-subsystem exe
@@ -48,9 +50,16 @@ fn app_data_dir() -> std::path::PathBuf {
 /// app data dir) rather than failing startup over a logging problem.
 fn init_logging(app_data_dir: &std::path::Path) {
     let log_path = app_data_dir.join("app.log");
-    match std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
+    match std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+    {
         Ok(file) => {
-            tracing_subscriber::fmt().with_writer(std::sync::Mutex::new(file)).with_ansi(false).init();
+            tracing_subscriber::fmt()
+                .with_writer(std::sync::Mutex::new(file))
+                .with_ansi(false)
+                .init();
         }
         Err(err) => {
             tracing_subscriber::fmt::try_init().ok();
@@ -93,11 +102,25 @@ fn main() {
     let config = Config::load(app_data_dir.clone());
     std::fs::create_dir_all(&config.sessions_root).ok();
 
-    let store = Arc::new(session_store::SessionStore::open(&config.session_db_path).expect("failed to open session-store"));
+    let store = Arc::new(
+        session_store::SessionStore::open(&config.session_db_path)
+            .expect("failed to open session-store"),
+    );
 
-    let credential_store = Arc::new(credential_store::FallbackCredentialStore::new(app_data_dir.join("credentials")).expect("failed to open credential-store"));
-    let token_provider = Arc::new(credential_store::CredentialStoreTokenProvider::new(credential_store.clone(), config.credential_service.clone(), config.credential_account.clone()));
-    let adapter = Arc::new(upload_client::HttpUploadClient::new(config.api_base_url.clone(), Duration::from_secs(30), token_provider));
+    let credential_store = Arc::new(
+        credential_store::FallbackCredentialStore::new(app_data_dir.join("credentials"))
+            .expect("failed to open credential-store"),
+    );
+    let token_provider = Arc::new(credential_store::CredentialStoreTokenProvider::new(
+        credential_store.clone(),
+        config.credential_service.clone(),
+        config.credential_account.clone(),
+    ));
+    let adapter = Arc::new(upload_client::HttpUploadClient::new(
+        config.api_base_url.clone(),
+        Duration::from_secs(30),
+        token_provider,
+    ));
 
     let app_settings = app_settings::AppSettings::load(&app_data_dir);
     let app_settings = std::sync::Arc::new(std::sync::Mutex::new(app_settings));
@@ -147,14 +170,23 @@ fn main() {
 
     control_server::spawn(state.clone());
 
-    let window = WindowBuilder::new().with_title("meetingram").with_inner_size(LogicalSize::new(480.0, 640.0));
+    let window = WindowBuilder::new()
+        .with_title("meetingram")
+        .with_inner_size(LogicalSize::new(480.0, 640.0));
 
-    let mut desktop_config = DesktopConfig::new().with_window(window).with_close_behaviour(WindowCloseBehaviour::WindowHides);
-    if let Ok(icon) = dioxus::desktop::icon_from_memory::<dioxus::desktop::tao::window::Icon>(ICON_BYTES) {
+    let mut desktop_config = DesktopConfig::new()
+        .with_window(window)
+        .with_close_behaviour(WindowCloseBehaviour::WindowHides);
+    if let Ok(icon) =
+        dioxus::desktop::icon_from_memory::<dioxus::desktop::tao::window::Icon>(ICON_BYTES)
+    {
         desktop_config = desktop_config.with_icon(icon);
     }
 
-    LaunchBuilder::desktop().with_cfg(desktop_config).with_context(state).launch(app_entry);
+    LaunchBuilder::desktop()
+        .with_cfg(desktop_config)
+        .with_context(state)
+        .launch(app_entry);
 }
 
 fn app_entry() -> Element {
@@ -172,8 +204,12 @@ impl rhai_engine::SettingsProvider for AppSettingsProvider {
         match key {
             "ollama_base_url" => self.app_settings.lock().unwrap().ollama_base_url.clone(),
             "summary_template" => self.app_settings.lock().unwrap().summary_template.clone(),
-            "summary_provider_key" => self.credential_store
-                .load(summarize::CREDENTIAL_SERVICE, summarize::SELECTED_PROVIDER_ACCOUNT)
+            "summary_provider_key" => self
+                .credential_store
+                .load(
+                    summarize::CREDENTIAL_SERVICE,
+                    summarize::SELECTED_PROVIDER_ACCOUNT,
+                )
                 .ok(),
             // `hint_debounce_seconds` deliberately has no case here anymore —
             // `RhaiEngine::spawn_hint_debounce_driver` (`crates/rhai-engine`)
@@ -186,11 +222,18 @@ impl rhai_engine::SettingsProvider for AppSettingsProvider {
     }
 
     fn selected_model(&self) -> String {
-        let provider_key = self.credential_store
-            .load(summarize::CREDENTIAL_SERVICE, summarize::SELECTED_PROVIDER_ACCOUNT)
+        let provider_key = self
+            .credential_store
+            .load(
+                summarize::CREDENTIAL_SERVICE,
+                summarize::SELECTED_PROVIDER_ACCOUNT,
+            )
             .unwrap_or_else(|_| "claude".to_string());
         self.credential_store
-            .load(summarize::CREDENTIAL_SERVICE, summarize::SELECTED_MODEL_ACCOUNT)
+            .load(
+                summarize::CREDENTIAL_SERVICE,
+                summarize::SELECTED_MODEL_ACCOUNT,
+            )
             .unwrap_or_else(|_| {
                 crate::settings::SummaryProvider::from_key(&provider_key)
                     .default_model()

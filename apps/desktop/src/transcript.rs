@@ -38,7 +38,10 @@ pub fn to_turns(segments: &[TranscriptSegment]) -> Vec<TranscriptTurn> {
     segments
         .iter()
         .filter(|s| s.is_final)
-        .map(|s| TranscriptTurn { speaker: Some(speaker_label(s.track, s.speaker)), text: s.text.clone() })
+        .map(|s| TranscriptTurn {
+            speaker: Some(speaker_label(s.track, s.speaker)),
+            text: s.text.clone(),
+        })
         .collect()
 }
 
@@ -55,10 +58,17 @@ pub fn visible_segments(segments: &[TranscriptSegment]) -> Vec<&TranscriptSegmen
     for (i, seg) in segments.iter().enumerate() {
         last_index_for_track.insert(seg.track, i);
     }
-    let keep_interim: HashSet<usize> =
-        last_index_for_track.into_values().filter(|&i| !segments[i].is_final).collect();
+    let keep_interim: HashSet<usize> = last_index_for_track
+        .into_values()
+        .filter(|&i| !segments[i].is_final)
+        .collect();
 
-    segments.iter().enumerate().filter(|(i, seg)| seg.is_final || keep_interim.contains(i)).map(|(_, seg)| seg).collect()
+    segments
+        .iter()
+        .enumerate()
+        .filter(|(i, seg)| seg.is_final || keep_interim.contains(i))
+        .map(|(_, seg)| seg)
+        .collect()
 }
 
 /// One row of the transcript panel's merged timeline (task #92): either a
@@ -83,8 +93,14 @@ pub enum TimelineItem<'a> {
 /// was inserted. `sort_by_key` is stable, so items that tie on position (most
 /// commonly two rows with no `start_ms` at all) keep `visible_segments`'/
 /// `gaps`' own relative order instead of shuffling.
-pub fn timeline_items<'a>(segments: &'a [TranscriptSegment], gaps: &'a [TranscriptionGap]) -> Vec<TimelineItem<'a>> {
-    let mut items: Vec<TimelineItem<'a>> = visible_segments(segments).into_iter().map(TimelineItem::Segment).collect();
+pub fn timeline_items<'a>(
+    segments: &'a [TranscriptSegment],
+    gaps: &'a [TranscriptionGap],
+) -> Vec<TimelineItem<'a>> {
+    let mut items: Vec<TimelineItem<'a>> = visible_segments(segments)
+        .into_iter()
+        .map(TimelineItem::Segment)
+        .collect();
     items.extend(gaps.iter().map(TimelineItem::Gap));
     items.sort_by_key(|item| match item {
         TimelineItem::Segment(s) => s.start_ms.unwrap_or(u64::MAX),
@@ -99,7 +115,13 @@ mod tests {
     use recorder_domain::SessionId;
 
     fn gap(id: i64, track: TrackKind, start_ms: u64, end_ms: Option<u64>) -> TranscriptionGap {
-        TranscriptionGap { id, session_id: SessionId::new(), track, start_ms, end_ms }
+        TranscriptionGap {
+            id,
+            session_id: SessionId::new(),
+            track,
+            start_ms,
+            end_ms,
+        }
     }
 
     fn seg(track: Option<TrackKind>, text: &str, is_final: bool) -> TranscriptSegment {
@@ -121,13 +143,19 @@ mod tests {
 
     #[test]
     fn finals_only_are_all_kept() {
-        let segments = vec![seg(Some(TrackKind::SelfMic), "one", true), seg(Some(TrackKind::SelfMic), "two", true)];
+        let segments = vec![
+            seg(Some(TrackKind::SelfMic), "one", true),
+            seg(Some(TrackKind::SelfMic), "two", true),
+        ];
         assert_eq!(texts(&visible_segments(&segments)), vec!["one", "two"]);
     }
 
     #[test]
     fn interim_only_keeps_last_per_track() {
-        let segments = vec![seg(Some(TrackKind::SelfMic), "hel", false), seg(Some(TrackKind::SelfMic), "hello", false)];
+        let segments = vec![
+            seg(Some(TrackKind::SelfMic), "hel", false),
+            seg(Some(TrackKind::SelfMic), "hello", false),
+        ];
         assert_eq!(texts(&visible_segments(&segments)), vec!["hello"]);
     }
 
@@ -138,12 +166,18 @@ mod tests {
             seg(Some(TrackKind::SelfMic), "final two", true),
             seg(Some(TrackKind::SelfMic), "in prog", false),
         ];
-        assert_eq!(texts(&visible_segments(&segments)), vec!["final one", "final two", "in prog"]);
+        assert_eq!(
+            texts(&visible_segments(&segments)),
+            vec!["final one", "final two", "in prog"]
+        );
     }
 
     #[test]
     fn interim_superseded_by_a_later_final_is_dropped() {
-        let segments = vec![seg(Some(TrackKind::SelfMic), "hel", false), seg(Some(TrackKind::SelfMic), "hello", true)];
+        let segments = vec![
+            seg(Some(TrackKind::SelfMic), "hel", false),
+            seg(Some(TrackKind::SelfMic), "hello", true),
+        ];
         assert_eq!(texts(&visible_segments(&segments)), vec!["hello"]);
     }
 
@@ -198,7 +232,10 @@ mod tests {
 
     #[test]
     fn timeline_items_interleaves_a_gap_between_segments_by_start_ms() {
-        let segments = vec![seg_at(Some(TrackKind::SelfMic), "before", 0), seg_at(Some(TrackKind::SelfMic), "after", 5_000)];
+        let segments = vec![
+            seg_at(Some(TrackKind::SelfMic), "before", 0),
+            seg_at(Some(TrackKind::SelfMic), "after", 5_000),
+        ];
         let gaps = vec![gap(1, TrackKind::RemoteAudio, 1_000, Some(3_000))];
 
         let items = timeline_items(&segments, &gaps);
@@ -221,19 +258,28 @@ mod tests {
         let segments = vec![live_early, live_late, retranscribed];
 
         let items = timeline_items(&segments, &[]);
-        assert_eq!(timeline_labels(&items), vec!["live early", "retranscribed", "live late"]);
+        assert_eq!(
+            timeline_labels(&items),
+            vec!["live early", "retranscribed", "live late"]
+        );
     }
 
     #[test]
     fn timeline_items_keeps_stable_order_for_ties() {
-        let segments = vec![seg_at(Some(TrackKind::SelfMic), "one", 100), seg_at(Some(TrackKind::RemoteAudio), "two", 100)];
+        let segments = vec![
+            seg_at(Some(TrackKind::SelfMic), "one", 100),
+            seg_at(Some(TrackKind::RemoteAudio), "two", 100),
+        ];
         let items = timeline_items(&segments, &[]);
         assert_eq!(timeline_labels(&items), vec!["one", "two"]);
     }
 
     #[test]
     fn timeline_items_with_no_gaps_matches_visible_segments() {
-        let segments = vec![seg(Some(TrackKind::SelfMic), "final one", true), seg(Some(TrackKind::SelfMic), "in prog", false)];
+        let segments = vec![
+            seg(Some(TrackKind::SelfMic), "final one", true),
+            seg(Some(TrackKind::SelfMic), "in prog", false),
+        ];
         let items = timeline_items(&segments, &[]);
         assert_eq!(timeline_labels(&items), vec!["final one", "in prog"]);
     }

@@ -40,7 +40,10 @@ impl TranscriptionStatus {
     /// field to report from — see `status::current`).
     #[cfg_attr(windows, allow(dead_code))]
     pub fn unavailable() -> Self {
-        Self { self_status: TrackTranscriptionStatus::Unavailable, remote_status: TrackTranscriptionStatus::Unavailable }
+        Self {
+            self_status: TrackTranscriptionStatus::Unavailable,
+            remote_status: TrackTranscriptionStatus::Unavailable,
+        }
     }
 }
 
@@ -60,17 +63,24 @@ impl From<app_service::TrackTranscriptionStatus> for TrackTranscriptionStatus {
 #[cfg(windows)]
 impl From<app_service::TranscriptionStatus> for TranscriptionStatus {
     fn from(s: app_service::TranscriptionStatus) -> Self {
-        Self { self_status: s.self_status.into(), remote_status: s.remote_status.into() }
+        Self {
+            self_status: s.self_status.into(),
+            remote_status: s.remote_status.into(),
+        }
     }
 }
 
 fn describe_track(status: &TrackTranscriptionStatus) -> Option<String> {
     match status {
-        TrackTranscriptionStatus::NotConfigured => Some("キー未設定です(設定画面でAPIキーを入力してください)".to_string()),
+        TrackTranscriptionStatus::NotConfigured => {
+            Some("キー未設定です(設定画面でAPIキーを入力してください)".to_string())
+        }
         TrackTranscriptionStatus::Connecting => Some("接続中...".to_string()),
         TrackTranscriptionStatus::Connected => None,
         TrackTranscriptionStatus::Error(msg) => Some(format!("接続エラー({msg})")),
-        TrackTranscriptionStatus::Unavailable => Some("この環境では文字起こしを利用できません".to_string()),
+        TrackTranscriptionStatus::Unavailable => {
+            Some("この環境では文字起こしを利用できません".to_string())
+        }
     }
 }
 
@@ -80,11 +90,20 @@ fn describe_track(status: &TrackTranscriptionStatus) -> Option<String> {
 /// collapse to one shared sentence when both tracks currently say the same thing,
 /// so a fully-broken session doesn't read as two redundant lines.
 pub fn describe(status: &TranscriptionStatus) -> Option<String> {
-    match (describe_track(&status.self_status), describe_track(&status.remote_status)) {
+    match (
+        describe_track(&status.self_status),
+        describe_track(&status.remote_status),
+    ) {
         (None, None) => None,
         (Some(both_a), Some(both_b)) if both_a == both_b => Some(format!("文字起こし: {both_a}")),
-        (Some(only_self), None) => Some(format!("文字起こし: {}のみ{only_self}", track_label(Some(TrackKind::SelfMic)))),
-        (None, Some(only_remote)) => Some(format!("文字起こし: {}のみ{only_remote}", track_label(Some(TrackKind::RemoteAudio)))),
+        (Some(only_self), None) => Some(format!(
+            "文字起こし: {}のみ{only_self}",
+            track_label(Some(TrackKind::SelfMic))
+        )),
+        (None, Some(only_remote)) => Some(format!(
+            "文字起こし: {}のみ{only_remote}",
+            track_label(Some(TrackKind::RemoteAudio))
+        )),
         (Some(self_msg), Some(remote_msg)) => Some(format!(
             "文字起こし: {}={self_msg} / {}={remote_msg}",
             track_label(Some(TrackKind::SelfMic)),
@@ -99,19 +118,28 @@ mod tests {
 
     #[test]
     fn describe_is_none_when_both_connected() {
-        let status = TranscriptionStatus { self_status: TrackTranscriptionStatus::Connected, remote_status: TrackTranscriptionStatus::Connected };
+        let status = TranscriptionStatus {
+            self_status: TrackTranscriptionStatus::Connected,
+            remote_status: TrackTranscriptionStatus::Connected,
+        };
         assert_eq!(describe(&status), None);
     }
 
     #[test]
     fn describe_collapses_identical_statuses_into_one_line() {
-        let status = TranscriptionStatus { self_status: TrackTranscriptionStatus::Connecting, remote_status: TrackTranscriptionStatus::Connecting };
+        let status = TranscriptionStatus {
+            self_status: TrackTranscriptionStatus::Connecting,
+            remote_status: TrackTranscriptionStatus::Connecting,
+        };
         assert_eq!(describe(&status), Some("文字起こし: 接続中...".to_string()));
     }
 
     #[test]
     fn describe_distinguishes_a_single_failed_track() {
-        let status = TranscriptionStatus { self_status: TrackTranscriptionStatus::Connected, remote_status: TrackTranscriptionStatus::Error("boom".to_string()) };
+        let status = TranscriptionStatus {
+            self_status: TrackTranscriptionStatus::Connected,
+            remote_status: TrackTranscriptionStatus::Error("boom".to_string()),
+        };
         let msg = describe(&status).unwrap();
         assert!(msg.contains("相手"));
         assert!(msg.contains("boom"));
