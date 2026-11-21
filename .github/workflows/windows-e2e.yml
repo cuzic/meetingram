@@ -1,0 +1,157 @@
+name: Windows E2E recording
+
+on:
+  pull_request:
+    paths: &e2e-paths
+      - 'apps/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.cargo/**'
+      - 'scripts/ci/**'
+      - '.github/workflows/windows-e2e.yml'
+  push:
+    branches: [main]
+    paths: *e2e-paths
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-windows:
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        id: checkout
+
+      - uses: arduino/setup-protoc@v3
+        id: protoc
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        id: rust
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        id: cache
+        with:
+          cache-on-failure: true
+
+      - name: Prepare artifact directory
+        id: artifact-directory
+        if: always()
+        run: New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'e2e-windows-recording') | Out-Null
+
+      - name: Build desktop
+        id: desktop
+        run: cargo build -p desktop --target x86_64-pc-windows-msvc
+
+      - name: Build meetingramctl
+        id: cli
+        run: cargo build -p desktop-cli --target x86_64-pc-windows-msvc
+
+      - name: Ensure Windows Audio services are running
+        id: services
+        run: |
+          Start-Service AudioEndpointBuilder, Audiosrv
+          Get-Service AudioEndpointBuilder, Audiosrv | Format-Table -AutoSize
+
+      - name: Install VB-CABLE
+        id: driver
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'vbcable.zip'
+          $driver = Join-Path $env:RUNNER_TEMP 'vbcable'
+          Invoke-WebRequest https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip -OutFile $zip
+          Expand-Archive -LiteralPath $zip -DestinationPath $driver
+          $setup = Start-Process (Join-Path $driver 'VBCABLE_Setup_x64.exe') -ArgumentList '-i', '-h' -Wait -PassThru
+          Write-Host "VB-CABLE installer exit code: $($setup.ExitCode)"
+          # The next step checks that Windows exposed both audio endpoints.
+
+      - name: Set default playback and recording devices
+        id: endpoints
+        shell: powershell
+        run: ./scripts/ci/set-windows-e2e-audio.ps1
+
+      - name: Seed desktop microphone consent
+        id: microphone
+        run: ./scripts/ci/seed-windows-microphone-consent.ps1
+
+      - name: Ensure ffmpeg and ffprobe are available
+        id: ffmpeg
+        run: |
+          if (Get-Command ffmpeg -CommandType Application -ErrorAction SilentlyContinue) {
+            Write-Host 'Using ffmpeg from the runner image'
+          } else {
+            Write-Host 'Installing ffmpeg with Chocolatey'
+            choco install ffmpeg -y
+            if ($LASTEXITCODE -ne 0) { throw "Chocolatey failed with exit code $LASTEXITCODE" }
+            Add-Content -LiteralPath $env:GITHUB_PATH -Value (Join-Path $env:ChocolateyInstall 'bin')
+          }
+
+      - name: Record the meetingramctl E2E
+        id: scenario
+        timeout-minutes: 7
+        run: ./scripts/ci/run-windows-e2e.ps1
+
+      - name: Verify video and screenshots
+        id: video
+        if: ${{ always() && steps.scenario.outcome != 'skipped' && steps.scenario.outcome != '' }}
+        run: ./scripts/ci/check-windows-e2e-video.ps1
+
+      - name: Stop the desktop app
+        id: cleanup
+        if: always()
+        run: Stop-Process -Name desktop -Force -ErrorAction SilentlyContinue
+
+      - name: Collect and print app.log
+        id: log
+        if: always()
+        run: ./scripts/ci/collect-windows-e2e-log.ps1
+
+      - name: Upload the E2E artifacts
+        id: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-windows-recording
+          path: |
+            ${{ runner.temp }}/e2e-windows-recording/*.mp4
+            ${{ runner.temp }}/e2e-windows-recording/*.png
+            ${{ runner.temp }}/e2e-windows-recording/status-*.json
+            ${{ runner.temp }}/e2e-windows-recording/app.log
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Summarize the E2E
+        if: always()
+        env:
+          STEP_OUTCOMES: |
+            | Checkout | ${{ steps.checkout.outcome }} |
+            | protoc | ${{ steps.protoc.outcome }} |
+            | Rust toolchain | ${{ steps.rust.outcome }} |
+            | Rust cache | ${{ steps.cache.outcome }} |
+            | Prepare artifact directory | ${{ steps.artifact-directory.outcome }} |
+            | Build desktop | ${{ steps.desktop.outcome }} |
+            | Build meetingramctl | ${{ steps.cli.outcome }} |
+            | Windows Audio services | ${{ steps.services.outcome }} |
+            | VB-CABLE installer | ${{ steps.driver.outcome }} |
+            | Default audio devices | ${{ steps.endpoints.outcome }} |
+            | Microphone consent | ${{ steps.microphone.outcome }} |
+            | ffmpeg setup | ${{ steps.ffmpeg.outcome }} |
+            | Recorded E2E | ${{ steps.scenario.outcome }} |
+            | Video and screenshot verification | ${{ steps.video.outcome }} |
+            | Stop desktop | ${{ steps.cleanup.outcome }} |
+            | Collect app.log | ${{ steps.log.outcome }} |
+            | Upload e2e-windows-recording | ${{ steps.upload.outcome }} |
+        run: |
+          @'
+          ## Windows E2E
+          Artifact: `e2e-windows-recording`
+
+          | Step | Outcome |
+          | --- | --- |
+          '@ | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value $env:STEP_OUTCOMES
