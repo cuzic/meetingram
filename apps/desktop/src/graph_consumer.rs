@@ -849,6 +849,7 @@ mod tests {
     }
 
     use std::io::Write;
+    use std::ops::Range;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use chrono::Utc;
@@ -997,7 +998,7 @@ mod tests {
 
     struct Fake {
         calls: mpsc::UnboundedSender<CompletionRequest>,
-        provider_failures: usize,
+        provider_failures: Range<usize>,
         responses: Vec<&'static str>,
         first_block: Option<Semaphore>,
         active: AtomicUsize,
@@ -1010,11 +1011,15 @@ mod tests {
             failed: bool,
             block_first: bool,
         ) -> (Arc<Self>, mpsc::UnboundedReceiver<CompletionRequest>) {
-            Self::scripted(if failed { usize::MAX } else { 0 }, Vec::new(), block_first)
+            Self::scripted(
+                0..if failed { usize::MAX } else { 0 },
+                Vec::new(),
+                block_first,
+            )
         }
 
         fn scripted(
-            provider_failures: usize,
+            provider_failures: Range<usize>,
             responses: Vec<&'static str>,
             block_first: bool,
         ) -> (Arc<Self>, mpsc::UnboundedReceiver<CompletionRequest>) {
@@ -1080,12 +1085,17 @@ mod tests {
                     block.acquire().await.unwrap().forget();
                 }
             }
-            if count < fake.provider_failures {
+            if fake.provider_failures.contains(&count) {
                 Err(SummarizerError::CompletionProvider)
             } else {
+                let response_index = if count >= fake.provider_failures.end {
+                    count - fake.provider_failures.len()
+                } else {
+                    count
+                };
                 Ok(fake
                     .responses
-                    .get(count - fake.provider_failures)
+                    .get(response_index)
                     .copied()
                     .unwrap_or(EMPTY_PATCH)
                     .into())
@@ -1133,7 +1143,7 @@ mod tests {
     async fn three_live_failures_stop_calls_but_keep_importing() {
         let f = Fixture::new();
         f.consumer.settings.lock().unwrap().graph_batch_utterances = Some(1);
-        let (fake, mut calls) = Fake::scripted(3, Vec::new(), false);
+        let (fake, mut calls) = Fake::scripted(0..3, Vec::new(), false);
         let live = f.start(fake.clone());
         for count in 1..=3 {
             f.append("synthetic turn", false);
@@ -1183,7 +1193,7 @@ mod tests {
         for second in [EMPTY_PATCH, "unreadable"] {
             let f = Fixture::new();
             f.append("synthetic turn", false);
-            let (fake, mut calls) = Fake::scripted(0, vec!["unreadable", second], false);
+            let (fake, mut calls) = Fake::scripted(0..0, vec!["unreadable", second], false);
             // A single increment isolates parse retries from the flush failure budget.
             let backend = fake.backend(&AppSettings::default());
             let session = f.consumer.session(f.sid);
@@ -1221,7 +1231,7 @@ mod tests {
     async fn stopped_consolidates_when_live_extraction_has_caught_up() {
         let mut f = Fixture::new();
         f.consumer.settings.lock().unwrap().graph_batch_utterances = Some(1);
-        let (fake, mut calls) = Fake::scripted(0, vec![ISSUE_PATCH], false);
+        let (fake, mut calls) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
         let live = f.start(fake);
         f.append("synthetic turn extracted during recording", false);
         f.finalized();
@@ -1246,7 +1256,7 @@ mod tests {
     async fn consolidation_uses_a_longer_timeout_than_extraction() {
         let mut f = Fixture::new();
         f.append("synthetic turn", false);
-        let (fake, mut calls) = Fake::scripted(0, vec![ISSUE_PATCH], false);
+        let (fake, mut calls) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
         f.post(PostMeeting::Continue, fake).await.unwrap();
         assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
         assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
@@ -1270,7 +1280,7 @@ mod tests {
         let f = Fixture::new();
         // A previous increment leaves a live node without running consolidation.
         f.append("synthetic retranscribed turn", true);
-        let (initial, _) = Fake::scripted(0, vec![ISSUE_PATCH], false);
+        let (initial, _) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
         f.post(PostMeeting::Retranscribed, initial).await.unwrap();
 
         let (fake, mut calls) = Fake::new(false, false);
@@ -1337,7 +1347,7 @@ mod tests {
     async fn only_stopped_flushes_partial_window_and_rows_saved_after_session_end() {
         for count in 1..=5 {
             let mut f = Fixture::new();
-            let (fake, mut calls) = Fake::scripted(0, vec![ISSUE_PATCH], false);
+            let (fake, mut calls) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
             let live = f.start(fake);
             for _ in 0..count {
                 f.append("synthetic partial window", false);
@@ -1386,6 +1396,61 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn stopped_skips_consolidation_after_three_flush_failures() {
+        let mut f = Fixture::new();
+        f.consumer.settings.lock().unwrap().graph_batch_utterances = Some(1);
+        let (fake, mut calls) = Fake::scripted(1..4, vec![ISSUE_PATCH], false);
+        let live = f.start(fake);
+        f.append("synthetic turn extracted during recording", false);
+        f.finalized();
+        assert_eq!(next_call(&mut calls).await.timeout, Duration::from_secs(60));
+        f.wait_for_status(|status| status.pending == 0).await;
+        let updates = f.events();
+        assert_eq!(updates.len(), 1);
+        assert_eq!(updates[0].source, PatchSource::Live);
+        assert_eq!(updates[0].added, 1);
+
+        // A row saved during shutdown can reach the DB without a finalized event.
+        f.append("synthetic pending turn at stop", false);
+        f.stopped();
+        live.await.unwrap();
+        assert_failed_flush_skips_consolidation(&f, &mut calls).await;
+        assert!(f.events().is_empty());
+    }
+
+    #[tokio::test]
+    async fn rebuild_skips_consolidation_after_three_flush_failures() {
+        let mut f = Fixture::new();
+        f.append("synthetic original turn", false);
+        // These rows are extracted separately, so the first patch creates a live
+        // node before the remaining row hits the failure limit.
+        f.append("synthetic retranscribed turn", true);
+        let (fake, mut calls) = Fake::scripted(1..4, vec![ISSUE_PATCH], false);
+        f.post(PostMeeting::Rebuild, fake).await.unwrap();
+
+        assert_eq!(next_call(&mut calls).await.timeout, Duration::from_secs(60));
+        assert_failed_flush_skips_consolidation(&f, &mut calls).await;
+        let updates = f.events();
+        assert_eq!(updates.len(), 1);
+        assert_eq!(updates[0].source, PatchSource::Flush);
+        assert_eq!(updates[0].added, 1);
+    }
+
+    async fn assert_failed_flush_skips_consolidation(
+        f: &Fixture,
+        calls: &mut mpsc::UnboundedReceiver<CompletionRequest>,
+    ) {
+        for _ in 0..3 {
+            assert_eq!(next_call(calls).await.timeout, Duration::from_secs(60));
+        }
+        assert!(
+            calls.try_recv().is_err(),
+            "only the three extraction calls should run after the first patch"
+        );
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
+    }
+
+    #[tokio::test]
     async fn flush_extracts_the_row_after_an_oversize_utterance() {
         let mut f = Fixture::new();
         f.append(&"あ".repeat(DEFAULT_INPUT_LIMIT * 2), false);
@@ -1404,7 +1469,7 @@ mod tests {
     async fn continue_requests_use_one_executor_and_rebuild_cancels_running_flush() {
         let f = Fixture::new();
         f.append("synthetic turn for rebuild", false);
-        let (fake, mut calls) = Fake::scripted(0, vec![EMPTY_PATCH, ISSUE_PATCH], true);
+        let (fake, mut calls) = Fake::scripted(0..0, vec![EMPTY_PATCH, ISSUE_PATCH], true);
         let flush = f.post(PostMeeting::Continue, fake.clone());
         next_call(&mut calls).await;
         let (loaded_tx, loaded_rx) = tokio::sync::oneshot::channel();
