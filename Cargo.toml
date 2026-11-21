@@ -1,0 +1,34 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/desktop",
+    "apps/desktop-cli",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/cuzic/meetingram"
+
+[workspace.dependencies]
+anyhow = "1"
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# meetingram-core (https://github.com/cuzic/meetingram-core). Bump the tag here
+# for every crate at once; crates from one tag are built and tested together.
+app-service = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+control-protocol = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+credential-store = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+local-broker = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+recorder-domain = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+rhai-engine = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+session-store = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+stt-assemblyai = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+stt-deepgram = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+stt-google = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+stt-openai = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+summarize = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+transcript-event = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }
+upload-client = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.1.0" }

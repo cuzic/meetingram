@@ -1,0 +1,52 @@
+name: App Build & Test
+
+# Compiles, lints and tests the desktop app and meetingramctl on each native OS
+# the app ships for. The core crates (capture, STT, broker, Rhai) are tested in
+# cuzic/meetingram-core; this gate only covers the app crates themselves, so
+# clippy runs with --no-deps.
+#
+# The app-launching E2E pass that 1on1-recorder ran (virtual audio device +
+# `ctl start/stop` against a real running app) has not been ported yet.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-latest
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # stt-google's build.rs (from meetingram-core) shells out to `protoc`;
+      # neither runner ships it.
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Clippy
+        shell: bash
+        run: cargo clippy -p desktop -p desktop-cli --target ${{ matrix.target }} --no-deps -- -D warnings
+
+      - name: Test
+        shell: bash
+        run: cargo test -p desktop -p desktop-cli --target ${{ matrix.target }}

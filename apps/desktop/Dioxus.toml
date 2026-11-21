@@ -1,0 +1,24 @@
+[application]
+
+# Display name used for the bundled app/installer (Cargo.toml's package name is
+# just "desktop", which would otherwise show up as "desktop.app"/"desktop.msi").
+name = "meetingram"
+
+[bundle]
+
+# Placeholder reverse-DNS identifier (no registered domain for this project yet) —
+# change this before any real distribution; macOS uses it as the app's bundle ID.
+identifier = "io.github.cuzic.meetingram"
+publisher = "Tomoya Kawanishi"
+icon = ["assets/icon.png"]
+
+[bundle.windows]
+
+# dx's own default (WebviewInstallMode::OfflineInstaller) embeds the full
+# ~170MB WebView2 Runtime offline redistributable into the NSIS installer, on
+# top of this app's own ~9MB — confirmed by inspecting a real build's NSIS .exe
+# with `7z l` (desktop.exe was 9.3MB; $TEMP/MicrosoftEdgeWebView2RuntimeInstaller_x64.exe
+# was 178.8MB). Windows 10 2004+ and Windows 11 already ship WebView2 as an OS
+# component, so DownloadBootstrapper (a small stub that only fetches the
+# runtime if it's actually missing) is the sensible default here instead.
+webview_install_mode = { DownloadBootstrapper = { silent = false } }

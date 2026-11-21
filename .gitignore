@@ -1,0 +1,4 @@
+**/target/
+.env
+mutants.out/
+mutants.out.old/

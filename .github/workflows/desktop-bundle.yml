@@ -1,0 +1,177 @@
+name: Desktop App Bundle
+
+# Produces desktop app builds, one job per native OS — `dx bundle`/`dx build`
+# cannot cross-compile for another OS (confirmed against Dioxus's own docs and
+# its own CI, DioxusLabs/dioxus .github/workflows/main.yml's bundle-*-smoke jobs,
+# which this workflow's steps are modeled on). Windows produces a single portable
+# `desktop.exe` (via `dx build`, no installer wrapping — dioxus embeds all assets
+# into the binary via manganis, so there's no separate resource folder to carry
+# alongside it); macOS still goes through `dx bundle` for a proper .app + .dmg,
+# since unlike Windows, a bare unix executable isn't something a user can just
+# double-click-run/hand around the way an .app bundle is.
+#
+# Separate from app-build.yml: that is a fast compile/
+# lint/test gate that runs on every push/PR; this is a slower packaging step, run
+# on demand — there is no tagged-release process yet (Phase 1A hasn't even had
+# its first real-hardware pass, see the project's task list task #9/#28), so this
+# only runs via workflow_dispatch for now, plus a `v*.*.*` tag trigger for when a
+# real release process exists later.
+#
+# Known limitation: the output is unsigned/unnotarized (Dioxus has no built-in
+# code-signing support — see its bundling docs, which point to Tauri's signing
+# guide for the underlying mechanics if that's ever wired up here). On first
+# launch, macOS Gatekeeper will refuse to open the unsigned .app (right-click >
+# Open, or `xattr -d com.apple.quarantine` the .app, to bypass once) and Windows
+# SmartScreen may warn on the unsigned exe ("More info" > "Run anyway").
+
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  # Pinned to match Cargo.lock's `dioxus` version — `dx` and the `dioxus` crate
+  # it drives must stay in lockstep (see Dioxus's own version-compatibility
+  # guidance); bump both together.
+  DX_VERSION: "0.7.9"
+
+jobs:
+  bundle-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # windows-latest's Defender real-time scanning re-scans every object file
+      # rustc/link.exe touches, which is a well-documented major slowdown for Rust
+      # builds on this runner image (this job's own `Bundle` step alone took ~22
+      # minutes on its first run, compiling the newly added rhai-engine/genai/
+      # tonic/webview2 dependency stack from scratch — Defender overhead compounds
+      # that further, on every run, cache-warm or not). Excluding both the cargo
+      # registry/target dir *paths* and the compiler *processes* covers builds that
+      # land outside `github.workspace` too (e.g. `~/.cargo/registry`).
+      - name: Exclude Cargo/target dirs from Windows Defender scanning
+        shell: pwsh
+        run: |
+          Add-MpPreference -ExclusionPath "$env:USERPROFILE\.cargo"
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}"
+          Add-MpPreference -ExclusionProcess "cargo.exe"
+          Add-MpPreference -ExclusionProcess "rustc.exe"
+          Add-MpPreference -ExclusionProcess "link.exe"
+
+      # stt-google's build.rs (tonic-build/prost-build) needs protoc — same
+      # requirement as windows-app-build.yml.
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Install dx (dioxus-cli, prebuilt)
+        # A prebuilt binary from Dioxus's own GitHub release, not `cargo install`
+        # from source — the latter takes 10+ minutes on every run for no benefit
+        # here (dx itself isn't part of this workspace).
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/DioxusLabs/dioxus/releases/download/v$env:DX_VERSION/dx-x86_64-pc-windows-msvc.zip" -OutFile dx.zip
+          Expand-Archive -Path dx.zip -DestinationPath dx-bin
+          echo "$PWD\dx-bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: dx --version
+        run: dx --version
+
+      - name: Build (portable exe, no installer)
+        # `dx build` (not `dx bundle`): skips the WiX/NSIS packaging step
+        # entirely, leaving the plain compiled+asset-processed exe at
+        # target/dx/desktop/release/windows/app/desktop.exe (see dioxus-cli's
+        # own BuildRequest::root_dir/exe_dir: Windows's app dir *is* its exe
+        # dir, unlike macOS's Contents/MacOS split) — that exe is already
+        # fully self-contained (dioxus embeds all assets into the binary via
+        # manganis; confirmed by extracting a prior MSI build and finding it
+        # wrapped exactly one file, the exe itself), so there's nothing an
+        # installer step would add other than Start Menu/registry entries.
+        # Run from the repo root, not apps/desktop: dx-cli's workspace resolution
+        # (packages/cli/src/workspace.rs, when `[workspace] default-members` is
+        # set in the root Cargo.toml, as it is here) canonicalizes each default
+        # member path relative to the *current directory*, not the workspace
+        # root — cd'ing into apps/desktop first made it look for
+        # apps/desktop/apps/desktop and panic ("No such file or directory").
+        # `--package desktop` selects this crate explicitly instead of relying
+        # on default-member auto-detection. `--release`: `dx build` defaults to
+        # a *debug* build ("Build in release mode [default: false]" per its own
+        # `--help`) — without this flag the first real bundle run produced a
+        # ~200MB unoptimized, symbol-laden installer.
+        run: dx build --platform desktop --package desktop --release
+
+      - name: Verify build output and stage for upload
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path .\target\dx\desktop\release\windows\app -File -Include "*.exe" -Recurse
+          if (-not $exe) { throw "Expected desktop.exe was not produced." }
+          $exe | ForEach-Object { $_.FullName }
+          New-Item -ItemType Directory -Path .\dist -Force | Out-Null
+          Copy-Item $exe[0].FullName -Destination .\dist\meetingram-windows-x64.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meetingram-windows
+          path: dist/meetingram-windows-x64.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  bundle-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Install dx (dioxus-cli, prebuilt)
+        # macos-latest GitHub-hosted runners are Apple Silicon (aarch64).
+        run: |
+          curl -sL -o dx.tar.gz "https://github.com/DioxusLabs/dioxus/releases/download/v${DX_VERSION}/dx-aarch64-apple-darwin.tar.gz"
+          mkdir dx-bin
+          tar xzf dx.tar.gz -C dx-bin
+          echo "$PWD/dx-bin" >> "$GITHUB_PATH"
+
+      - name: dx --version
+        run: dx --version
+
+      - name: Bundle (.app + .dmg)
+        # Run from the repo root — see the Windows job's identical step for why
+        # (dx-cli's default-members path resolution breaks when cd'd into the
+        # crate directory first). `--release`: see the Windows job's comment —
+        # `dx bundle` defaults to an unoptimized debug build otherwise.
+        run: dx bundle --platform desktop --package desktop --release --package-types macos --package-types dmg
+
+      - name: Verify bundle outputs
+        run: |
+          find target -type d -name '*.app' -print
+          find target -type f -name '*.dmg' -print
+          test -n "$(find target -type d -name '*.app' -print -quit)"
+          test -n "$(find target -type f -name '*.dmg' -print -quit)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meetingram-macos
+          path: |
+            target/**/*.app
+            target/**/*.dmg
+          if-no-files-found: error
+          retention-days: 14
