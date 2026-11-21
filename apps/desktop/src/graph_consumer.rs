@@ -150,6 +150,7 @@ impl GraphConsumer {
         self.db(move |store| store.pending_count(sid)).await
     }
 
+    #[allow(dead_code)] // Read by the graph view in task 6.
     pub fn review_threshold(&self) -> f64 {
         self.settings
             .lock()
