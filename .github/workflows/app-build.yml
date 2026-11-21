@@ -22,9 +22,20 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            # Starts and stops a real WASAPI capture; the runner has no audio
+            # device, so stop fails with "Element not found" (0x80070490).
+            test_skip: --skip control_server::tests::status_start_status_stop_round_trip
+            rustflags: ""
           - os: macos-latest
             target: aarch64-apple-darwin
+            test_skip: ""
+            # screencapturekit's Swift bridge links libswift_Concurrency via
+            # @rpath; without /usr/lib/swift on the rpath the test binary aborts
+            # at load time.
+            rustflags: -C link-arg=-Wl,-rpath,/usr/lib/swift
     runs-on: ${{ matrix.os }}
+    env:
+      RUSTFLAGS: ${{ matrix.rustflags }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,4 +60,4 @@ jobs:
 
       - name: Test
         shell: bash
-        run: cargo test -p desktop -p desktop-cli --target ${{ matrix.target }}
+        run: cargo test -p desktop -p desktop-cli --target ${{ matrix.target }} -- ${{ matrix.test_skip }}
