@@ -34,6 +34,7 @@ gh pr checks <PR> --watch                     # Linux（fmt・desktop-cli）と 
 ```
 
 - CI の 3 ジョブ（Linux・Windows・macOS）がすべて通ること。CI を通す前に「動く」と報告しない。
+- Windows の録画付き E2E（`e2e-windows`）は当初はマージ条件に含めない。成果物は `e2e-windows-recording`。
 - Windows の CI は、実際の音声デバイスが要るテスト `control_server::tests::status_start_status_stop_round_trip`
   を飛ばしている。録音の開始・停止に触れたら、PR 本文に「実機確認が必要」と書く。
 - 新しい挙動にはテストを付け、そのテストが落ちる変更（手書きの変異でよい）を 1 つ確かめる。
