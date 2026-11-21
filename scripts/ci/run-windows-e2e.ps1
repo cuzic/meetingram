@@ -15,6 +15,11 @@ Add-Type -AssemblyName System.Windows.Forms
 $screen = [System.Windows.Forms.SystemInformation]::VirtualScreen
 Write-Host "Desktop resolution: $($screen.Width)x$($screen.Height)"
 
+# The runner's own console window (its job log, with runner IDs) is on the
+# desktop. Minimize every window so the recording shows only meetingram.
+(New-Object -ComObject Shell.Application).MinimizeAll()
+Start-Sleep -Seconds 1
+
 Push-Location $output
 try {
     $player.Load()
