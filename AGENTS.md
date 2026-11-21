@@ -53,7 +53,7 @@ gh pr checks <PR> --watch                     # Linux（fmt・desktop-cli）と 
 - API キーは OS のキーリング（サービス名 `meetingram`）にだけ置く。コード・ログ・テスト・コミットに書かない。
 - 録音と文字起こしは個人の会話。実在の会議の音声やテキストを fixture やログに入れない。
   テストには合成した音声・文章を使う。
-- プローブや一時ファイルは repo の外（スクラッチ領域）に置く。
+- プローブや一時ファイルは repo の外に置く（Codex は `$TMPDIR`、Claude はスクラッチ領域）。終わったら消す。
 - コミットやコメントにマシン固有の情報（ユーザー名、絶対パス）を入れない。
 - 人の承認が要る操作: リリース（`v*.*.*` タグ、`desktop-bundle.yml`）、ライセンスの変更、
   新しい外部サービスへの送信（STT・LLM のプロバイダ追加など）。
@@ -61,7 +61,11 @@ gh pr checks <PR> --watch                     # Linux（fmt・desktop-cli）と 
 ## Git の約束
 
 - ブランチは `feat/… fix/… docs/… chore/… ci/… test/… spike/… deps/…`。1 つの作業に 1 つの clone か `git worktree`。
-  共有の checkout でブランチを切り替えない。
+  共有の checkout（`~/src/<repo>`）は他のセッションも使うので、ブランチの切り替えも pull もしない（fetch はよい）。
+- clone は ssh（`git@github.com:cuzic/<repo>.git`）で取る。https だと gh のトークンに `workflow` スコープが無く、
+  `.github/workflows` を含む push が拒否される。
+- commit や push が sandbox・権限で失敗したら、clone し直す・remote や認証を変えるなどで回避せず、
+  エラー文をそのまま報告して止める（`.agents/skills/implement-task` の 1.5）。
 - **merge で追従し、rebase / force-push はしない**。既存 PR で作業を始める前と push が拒否されたときは
   `git pull --no-rebase origin <branch>`（ブランチ名を必ず書く）。最初の push は `git push -u origin <branch>`。
 - main の取り込みで手書きの衝突解消をしたら、マージコミットのメッセージに何をどう解いたかを書く。

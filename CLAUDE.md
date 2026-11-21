@@ -18,6 +18,14 @@
 
 meetingram-core の作業もこの repo の skills で扱う（skills は `-R cuzic/meetingram-core` を取る）。
 
+## 作業場所
+
+- Claude 自身の変更（ADR、docs、エージェント設定、レビューファイル）も、スクラッチ領域に ssh で clone して作る。
+  `~/src/meetingram` と `~/src/meetingram-core` は他のセッションも開いているので、そこでブランチを切り替えたり
+  pull したりしない（`git fetch`、読むこと、`--reference` の元にすることはよい）。
+- Codex が commit か push で止まって戻ってきたら、`.claude/skills/codex-task` の「3. 戻ってきたら」に従って代行し、
+  起動スクリプトの前提が崩れた原因を先に直す。回避策を Codex に考えさせない。
+
 ## トークンの使い方
 
 - 同時に動かす Codex は 2〜3 まで。1 タスク 1 起動で、状態は Issue・PR 本文・`docs/reviews/` に残す。

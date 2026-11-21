@@ -36,7 +36,7 @@ Claude（または owner）が行う。main の取り込みや衝突解消は自
    `run_in_background` で実行する:
 
    ```sh
-   REPO=meetingram; PR=NN; MIN=2; : "${PR:?}"
+   REPO=meetingram; PR=NN; MIN=3; : "${PR:?}"
    gh pr checks "$PR" -R "cuzic/$REPO" --watch --interval 30 >/dev/null 2>&1
    gh pr checks "$PR" -R "cuzic/$REPO" --json name,bucket --jq '.[] | "\(.bucket) \(.name)"'
    n=$(gh pr checks "$PR" -R "cuzic/$REPO" --json name,bucket --jq '[.[] | select(.name | test("e2e-best-effort") | not)] | length') || exit 1
@@ -45,10 +45,17 @@ Claude（または owner）が行う。main の取り込みや衝突解消は自
    [ "$(gh pr view "$PR" -R "cuzic/$REPO" --json mergeable --jq .mergeable)" = MERGEABLE ] || { echo "MERGEABLE でない"; exit 1; }
    ```
 
-   - 必須ジョブ数 `MIN`: meetingram は 2（app-build の Windows・macOS）、meetingram-core は 2（Windows・macOS の build）。
+   - 必須ジョブ数 `MIN`: meetingram は 3（app-build の linux・Windows・macOS）、
+     meetingram-core は 3（Linux・Windows・macOS の build）。
    - `e2e-best-effort`（実機に近いキャプチャのスモークテスト）は失敗を許すジョブ。落ちていたらログを読み、
      PR が原因なら修正タスクに回す。
    - checks が 0 件、取得失敗、pending は止まる側に倒れる。少し置いてからやり直す。
+   - **CI が走らない PR**: コアの workflow は `paths` で絞っているので、docs・エージェント設定・workflow ファイル
+     だけの PR では checks が 0 件のままになる（アプリの app-build は絞っていないので常に走る）。このときだけ、
+     `gh pr diff NN -R cuzic/<repo> --name-only` で全ファイルが `crates/**` `plugins/**` `Cargo.*` `.cargo/**`
+     の外にあることを確かめてから、手順 2 を飛ばしてよい。workflow ファイルを変えた PR は、マージ後に main の
+     push で走る run（`gh run list -R cuzic/<repo> -b main -L 5`）を `gh run watch <id> --exit-status` で待ち、
+     赤ならすぐ直す。
 3. **固定した head でマージする**:
 
    ```sh
@@ -64,7 +71,15 @@ Claude（または owner）が行う。main の取り込みや衝突解消は自
    ```
 
 5. **コアをマージしたら**: アプリに届ける変更ならタグを打つ（0.x の間は、公開 API・イベント・設定・保存形式が
-   変わるなら minor、それ以外は patch）。`git -C ~/src/meetingram-core pull && git tag vX.Y.Z && git push origin vX.Y.Z`。
+   変わるなら minor、それ以外は patch）。`~/src/meetingram-core` は他のセッションも使うので pull や switch をせず、
+   マージコミットに直接打つ:
+
+   ```sh
+   M=$(gh pr view NN -R cuzic/meetingram-core --json mergeCommit --jq .mergeCommit.oid) || exit 1
+   git -C ~/src/meetingram-core fetch -q origin && git -C ~/src/meetingram-core tag vX.Y.Z "$M" && git -C ~/src/meetingram-core push origin vX.Y.Z
+   ```
+
+   アプリに届ける変更が無い（整形、CI、docs だけ）ならタグは打たない。
    続けて、アプリの `[workspace.dependencies]` のタグ更新と追従を `.claude/skills/codex-task` で出す。
 
 ## 報告

@@ -16,7 +16,10 @@
 # git のディレクトリを作業ツリーの外（$w/git-<label>）に分けて --add-dir で書けるようにする。
 # clone は ssh で取る（https だと gh の OAuth トークンになり、workflow スコープが無いと
 # .github/workflows を含む push が拒否される）。
-# 出力: 最後に exit コード、clone・ログ・最終メッセージの場所、最終メッセージの末尾を表示する。
+# 一時ファイルは TMPDIR=$w/tmp-<label> に寄せる（Codex が /tmp に残したものを探さずに済む）。
+# 出力: 最後に exit コード、clone・ログ・最終メッセージの場所、push されていないコミットの数と一覧、
+#       作業ツリーの未コミットの変更、最終メッセージの末尾を表示する。
+#       unpushed や dirty が 0 でなければ、Codex が push まで行けなかった（codex-task の「3. 戻ってきたら」）。
 set -u
 [ $# -ge 4 ] || { echo "usage: $0 <repo> <branch> <label> <prompt-file> [base]" >&2; exit 2; }
 repo=$1; br=$2; label=$3; prompt=$4; base=${5:-main}
@@ -27,7 +30,9 @@ w=${CODEX_WORKDIR:-${TMPDIR:-/tmp}/meetingram-codex}
 d="$w/cx-$label"
 mkdir -p "$w" || exit 1
 g="$w/git-$label"
-rm -rf "$d" "$g"
+t="$w/tmp-$label"
+rm -rf "$d" "$g" "$t"
+mkdir -p "$t" || exit 1
 
 if [ -d "$HOME/src/$repo/.git" ]; then
   git clone -q --reference "$HOME/src/$repo" --separate-git-dir "$g" "git@github.com:cuzic/$repo.git" "$d" || exit 1
@@ -40,9 +45,9 @@ else
   git -C "$d" switch -q --no-track -c "$br" "origin/$base" || exit 1
 fi
 
-"${CODEX_BIN:-codex}" exec -s workspace-write \
+PATH="$HOME/.cargo/bin:$PATH" TMPDIR="$t" "${CODEX_BIN:-codex}" exec -s workspace-write \
   -c sandbox_workspace_write.network_access=true \
-  --add-dir "$HOME/.cargo" --add-dir "$g" \
+  --add-dir "$HOME/.cargo" --add-dir "$g" --add-dir "$t" \
   -C "$d" -o "$w/codex-$label.last.md" - < "$prompt" > "$w/codex-$label.log" 2>&1
 rc=$?
 
@@ -50,5 +55,11 @@ echo "exit=$rc label=$label"
 echo "clone=$d"
 echo "log=$w/codex-$label.log"
 echo "last=$w/codex-$label.last.md"
+echo "tmp=$t"
+git -C "$d" fetch -q origin 2>/dev/null
+if git -C "$d" rev-parse -q --verify "refs/remotes/origin/$br" >/dev/null; then up="origin/$br"; else up="origin/$base"; fi
+echo "unpushed=$(git -C "$d" rev-list --count "$up..HEAD" 2>/dev/null) (vs $up)"
+git -C "$d" log --oneline "$up..HEAD" 2>/dev/null | head -20
+echo "dirty=$(git -C "$d" status --porcelain 2>/dev/null | wc -l)"
 tail -c 3000 "$w/codex-$label.last.md" 2>/dev/null
 exit $rc

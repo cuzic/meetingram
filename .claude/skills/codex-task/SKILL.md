@@ -48,6 +48,15 @@ PR 本文に「変更 / 確認したコマンドと結果 / CI でしか確か�
 
 粒度は 1 タスク = 1 PR = レビュー 1 回で見られる量（数百〜千行）。コアとアプリにまたがるなら 2 タスクに分ける。
 
+仕様を出す前の確認（過去に漏れたもの）:
+
+- **CI の workflow を足す・変える**: `paths` の絞り込みに、テストが読むディレクトリをすべて入れる
+  （コアは `crates/**` だけでなく `plugins/**`。`rhai-engine` のテストが `plugins/default/*.rhai` を読む）。
+  「既存の workflow と同じ」と書くだけにしない。既存のほうが漏れていることがある。
+- **機械的な変更（`cargo fmt`、一括置換、生成物）**: それだけのコミットに分けさせ、手での変更を混ぜさせない。
+  レビューで同じコマンドを親コミットにかけ直し、一致を確かめられるようにする。
+- **判断の逃げ道**: 公開 API・挙動が変わりそうな箇所の扱い（`allow` で残す / 止めて聞く）を先に書く。
+
 ## 2. Codex を起動する
 
 プロンプトは短くし、本体は Issue / PR コメントに置く。スクラッチ領域に書く:
@@ -69,10 +78,19 @@ CODEX_WORKDIR=<スクラッチ領域>/codex CODEX_BIN=<codex のパス> \
 
 ## 3. 戻ってきたら
 
-1. 出力の `exit=` と最終メッセージ（`last=` のファイル）を読む。0 以外、利用上限、途中終了なら、
-   ログの末尾で原因を確かめ、同じ仕様で再起動するか owner に伝える。
+1. 出力の `exit=`、`unpushed=`、`dirty=` と最終メッセージ（`last=` のファイル）を読む。0 以外、利用上限、
+   途中終了なら、ログの末尾で原因を確かめ、同じ仕様で再起動するか owner に伝える。
+   **exit=0 でも PR が無い・`unpushed` か `dirty` が 0 でない**なら、Codex が commit か push で止まっている。
+   - ログで失敗したコマンドとエラー文を確かめる（`grep -n -iE "read-only|denied|rejected|scope" <log>`）。
+     過去の例: sandbox が `.git` を読み取り専用にした、https の push が `workflow` スコープ不足で拒否された。
+     どちらも run-codex.sh で対処済みなので、再発したらスクリプトの前提が崩れている。原因を直してから次を起動する。
+   - 成果は捨てない。Claude が代行する: `dirty` なら差分を読んでから clone でコミットし（Codex の
+     `Co-Authored-By` を付ける）、`git -C <clone> push -u origin <branch>`（clone は ssh）。PR が無ければ
+     `last=` の報告から implement-task の形の本文を作って `gh pr create`。Status に「push と PR 作成は Claude が代行」と書く。
+   - Codex が別の場所に clone し直して作業していたら、最終メッセージかログからその場所を探し、そこから push する。
+     終わったらその場所と `/tmp` に残した一時ファイルを消す。
 2. PR ができているか、Open questions が無いかを `gh pr view` で確かめる。Open questions があれば、
    owner の判断が要るものは AskUserQuestion、設計で決められるものは仕様コメントに答えを書いて再起動。
 3. 報告をそのまま信じない。`.claude/skills/review-pr` で差分そのものをレビューする
    （CI を待ってから。CI が赤なら、ログを根拠に修正タスクを PR コメントで出す）。
-4. clone（`clone=` の場所）は PR がマージされたら消してよい。
+4. PR がマージされたら `clone=` と、同じ置き場の `git-<label>`・`tmp-<label>` を消す。
