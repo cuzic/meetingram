@@ -7,20 +7,20 @@
 //!
 //! See `docs/decouple-summary-transcription.md` §6.2.
 
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use credential_store::CredentialStore;
 use local_broker::{session_stopped_subject, LocalBroker, RecvOutcome, Subscription};
 use recorder_domain::SessionId;
 use session_store::{SessionStore, Summary};
-use summarize::{Summarizer, TranscriptTurn};
+use summarize::{BuildSummarizerError, SummaryProvider, TranscriptTurn};
 use transcript_event::{
     EventEnvelope, FinalizedTurns, ProtocolValidator, SummaryEvent, TranscriptEvent,
     UtteranceEndReason,
 };
 
 use crate::app_settings::AppSettings;
-use crate::settings::SummaryProvider;
 use crate::transcript;
 
 /// Shared state for the Summary Consumer. Clone is cheap (Arc inside).
@@ -30,6 +30,7 @@ pub struct SummaryConsumer {
     store: Arc<SessionStore>,
     credential_store: Arc<credential_store::FallbackCredentialStore>,
     app_settings: Arc<Mutex<AppSettings>>,
+    cli_temp_base: PathBuf,
 }
 
 impl SummaryConsumer {
@@ -38,12 +39,14 @@ impl SummaryConsumer {
         store: Arc<SessionStore>,
         credential_store: Arc<credential_store::FallbackCredentialStore>,
         app_settings: Arc<Mutex<AppSettings>>,
+        cli_temp_base: PathBuf,
     ) -> Self {
         Self {
             broker,
             store,
             credential_store,
             app_settings,
+            cli_temp_base,
         }
     }
 
@@ -268,74 +271,47 @@ impl SummaryConsumer {
     }
 
     async fn summarize(&self, turns: &[TranscriptTurn]) -> Result<String, String> {
-        let provider = self
-            .credential_store
-            .load(
-                summarize::CREDENTIAL_SERVICE,
-                summarize::SELECTED_PROVIDER_ACCOUNT,
+        let (summary_template, ollama_base_url) = {
+            let settings = self.app_settings.lock().unwrap();
+            (
+                settings.summary_template.clone(),
+                settings.ollama_base_url.clone(),
             )
-            .ok()
-            .map(|key| SummaryProvider::from_key(&key))
-            .unwrap_or(SummaryProvider::Claude);
-        let model = self
-            .credential_store
-            .load(
-                summarize::CREDENTIAL_SERVICE,
-                summarize::SELECTED_MODEL_ACCOUNT,
-            )
-            .unwrap_or_else(|_| provider.default_model().to_string());
-
-        let stored_credential = provider.api_key_account().map(|account| {
-            self.credential_store
-                .load(summarize::CREDENTIAL_SERVICE, account)
-        });
-        if matches!(stored_credential, Some(Err(_))) {
-            let message = if provider.is_vertex() {
-                "設定画面でGoogle Vertex AIの認証情報を設定してください"
-            } else {
-                "設定画面でAPIキーを設定してください"
-            };
-            return Err(message.to_string());
-        }
-
-        let summary_template = self.app_settings.lock().unwrap().summary_template.clone();
-        let options =
-            crate::summary_template::summarize_options_for(model.clone(), summary_template);
-
-        let summarizer: Result<Box<dyn Summarizer>, String> = if let Some(backend) =
-            provider.cli_backend()
-        {
-            Ok(Box::new(summarize::CliSummarizer(backend)))
-        } else if provider == SummaryProvider::ClaudeOAuth {
-            genai_summarizer(summarize::build_claude_oauth_client())
-        } else if provider.is_vertex() {
-            let raw = stored_credential.and_then(Result::ok).unwrap_or_default();
-            match serde_json::from_str::<summarize::VertexCredentials>(&raw) {
-                Ok(credentials) => genai_summarizer(summarize::build_vertex_client(credentials)),
-                Err(e) => Err(format!("認証情報の読み込みに失敗しました: {e}")),
-            }
-        } else if provider == SummaryProvider::Ollama {
-            let base_url = self.app_settings.lock().unwrap().ollama_base_url.clone();
-            genai_summarizer(summarize::build_ollama_client(base_url))
-        } else if let Some(account) = provider.api_key_account() {
-            let resolver =
-                summarize::credential_store_auth_resolver(self.credential_store.clone(), account);
-            genai_summarizer(
-                genai::Client::builder()
-                    .with_auth_resolver(resolver)
-                    .build(),
-            )
-        } else {
-            genai_summarizer(genai::Client::builder().build())
         };
+        let credential_store = self.credential_store.clone();
+        let cli_temp_base = self.cli_temp_base.clone();
+        let (summarizer, model) = tokio::task::spawn_blocking(move || {
+            let provider = credential_store
+                .load(
+                    summarize::CREDENTIAL_SERVICE,
+                    summarize::SELECTED_PROVIDER_ACCOUNT,
+                )
+                .ok()
+                .map(|key| SummaryProvider::from_key(&key))
+                .unwrap_or(SummaryProvider::Claude);
+            let model = credential_store
+                .load(
+                    summarize::CREDENTIAL_SERVICE,
+                    summarize::SELECTED_MODEL_ACCOUNT,
+                )
+                .unwrap_or_else(|_| provider.default_model().to_string());
+            summarize::build_summarizer(
+                provider.key(),
+                credential_store,
+                ollama_base_url,
+                Some(cli_temp_base),
+            )
+            .map(|summarizer| (summarizer, model))
+        })
+        .await
+        .map_err(|_| summary_build_error_message(BuildSummarizerError::Client).to_string())?
+        .map_err(|error| summary_build_error_message(error).to_string())?;
 
-        match summarizer {
-            Ok(summarizer) => summarizer
-                .summarize(turns, &options)
-                .await
-                .map_err(|e| e.to_string()),
-            Err(e) => Err(e),
-        }
+        let options = crate::summary_template::summarize_options_for(model, summary_template);
+        summarizer
+            .summarize(turns, &options)
+            .await
+            .map_err(|error| error.to_string())
     }
 
     fn provider_model_string(&self) -> String {
@@ -390,13 +366,14 @@ fn load_finalized_from_store(
         }
     }
 }
-/// Wraps a freshly built genai client as a [`Summarizer`]. Building only fails
-/// when the HTTP client can't be initialized (e.g. TLS setup), which is shown
-/// to the user like any other summary error.
-fn genai_summarizer(
-    client: Result<genai::Client, genai::Error>,
-) -> Result<Box<dyn Summarizer>, String> {
-    client
-        .map(|client| Box::new(summarize::GenaiSummarizer(client)) as Box<dyn Summarizer>)
-        .map_err(|e| format!("AIクライアントの作成に失敗しました: {e}"))
+
+fn summary_build_error_message(error: BuildSummarizerError) -> &'static str {
+    match error {
+        BuildSummarizerError::MissingVertexCredentials => {
+            "設定画面でGoogle Vertex AIの認証情報を設定してください"
+        }
+        BuildSummarizerError::MissingApiKey => "設定画面でAPIキーを設定してください",
+        BuildSummarizerError::InvalidVertexCredentials => "認証情報の読み込みに失敗しました",
+        BuildSummarizerError::Client => "AIクライアントの作成に失敗しました",
+    }
 }

@@ -102,7 +102,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "app-service"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "audio-timeline",
  "capture-api",
@@ -388,7 +388,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "audio-timeline"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "serde",
 ]
@@ -682,12 +682,12 @@ dependencies = [
 [[package]]
 name = "capture-api"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 
 [[package]]
 name = "capture-macos"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "capture-api",
  "crossbeam-channel",
@@ -702,7 +702,7 @@ dependencies = [
 [[package]]
 name = "capture-windows"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "capture-api",
  "crossbeam-channel",
@@ -1008,7 +1008,7 @@ dependencies = [
 [[package]]
 name = "control-protocol"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "dirs 7.0.0",
  "interprocess",
@@ -1155,7 +1155,7 @@ dependencies = [
 [[package]]
 name = "credential-store"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "aes-gcm",
  "async-trait",
@@ -3757,7 +3757,7 @@ checksum = "47d9d19d1d6efa0109d2f65ff4c85cddd50bd572e5a00127ab10987290bcefae"
 [[package]]
 name = "local-broker"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "dashmap",
  "serde",
@@ -5415,7 +5415,7 @@ dependencies = [
 [[package]]
 name = "recorder-domain"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "async-trait",
  "chrono",
@@ -5594,13 +5594,12 @@ dependencies = [
 [[package]]
 name = "rhai-engine"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "base64 0.23.1",
  "chrono",
  "credential-store",
  "dashmap",
- "genai",
  "hmac",
  "jsonwebtoken",
  "local-broker",
@@ -5895,7 +5894,7 @@ dependencies = [
 [[package]]
 name = "segment-store"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "ogg",
  "opus",
@@ -6073,7 +6072,7 @@ dependencies = [
 [[package]]
 name = "session-store"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "chrono",
  "recorder-domain",
@@ -6406,7 +6405,7 @@ dependencies = [
 [[package]]
 name = "stt-api"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "async-trait",
  "serde",
@@ -6418,7 +6417,7 @@ dependencies = [
 [[package]]
 name = "stt-assemblyai"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -6435,7 +6434,7 @@ dependencies = [
 [[package]]
 name = "stt-deepgram"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -6453,7 +6452,7 @@ dependencies = [
 [[package]]
 name = "stt-google"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -6476,7 +6475,7 @@ dependencies = [
 [[package]]
 name = "stt-openai"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -6527,17 +6526,19 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 [[package]]
 name = "summarize"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "async-trait",
  "credential-store",
  "gcp_auth",
  "genai",
+ "libc",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7217,7 +7218,7 @@ dependencies = [
 [[package]]
 name = "transcript-event"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "chrono",
  "recorder-domain",
@@ -7365,7 +7366,7 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 [[package]]
 name = "upload-client"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
 dependencies = [
  "async-trait",
  "chrono",

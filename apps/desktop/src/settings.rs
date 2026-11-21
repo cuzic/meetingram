@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use credential_store::CredentialStore;
 use dioxus::prelude::*;
+use summarize::SummaryProvider;
 
 use crate::app_state::AppState;
 use crate::summary_template::{self, SummaryTemplatePreset};
@@ -152,75 +153,12 @@ fn stt_provider_is_configured(state: &AppState, provider: SttProvider) -> bool {
     }
 }
 
-/// The summary LLM providers exposed in the picker. `summarize` itself stays
-/// provider-agnostic (it just takes a `genai` model string), so this enum — and
-/// its mapping to `summarize`'s credential-store accounts — lives here instead.
-/// `pub(crate)` so `ui.rs`'s "要約を生成" flow (#38) can resolve the same
-/// provider/API-key-account mapping the settings screen saved, without
-/// duplicating it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum SummaryProvider {
-    Claude,
-    OpenAi,
-    Gemini,
-    Groq,
-    DeepSeek,
-    XAi,
-    ClaudeVertex,
-    GeminiVertex,
-    ClaudeBedrock,
-    ClaudeCli,
-    /// Claude via the official Anthropic CLI's OAuth login (`ant auth login` /
-    /// `ant auth print-credentials --access-token`) — bills against the user's own
-    /// Claude subscription instead of a pay-per-token API key, same motivation as
-    /// [`ClaudeCli`] but going through `genai`'s normal `exec_chat` call (see
-    /// `summarize::build_claude_oauth_client`) rather than a `claude` CLI
-    /// subprocess per summary.
-    ClaudeOAuth,
-    Codex,
-    /// A local/self-hosted Ollama server (`genai`'s built-in `AdapterKind::Ollama`,
-    /// default endpoint `http://localhost:11434/`) — no API key, base URL is
-    /// configured separately in `AppSettings::ollama_base_url` (see the "Ollama設定"
-    /// section below), and the model is whatever the user has locally pulled (no
-    /// fixed [`Self::known_models`] list, unlike the hosted providers above).
-    Ollama,
+trait SummaryProviderDisplay {
+    fn label(self) -> &'static str;
+    fn known_models(self) -> &'static [&'static str];
 }
 
-impl SummaryProvider {
-    const ALL: [SummaryProvider; 13] = [
-        SummaryProvider::Claude,
-        SummaryProvider::OpenAi,
-        SummaryProvider::Gemini,
-        SummaryProvider::Groq,
-        SummaryProvider::DeepSeek,
-        SummaryProvider::XAi,
-        SummaryProvider::ClaudeVertex,
-        SummaryProvider::GeminiVertex,
-        SummaryProvider::ClaudeBedrock,
-        SummaryProvider::ClaudeCli,
-        SummaryProvider::ClaudeOAuth,
-        SummaryProvider::Codex,
-        SummaryProvider::Ollama,
-    ];
-
-    pub(crate) fn key(self) -> &'static str {
-        match self {
-            SummaryProvider::Claude => "claude",
-            SummaryProvider::OpenAi => "openai",
-            SummaryProvider::Gemini => "gemini",
-            SummaryProvider::Groq => "groq",
-            SummaryProvider::DeepSeek => "deepseek",
-            SummaryProvider::XAi => "xai",
-            SummaryProvider::ClaudeVertex => "claude-vertex",
-            SummaryProvider::GeminiVertex => "gemini-vertex",
-            SummaryProvider::ClaudeBedrock => "claude-bedrock",
-            SummaryProvider::ClaudeCli => "claude-cli",
-            SummaryProvider::ClaudeOAuth => "claude-oauth",
-            SummaryProvider::Codex => "codex",
-            SummaryProvider::Ollama => "ollama",
-        }
-    }
-
+impl SummaryProviderDisplay for SummaryProvider {
     fn label(self) -> &'static str {
         match self {
             SummaryProvider::Claude => "Claude (Anthropic)",
@@ -236,126 +174,6 @@ impl SummaryProvider {
             SummaryProvider::ClaudeOAuth => "Claude (ant CLIでOAuthログイン)",
             SummaryProvider::Codex => "Codex (Codex CLI)",
             SummaryProvider::Ollama => "Ollama (ローカル)",
-        }
-    }
-
-    pub(crate) fn default_model(self) -> &'static str {
-        match self {
-            SummaryProvider::Claude => "claude-sonnet-4-5",
-            SummaryProvider::OpenAi => "gpt-4o-mini",
-            SummaryProvider::Gemini => "gemini-3-flash-preview",
-            // `genai` requires Groq models to be namespaced (`groq::_model_`) since
-            // v0.6.0 — unlike Gemini/DeepSeek/xAI, Groq model names have no
-            // recognizable prefix genai can dispatch on automatically.
-            SummaryProvider::Groq => "groq::openai/gpt-oss-20b",
-            // `deepseek-chat`/`deepseek-reasoner` are being deprecated by DeepSeek;
-            // `deepseek-v4-flash` is genai's current default DeepSeek model.
-            SummaryProvider::DeepSeek => "deepseek-v4-flash",
-            SummaryProvider::XAi => "grok-4",
-            // `vertex::` namespaces the model the same way `groq::` does above;
-            // `summarize::build_vertex_client`'s `ServiceTargetResolver` forces the
-            // Vertex adapter regardless, but the namespace keeps these strings
-            // self-documenting and matches `genai`'s own Vertex convention.
-            SummaryProvider::ClaudeVertex => "vertex::claude-sonnet-4-5",
-            SummaryProvider::GeminiVertex => "vertex::gemini-3-flash-preview",
-            // `bedrock_api::` namespaces the model the same way `groq::`/`vertex::` do
-            // above, selecting `genai`'s Bedrock-via-API-key adapter (bearer-token
-            // auth, not the SigV4/default-AWS-credential-chain adapter). Bedrock
-            // model IDs are the publisher's own ID, not `genai`'s usual bare model
-            // name — verified against `genai` 0.7.0-beta.13's
-            // `adapter/adapters/bedrock/shared.rs` curated model list.
-            SummaryProvider::ClaudeBedrock => {
-                "bedrock_api::anthropic.claude-sonnet-4-5-20250929-v1:0"
-            }
-            // These two go through `claude --model`/`codex -m`, not `genai` — plain
-            // CLI model aliases, not `genai` model spec strings.
-            SummaryProvider::ClaudeCli => "sonnet",
-            // Unlike `ClaudeCli` above, this goes through `genai`'s normal
-            // `exec_chat` (see `summarize::build_claude_oauth_client`), so it takes
-            // the same bare `genai` model spec string as `SummaryProvider::Claude`.
-            SummaryProvider::ClaudeOAuth => "claude-sonnet-4-5",
-            SummaryProvider::Codex => "gpt-5.5",
-            // Not a `genai` model spec string in the usual sense — just a common
-            // Ollama library model name, prefilled as a starting point in the
-            // freeform model field (`known_models()` is empty for this provider, so
-            // the settings UI always shows the custom-text input, never a `<select>`
-            // of fixed choices). Kept non-empty so `save_summary_active`'s "fall back
-            // to `default_model()` when the field is left blank" guard never silently
-            // saves an empty model name.
-            SummaryProvider::Ollama => "llama3.2",
-        }
-    }
-
-    /// `credential-store` account this provider's credential is saved under, or
-    /// `None` for [`SummaryProvider::ClaudeCli`]/[`SummaryProvider::Codex`] (see
-    /// [`Self::uses_cli`]): both authenticate as the `claude`/`codex` CLI's own
-    /// OAuth/subscription login, so there is no API key for this app to store.
-    /// [`SummaryProvider::ClaudeVertex`]/[`SummaryProvider::GeminiVertex`] store a
-    /// [`summarize::VertexCredentials`] JSON blob here instead of a bare API key
-    /// (see [`Self::is_vertex`]) — `credential-store` doesn't care about the shape
-    /// of what's stored, so the same account-based "設定済み/未設定" check in
-    /// `summary_provider_is_configured` works for both credential shapes unchanged.
-    pub(crate) fn api_key_account(self) -> Option<&'static str> {
-        match self {
-            SummaryProvider::Claude => Some(summarize::CLAUDE_API_KEY_ACCOUNT),
-            SummaryProvider::OpenAi => Some(summarize::OPENAI_API_KEY_ACCOUNT),
-            SummaryProvider::Gemini => Some(summarize::GEMINI_API_KEY_ACCOUNT),
-            SummaryProvider::Groq => Some(summarize::GROQ_API_KEY_ACCOUNT),
-            SummaryProvider::DeepSeek => Some(summarize::DEEPSEEK_API_KEY_ACCOUNT),
-            SummaryProvider::XAi => Some(summarize::XAI_API_KEY_ACCOUNT),
-            SummaryProvider::ClaudeVertex => Some(summarize::CLAUDE_VERTEX_CREDENTIALS_ACCOUNT),
-            SummaryProvider::GeminiVertex => Some(summarize::GEMINI_VERTEX_CREDENTIALS_ACCOUNT),
-            SummaryProvider::ClaudeBedrock => Some(summarize::BEDROCK_API_KEY_ACCOUNT),
-            // `ClaudeCli`/`Codex` authenticate as the CLI's own login (see the doc
-            // comment above); `ClaudeOAuth` likewise authenticates as the `ant`
-            // CLI's own OAuth login (`ant auth login`), no API key of this app's
-            // own to store either; `Ollama` needs no credential at all — a local
-            // server with no API key, configured instead via
-            // `AppSettings::ollama_base_url` (see the "Ollama設定" section in
-            // `Settings`'s `rsx!`).
-            SummaryProvider::ClaudeCli
-            | SummaryProvider::ClaudeOAuth
-            | SummaryProvider::Codex
-            | SummaryProvider::Ollama => None,
-        }
-    }
-
-    pub(crate) fn from_key(key: &str) -> Self {
-        Self::ALL
-            .into_iter()
-            .find(|p| p.key() == key)
-            .unwrap_or(SummaryProvider::Claude)
-    }
-
-    /// `true` for [`SummaryProvider::ClaudeVertex`]/[`SummaryProvider::GeminiVertex`],
-    /// whose credential is a JSON bundle (project/location/service-account) rather
-    /// than a bare API key — same idea as [`SttProvider::is_google`], but backed by
-    /// `summarize`'s own [`summarize::VertexCredentials`] type, not
-    /// `stt_google::GoogleSttCredentials`.
-    pub(crate) fn is_vertex(self) -> bool {
-        matches!(
-            self,
-            SummaryProvider::ClaudeVertex | SummaryProvider::GeminiVertex
-        )
-    }
-
-    /// `true` for [`SummaryProvider::ClaudeCli`]/[`SummaryProvider::Codex`] (#59),
-    /// which shell out to the `claude`/`codex` CLIs (`summarize::cli_backend`)
-    /// instead of calling a provider API through `genai` — no API key, so the
-    /// "credential registration" section shows CLI-detection status instead of an
-    /// input field, and `ui.rs`'s generate-summary handler dispatches to
-    /// `summarize::cli_backend::summarize_via_cli` rather than `summarize::summarize`.
-    pub(crate) fn uses_cli(self) -> bool {
-        matches!(self, SummaryProvider::ClaudeCli | SummaryProvider::Codex)
-    }
-
-    /// The [`summarize::cli_backend::CliBackend`] this provider runs on. Only
-    /// meaningful when [`Self::uses_cli`] is `true`.
-    pub(crate) fn cli_backend(self) -> Option<summarize::cli_backend::CliBackend> {
-        match self {
-            SummaryProvider::ClaudeCli => Some(summarize::cli_backend::CliBackend::ClaudeCode),
-            SummaryProvider::Codex => Some(summarize::cli_backend::CliBackend::Codex),
-            _ => None,
         }
     }
 
@@ -403,7 +221,7 @@ impl SummaryProvider {
             // spec strings.
             SummaryProvider::ClaudeCli => &["sonnet", "opus", "haiku"],
             // Same bare `genai` model spec strings as `SummaryProvider::Claude` —
-            // see `default_model()`'s comment on why this differs from `ClaudeCli`.
+            // rather than the CLI aliases used by `ClaudeCli`.
             SummaryProvider::ClaudeOAuth => {
                 &["claude-sonnet-4-5", "claude-opus-4-5", "claude-haiku-4-5"]
             }
@@ -420,7 +238,44 @@ impl SummaryProvider {
     }
 }
 
-/// Sentinel `<select>` value meaning "not one of `SummaryProvider::known_models()`
+#[cfg(test)]
+mod summary_provider_tests {
+    use super::*;
+
+    #[test]
+    fn summary_provider_keys_match_saved_settings() {
+        let saved_settings = [
+            (SummaryProvider::Claude, "claude"),
+            (SummaryProvider::OpenAi, "openai"),
+            (SummaryProvider::Gemini, "gemini"),
+            (SummaryProvider::Groq, "groq"),
+            (SummaryProvider::DeepSeek, "deepseek"),
+            (SummaryProvider::XAi, "xai"),
+            (SummaryProvider::ClaudeVertex, "claude-vertex"),
+            (SummaryProvider::GeminiVertex, "gemini-vertex"),
+            (SummaryProvider::ClaudeBedrock, "claude-bedrock"),
+            (SummaryProvider::ClaudeCli, "claude-cli"),
+            (SummaryProvider::ClaudeOAuth, "claude-oauth"),
+            (SummaryProvider::Codex, "codex"),
+            (SummaryProvider::Ollama, "ollama"),
+        ];
+
+        assert_eq!(SummaryProvider::ALL.len(), saved_settings.len());
+        for (provider, key) in saved_settings {
+            assert_eq!(provider.key(), key);
+            assert_eq!(SummaryProvider::from_key(key), provider);
+        }
+    }
+
+    #[test]
+    fn all_summary_providers_have_display_labels() {
+        for provider in SummaryProvider::ALL {
+            assert!(!provider.label().trim().is_empty(), "{provider:?}");
+        }
+    }
+}
+
+/// Sentinel `<select>` value meaning "not one of `SummaryProviderDisplay::known_models()`
 /// — show the freeform text input instead". Not a valid `genai` model string, so it
 /// can't collide with a real model name.
 const CUSTOM_MODEL: &str = "__custom__";
@@ -439,7 +294,7 @@ fn load_active_summary_provider(state: &AppState) -> SummaryProvider {
         .unwrap_or(SummaryProvider::Claude)
 }
 
-/// "設定済み/未設定" for the provider picker. [`SummaryProvider::uses_cli`]
+/// "設定済み/未設定" for the provider picker. [`SummaryProvider::cli_backend`]
 /// providers have no stored credential to check (#59) — they're always shown as
 /// usable here; whether the underlying CLI is actually installed is checked
 /// separately (async, since it spawns a subprocess) in the credential section.
@@ -1715,7 +1570,7 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                         }
                     }
                 }
-                if summary_edit_provider().uses_cli() {
+                if summary_edit_provider().cli_backend().is_some() {
                     // CLI-based providers (#59) authenticate as the `claude`/
                     // `codex` CLI's own OAuth/subscription login — nothing for
                     // this app to save, so show detection status instead of a
