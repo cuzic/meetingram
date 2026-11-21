@@ -336,7 +336,7 @@ impl GraphConsumer {
             let mut run = Run::new(&consumer, sid, &session, &backend, generation);
             let _guard = run.mark_running(false);
             if run.live(window, segments, stopped).await {
-                run.flush().await;
+                run.flush(false).await;
             }
         }))
     }
@@ -432,7 +432,7 @@ impl GraphConsumer {
             let mut run = Run::new(&consumer, sid, &session, &backend, cancel);
             let _guard = run.mark_running(rebuild);
             match action {
-                PostMeeting::Continue => run.flush().await,
+                PostMeeting::Continue => run.flush(false).await,
                 PostMeeting::Retranscribed => {
                     if let Err(kind) = run.increment(PatchSource::Flush, true).await {
                         if kind != "cancelled" {
@@ -442,7 +442,7 @@ impl GraphConsumer {
                 }
                 PostMeeting::Rebuild => {
                     match consumer.db(move |store| store.delete_session(sid)).await {
-                        Ok(()) => run.flush().await,
+                        Ok(()) => run.flush(true).await,
                         Err(kind) => run.log_failure(PatchSource::Flush, kind),
                     }
                 }
@@ -494,6 +494,7 @@ struct Run<'a> {
     session: &'a Session,
     backend: &'a Backend,
     cancel: watch::Receiver<u64>,
+    saved_flush_patch: bool,
 }
 
 impl<'a> Run<'a> {
@@ -510,6 +511,7 @@ impl<'a> Run<'a> {
             session,
             backend,
             cancel,
+            saved_flush_patch: false,
         }
     }
 
@@ -656,7 +658,8 @@ impl<'a> Run<'a> {
         }
     }
 
-    async fn flush(&mut self) {
+    async fn flush(&mut self, rebuild: bool) {
+        self.saved_flush_patch = false;
         let mut failures = 0;
         loop {
             match self.increment(PatchSource::Flush, false).await {
@@ -673,6 +676,9 @@ impl<'a> Run<'a> {
             }
         }
 
+        if !rebuild && !self.saved_flush_patch {
+            return;
+        }
         if let Err(kind) = self.consolidate().await {
             if kind != "cancelled" {
                 self.log_failure(PatchSource::Consolidate, kind);
@@ -682,14 +688,11 @@ impl<'a> Run<'a> {
 
     async fn consolidate(&mut self) -> Result<(), &'static str> {
         let sid = self.sid;
-        let database = self.consumer.database.clone();
         let prompts = self
             .consumer
             .db(move |store| {
                 let graph = store.load_graph(sid)?;
-                if !graph.nodes.values().any(|node| node.is_live())
-                    || !has_unconsolidated_patches(&database, sid)?
-                {
+                if !graph.nodes.values().any(|node| node.is_live()) {
                     return Ok(Ok(Vec::new()));
                 }
                 Ok(build_consolidate(
@@ -748,6 +751,7 @@ impl<'a> Run<'a> {
                 store.apply_patch(sid, source, Some(&model), &ops, &input, &references)
             })
             .await?;
+        self.saved_flush_patch |= source == PatchSource::Flush;
         let added = result
             .applied
             .iter()
@@ -801,24 +805,6 @@ impl<'a> Run<'a> {
     fn log_failure(&self, source: PatchSource, kind: &'static str) {
         tracing::warn!(session_id = %self.sid, ?source, kind, "graph operation failed");
     }
-}
-
-fn has_unconsolidated_patches(
-    database: &std::path::Path,
-    sid: SessionId,
-) -> rusqlite::Result<bool> {
-    // GraphStore v0.3.0 exposes the current revision but no patch-source lookup.
-    let connection = rusqlite::Connection::open_with_flags(
-        database,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    )?;
-    connection.query_row(
-        "SELECT COALESCE(MAX(CASE WHEN source IN ('live', 'flush') THEN rev END), 0)
-              > COALESCE(MAX(CASE WHEN source = 'consolidate' THEN rev END), 0)
-         FROM graph_patches WHERE session_id = ?1",
-        [sid.to_string()],
-        |row| row.get(0),
-    )
 }
 
 fn parse_kind(error: ParseError) -> &'static str {
@@ -1257,40 +1243,23 @@ mod tests {
     #[tokio::test]
     async fn continue_only_consolidates_after_a_new_extraction_patch() {
         let f = Fixture::new();
-        f.append("synthetic first turn", false);
+        // A previous increment leaves a live node without running consolidation.
+        f.append("synthetic retranscribed turn", true);
         let (initial, _) = Fake::scripted(0, vec![ISSUE_PATCH], false);
-        f.post(PostMeeting::Continue, initial).await.unwrap();
+        f.post(PostMeeting::Retranscribed, initial).await.unwrap();
 
         let (fake, mut calls) = Fake::new(false, false);
-        // Use a fresh consumer to verify that the previous consolidation is read from disk.
-        let consumer = Arc::new(GraphConsumer::new(
-            f.consumer.broker.clone(),
-            f.consumer.database.clone(),
-            f.consumer.credentials.clone(),
-            f.consumer.settings.clone(),
-            f.consumer.cli_temp_base.clone(),
-        ));
-        for new_patch in [false, true, false] {
-            if new_patch {
-                f.append("synthetic retranscribed turn", true);
-                f.post(PostMeeting::Retranscribed, fake.clone())
-                    .await
-                    .unwrap();
-                assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
-            }
-            let fake = fake.clone();
-            consumer
-                .post_meeting_with(f.sid, PostMeeting::Continue, true, |settings| async move {
-                    Ok(fake.backend(&settings))
-                })
-                .unwrap()
-                .await
-                .unwrap();
-            if new_patch {
-                assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
-            }
-            assert!(calls.try_recv().is_err());
-        }
+        f.post(PostMeeting::Continue, fake.clone()).await.unwrap();
+        assert!(calls.try_recv().is_err());
+
+        f.append("synthetic pending turn", false);
+        f.post(PostMeeting::Continue, fake.clone()).await.unwrap();
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
+        assert!(calls.try_recv().is_err());
+
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        assert!(calls.try_recv().is_err());
     }
 
     #[test]
@@ -1592,7 +1561,7 @@ mod tests {
         let session = f.consumer.session(f.sid);
         let generation = session.generation.subscribe();
         let mut run = Run::new(&f.consumer, f.sid, &session, &backend, generation);
-        run.flush().await;
+        run.flush(false).await;
         let call = next_call(&mut calls).await;
         assert_eq!(call.model, "graph-model");
         assert!(call.user.contains(text));

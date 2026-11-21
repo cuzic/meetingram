@@ -1425,7 +1425,6 @@ dependencies = [
  "recorder-domain",
  "rhai",
  "rhai-engine",
- "rusqlite",
  "serde",
  "serde_json",
  "session-store",
