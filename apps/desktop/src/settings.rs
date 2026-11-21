@@ -47,7 +47,12 @@ pub(crate) enum SttProvider {
 }
 
 impl SttProvider {
-    const ALL: [SttProvider; 4] = [SttProvider::Deepgram, SttProvider::OpenAi, SttProvider::Google, SttProvider::AssemblyAi];
+    const ALL: [SttProvider; 4] = [
+        SttProvider::Deepgram,
+        SttProvider::OpenAi,
+        SttProvider::Google,
+        SttProvider::AssemblyAi,
+    ];
 
     fn kind(self) -> app_service::SttProviderKind {
         match self {
@@ -72,7 +77,9 @@ impl SttProvider {
     }
 
     fn from_key(key: &str) -> Self {
-        app_service::SttProviderKind::from_account_value(key).map(Self::from_kind).unwrap_or(SttProvider::Deepgram)
+        app_service::SttProviderKind::from_account_value(key)
+            .map(Self::from_kind)
+            .unwrap_or(SttProvider::Deepgram)
     }
 
     fn label(self) -> &'static str {
@@ -96,9 +103,18 @@ impl SttProvider {
     /// `save_stt_credential` below).
     fn api_key_service_account(self) -> Option<(&'static str, &'static str)> {
         match self {
-            SttProvider::Deepgram => Some((stt_deepgram::CREDENTIAL_SERVICE, stt_deepgram::DEEPGRAM_API_KEY_ACCOUNT)),
-            SttProvider::OpenAi => Some((stt_openai::CREDENTIAL_SERVICE, stt_openai::OPENAI_STT_API_KEY_ACCOUNT)),
-            SttProvider::AssemblyAi => Some((stt_assemblyai::CREDENTIAL_SERVICE, stt_assemblyai::ASSEMBLYAI_API_KEY_ACCOUNT)),
+            SttProvider::Deepgram => Some((
+                stt_deepgram::CREDENTIAL_SERVICE,
+                stt_deepgram::DEEPGRAM_API_KEY_ACCOUNT,
+            )),
+            SttProvider::OpenAi => Some((
+                stt_openai::CREDENTIAL_SERVICE,
+                stt_openai::OPENAI_STT_API_KEY_ACCOUNT,
+            )),
+            SttProvider::AssemblyAi => Some((
+                stt_assemblyai::CREDENTIAL_SERVICE,
+                stt_assemblyai::ASSEMBLYAI_API_KEY_ACCOUNT,
+            )),
             SttProvider::Google => None,
         }
     }
@@ -111,7 +127,10 @@ impl SttProvider {
 fn load_active_stt_provider(state: &AppState) -> SttProvider {
     state
         .credential_store
-        .load(app_service::CREDENTIAL_SERVICE, app_service::SELECTED_STT_PROVIDER_ACCOUNT)
+        .load(
+            app_service::CREDENTIAL_SERVICE,
+            app_service::SELECTED_STT_PROVIDER_ACCOUNT,
+        )
         .ok()
         .map(|key| SttProvider::from_key(&key))
         .unwrap_or(SttProvider::Deepgram)
@@ -123,7 +142,13 @@ fn load_active_stt_provider(state: &AppState) -> SttProvider {
 fn stt_provider_is_configured(state: &AppState, provider: SttProvider) -> bool {
     match provider.api_key_service_account() {
         Some((service, account)) => state.credential_store.load(service, account).is_ok(),
-        None => state.credential_store.load(stt_google::CREDENTIAL_SERVICE, stt_google::GOOGLE_STT_CREDENTIALS_ACCOUNT).is_ok(),
+        None => state
+            .credential_store
+            .load(
+                stt_google::CREDENTIAL_SERVICE,
+                stt_google::GOOGLE_STT_CREDENTIALS_ACCOUNT,
+            )
+            .is_ok(),
     }
 }
 
@@ -239,7 +264,9 @@ impl SummaryProvider {
             // model IDs are the publisher's own ID, not `genai`'s usual bare model
             // name — verified against `genai` 0.7.0-beta.13's
             // `adapter/adapters/bedrock/shared.rs` curated model list.
-            SummaryProvider::ClaudeBedrock => "bedrock_api::anthropic.claude-sonnet-4-5-20250929-v1:0",
+            SummaryProvider::ClaudeBedrock => {
+                "bedrock_api::anthropic.claude-sonnet-4-5-20250929-v1:0"
+            }
             // These two go through `claude --model`/`codex -m`, not `genai` — plain
             // CLI model aliases, not `genai` model spec strings.
             SummaryProvider::ClaudeCli => "sonnet",
@@ -286,12 +313,18 @@ impl SummaryProvider {
             // server with no API key, configured instead via
             // `AppSettings::ollama_base_url` (see the "Ollama設定" section in
             // `Settings`'s `rsx!`).
-            SummaryProvider::ClaudeCli | SummaryProvider::ClaudeOAuth | SummaryProvider::Codex | SummaryProvider::Ollama => None,
+            SummaryProvider::ClaudeCli
+            | SummaryProvider::ClaudeOAuth
+            | SummaryProvider::Codex
+            | SummaryProvider::Ollama => None,
         }
     }
 
     pub(crate) fn from_key(key: &str) -> Self {
-        Self::ALL.into_iter().find(|p| p.key() == key).unwrap_or(SummaryProvider::Claude)
+        Self::ALL
+            .into_iter()
+            .find(|p| p.key() == key)
+            .unwrap_or(SummaryProvider::Claude)
     }
 
     /// `true` for [`SummaryProvider::ClaudeVertex`]/[`SummaryProvider::GeminiVertex`],
@@ -300,7 +333,10 @@ impl SummaryProvider {
     /// `summarize`'s own [`summarize::VertexCredentials`] type, not
     /// `stt_google::GoogleSttCredentials`.
     pub(crate) fn is_vertex(self) -> bool {
-        matches!(self, SummaryProvider::ClaudeVertex | SummaryProvider::GeminiVertex)
+        matches!(
+            self,
+            SummaryProvider::ClaudeVertex | SummaryProvider::GeminiVertex
+        )
     }
 
     /// `true` for [`SummaryProvider::ClaudeCli`]/[`SummaryProvider::Codex`] (#59),
@@ -329,15 +365,33 @@ impl SummaryProvider {
     /// this list doesn't need to track every new model release.
     fn known_models(self) -> &'static [&'static str] {
         match self {
-            SummaryProvider::Claude => &["claude-sonnet-4-5", "claude-opus-4-5", "claude-haiku-4-5"],
+            SummaryProvider::Claude => {
+                &["claude-sonnet-4-5", "claude-opus-4-5", "claude-haiku-4-5"]
+            }
             SummaryProvider::OpenAi => &["gpt-4o-mini", "gpt-4o", "gpt-5-mini"],
-            SummaryProvider::Gemini => &["gemini-3-flash-preview", "gemini-3-pro-preview", "gemini-2.5-flash"],
+            SummaryProvider::Gemini => &[
+                "gemini-3-flash-preview",
+                "gemini-3-pro-preview",
+                "gemini-2.5-flash",
+            ],
             // Same `groq::` namespace requirement as `default_model` above.
-            SummaryProvider::Groq => &["groq::openai/gpt-oss-20b", "groq::openai/gpt-oss-120b", "groq::llama-3.3-70b-versatile"],
+            SummaryProvider::Groq => &[
+                "groq::openai/gpt-oss-20b",
+                "groq::openai/gpt-oss-120b",
+                "groq::llama-3.3-70b-versatile",
+            ],
             SummaryProvider::DeepSeek => &["deepseek-v4-flash", "deepseek-v4"],
             SummaryProvider::XAi => &["grok-4", "grok-4-fast", "grok-3"],
-            SummaryProvider::ClaudeVertex => &["vertex::claude-sonnet-4-5", "vertex::claude-opus-4-5", "vertex::claude-haiku-4-5"],
-            SummaryProvider::GeminiVertex => &["vertex::gemini-3-flash-preview", "vertex::gemini-3-pro-preview", "vertex::gemini-2.5-flash"],
+            SummaryProvider::ClaudeVertex => &[
+                "vertex::claude-sonnet-4-5",
+                "vertex::claude-opus-4-5",
+                "vertex::claude-haiku-4-5",
+            ],
+            SummaryProvider::GeminiVertex => &[
+                "vertex::gemini-3-flash-preview",
+                "vertex::gemini-3-pro-preview",
+                "vertex::gemini-2.5-flash",
+            ],
             // Bedrock model IDs (`genai`'s curated list) rather than the bare
             // `claude-*` names the other Claude entries use.
             SummaryProvider::ClaudeBedrock => &[
@@ -350,7 +404,9 @@ impl SummaryProvider {
             SummaryProvider::ClaudeCli => &["sonnet", "opus", "haiku"],
             // Same bare `genai` model spec strings as `SummaryProvider::Claude` —
             // see `default_model()`'s comment on why this differs from `ClaudeCli`.
-            SummaryProvider::ClaudeOAuth => &["claude-sonnet-4-5", "claude-opus-4-5", "claude-haiku-4-5"],
+            SummaryProvider::ClaudeOAuth => {
+                &["claude-sonnet-4-5", "claude-opus-4-5", "claude-haiku-4-5"]
+            }
             // Model slugs from this sandbox's `~/.codex/models_cache.json`.
             SummaryProvider::Codex => &["gpt-5.5", "gpt-5.5-codex"],
             // Deliberately empty: unlike the hosted providers above, there's no
@@ -374,7 +430,10 @@ const CUSTOM_MODEL: &str = "__custom__";
 fn load_active_summary_provider(state: &AppState) -> SummaryProvider {
     state
         .credential_store
-        .load(summarize::CREDENTIAL_SERVICE, summarize::SELECTED_PROVIDER_ACCOUNT)
+        .load(
+            summarize::CREDENTIAL_SERVICE,
+            summarize::SELECTED_PROVIDER_ACCOUNT,
+        )
         .ok()
         .map(|key| SummaryProvider::from_key(&key))
         .unwrap_or(SummaryProvider::Claude)
@@ -386,7 +445,10 @@ fn load_active_summary_provider(state: &AppState) -> SummaryProvider {
 /// separately (async, since it spawns a subprocess) in the credential section.
 fn summary_provider_is_configured(state: &AppState, provider: SummaryProvider) -> bool {
     match provider.api_key_account() {
-        Some(account) => state.credential_store.load(summarize::CREDENTIAL_SERVICE, account).is_ok(),
+        Some(account) => state
+            .credential_store
+            .load(summarize::CREDENTIAL_SERVICE, account)
+            .is_ok(),
         None => true,
     }
 }
@@ -395,7 +457,13 @@ fn summary_provider_is_configured(state: &AppState, provider: SummaryProvider) -
 /// for the Cloudflare AI Search credential `plugins/default/hint.rhai`'s
 /// `rag_search("cloudflare", ...)` reads via `crates/rhai-engine/src/rag/cloudflare.rs`.
 fn hint_cloudflare_is_configured(state: &AppState) -> bool {
-    state.credential_store.load(rhai_engine::CLOUDFLARE_CREDENTIAL_SERVICE, rhai_engine::CLOUDFLARE_AI_SEARCH_ACCOUNT).is_ok()
+    state
+        .credential_store
+        .load(
+            rhai_engine::CLOUDFLARE_CREDENTIAL_SERVICE,
+            rhai_engine::CLOUDFLARE_AI_SEARCH_ACCOUNT,
+        )
+        .is_ok()
 }
 
 /// Status text for the "資格情報の登録" section when `provider` is CLI-based
@@ -406,8 +474,14 @@ fn hint_cloudflare_is_configured(state: &AppState) -> bool {
 fn summary_cli_status_text(provider: SummaryProvider, available: Option<bool>) -> String {
     if let Some(backend) = provider.cli_backend() {
         return match available {
-            Some(true) => format!("{} コマンドを検出しました(ログイン状態は要約生成時に確認されます)", backend.binary()),
-            Some(false) => format!("{} コマンドが見つかりません。インストールしてPATHに追加し、ログインしてください", backend.binary()),
+            Some(true) => format!(
+                "{} コマンドを検出しました(ログイン状態は要約生成時に確認されます)",
+                backend.binary()
+            ),
+            Some(false) => format!(
+                "{} コマンドが見つかりません。インストールしてPATHに追加し、ログインしてください",
+                backend.binary()
+            ),
             None => "確認中...".to_string(),
         };
     }
@@ -447,7 +521,11 @@ struct DeviceOption {
 
 impl DeviceOption {
     fn option_label(&self) -> String {
-        if self.is_default { format!("{} (既定)", self.friendly_name) } else { self.friendly_name.clone() }
+        if self.is_default {
+            format!("{} (既定)", self.friendly_name)
+        } else {
+            self.friendly_name.clone()
+        }
     }
 }
 
@@ -462,7 +540,11 @@ fn device_selection_supported() -> bool {
 
 #[cfg(any(windows, target_os = "macos"))]
 fn to_device_option(d: app_service::DeviceInfo) -> DeviceOption {
-    DeviceOption { id: d.id, friendly_name: d.friendly_name, is_default: d.is_default_for_role.is_some() }
+    DeviceOption {
+        id: d.id,
+        friendly_name: d.friendly_name,
+        is_default: d.is_default_for_role.is_some(),
+    }
 }
 
 #[cfg(any(windows, target_os = "macos"))]
@@ -509,10 +591,11 @@ fn spawn_device_change_watcher(on_device_change: impl FnMut() + Clone + 'static)
     use_future(move || {
         let mut on_device_change = on_device_change.clone();
         async move {
-            let watcher = match tokio::task::spawn_blocking(app_service::DeviceChangeWatcher::start).await {
-                Ok(Ok(watcher)) => watcher,
-                _ => return,
-            };
+            let watcher =
+                match tokio::task::spawn_blocking(app_service::DeviceChangeWatcher::start).await {
+                    Ok(Ok(watcher)) => watcher,
+                    _ => return,
+                };
             let mut last_generation = watcher.generation();
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(2)).await;
@@ -540,7 +623,10 @@ fn spawn_device_change_watcher(_on_device_change: impl FnMut() + Clone + 'static
 /// site's doc comment. Silently keeping a stale id (with the `<select>` just
 /// happening to *display* "システム既定" because no `<option>` matches) is a trap
 /// for the next save.
-fn resolve_initial_device_selection(saved: Option<String>, devices: &[DeviceOption]) -> (String, bool) {
+fn resolve_initial_device_selection(
+    saved: Option<String>,
+    devices: &[DeviceOption],
+) -> (String, bool) {
     match saved {
         Some(id) if devices.iter().any(|d| d.id == id) => (id, false),
         Some(_) => (FOLLOW_SYSTEM_DEFAULT_DEVICE.to_string(), true),
@@ -719,7 +805,10 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
         move || {
             state
                 .credential_store
-                .load(summarize::CREDENTIAL_SERVICE, summarize::SELECTED_MODEL_ACCOUNT)
+                .load(
+                    summarize::CREDENTIAL_SERVICE,
+                    summarize::SELECTED_MODEL_ACCOUNT,
+                )
                 .unwrap_or_else(|_| summary_active_provider().default_model().to_string())
         }
     });
@@ -727,7 +816,14 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
     // isn't one (e.g. a value from before this picker existed, or hand-entered).
     let mut model_select = use_signal(move || {
         let saved = model_input();
-        if summary_active_provider().known_models().contains(&saved.as_str()) { saved } else { CUSTOM_MODEL.to_string() }
+        if summary_active_provider()
+            .known_models()
+            .contains(&saved.as_str())
+        {
+            saved
+        } else {
+            CUSTOM_MODEL.to_string()
+        }
     });
     let mut summary_active_message = use_signal(|| None::<String>);
 
@@ -735,7 +831,15 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
     // 選んでいなくても登録しておける、テンプレート設定と同じ考え方) ----
     let mut ollama_base_url_input = use_signal({
         let state = state.clone();
-        move || state.app_settings.lock().unwrap().ollama_base_url.clone().unwrap_or_default()
+        move || {
+            state
+                .app_settings
+                .lock()
+                .unwrap()
+                .ollama_base_url
+                .clone()
+                .unwrap_or_default()
+        }
     });
     let mut ollama_base_url_message = use_signal(|| None::<String>);
 
@@ -747,7 +851,12 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
     // the second initializer's message silently overwriting the first's.
     let initial_mic_devices = load_capture_devices();
     let initial_render_devices = load_render_devices();
-    let saved_mic_device = state.app_settings.lock().unwrap().microphone_device_id.clone();
+    let saved_mic_device = state
+        .app_settings
+        .lock()
+        .unwrap()
+        .microphone_device_id
+        .clone();
     let saved_render_device = state.app_settings.lock().unwrap().render_device_id.clone();
     // Falls back to "システム既定" (rather than the saved-but-now-missing id) when
     // the saved device isn't in the freshly enumerated list — e.g. a USB headset
@@ -755,13 +864,17 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
     // "システム既定" (no `<option>` matches the stale id) while this signal still
     // holds it, so an unrelated save silently re-persists a device id that no
     // longer exists. See `resolve_initial_device_selection`'s doc comment.
-    let (initial_mic_select, mic_was_stale) = resolve_initial_device_selection(saved_mic_device, &initial_mic_devices.0);
-    let (initial_render_select, render_was_stale) = resolve_initial_device_selection(saved_render_device, &initial_render_devices.0);
-    let mut device_message = use_signal(move || match (mic_was_stale, render_was_stale) {
+    let (initial_mic_select, mic_was_stale) =
+        resolve_initial_device_selection(saved_mic_device, &initial_mic_devices.0);
+    let (initial_render_select, render_was_stale) =
+        resolve_initial_device_selection(saved_render_device, &initial_render_devices.0);
+    let mut device_message = use_signal(move || {
+        match (mic_was_stale, render_was_stale) {
         (true, true) => Some("選択していたマイクとスピーカーが見つからないため、システム既定に切り替えました。必要であれば選び直して保存してください。".to_string()),
         (true, false) => Some("選択していたマイクが見つからないため、システム既定に切り替えました。必要であれば選び直して保存してください。".to_string()),
         (false, true) => Some("選択していたスピーカーが見つからないため、システム既定に切り替えました。必要であれば選び直して保存してください。".to_string()),
         (false, false) => None,
+    }
     });
     let mut mic_devices = use_signal(move || initial_mic_devices);
     let mut render_devices = use_signal(move || initial_render_devices);
@@ -771,15 +884,38 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
     // ---- 会話ヒント (RAG): 有効化・プロバイダ・デバウンス秒数・Cloudflare資格情報(他の設定とは独立) ----
     let mut hint_enabled_select = use_signal({
         let state = state.clone();
-        move || state.app_settings.lock().unwrap().hint_enabled.unwrap_or(false)
+        move || {
+            state
+                .app_settings
+                .lock()
+                .unwrap()
+                .hint_enabled
+                .unwrap_or(false)
+        }
     });
     let mut hint_provider_select = use_signal({
         let state = state.clone();
-        move || state.app_settings.lock().unwrap().hint_provider.clone().unwrap_or_else(|| "cloudflare".to_string())
+        move || {
+            state
+                .app_settings
+                .lock()
+                .unwrap()
+                .hint_provider
+                .clone()
+                .unwrap_or_else(|| "cloudflare".to_string())
+        }
     });
     let mut hint_debounce_input = use_signal({
         let state = state.clone();
-        move || state.app_settings.lock().unwrap().hint_debounce_seconds.map(|s| s.to_string()).unwrap_or_else(|| "15".to_string())
+        move || {
+            state
+                .app_settings
+                .lock()
+                .unwrap()
+                .hint_debounce_seconds
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "15".to_string())
+        }
     });
     let mut hint_cloudflare_account_id_input = use_signal(String::new);
     let mut hint_cloudflare_api_token_input = use_signal(String::new);
@@ -840,15 +976,21 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                     stt_credential_message.set(Some("プロジェクトID・ロケーション・サービスアカウントJSONをすべて入力してください".to_string()));
                     return;
                 }
-                let credentials = stt_google::GoogleSttCredentials::new(project, location).with_service_account_json(json);
+                let credentials = stt_google::GoogleSttCredentials::new(project, location)
+                    .with_service_account_json(json);
                 let serialized = match serde_json::to_string(&credentials) {
                     Ok(s) => s,
                     Err(e) => {
-                        stt_credential_message.set(Some(format!("認証情報の変換に失敗しました: {e}")));
+                        stt_credential_message
+                            .set(Some(format!("認証情報の変換に失敗しました: {e}")));
                         return;
                     }
                 };
-                match state.credential_store.save(stt_google::CREDENTIAL_SERVICE, stt_google::GOOGLE_STT_CREDENTIALS_ACCOUNT, &serialized) {
+                match state.credential_store.save(
+                    stt_google::CREDENTIAL_SERVICE,
+                    stt_google::GOOGLE_STT_CREDENTIALS_ACCOUNT,
+                    &serialized,
+                ) {
                     Ok(()) => {
                         stt_edit_configured.set(true);
                         stt_google_project_input.set(String::new());
@@ -895,7 +1037,11 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
     // session", not a hard error.
     let save_stt_active = {
         let state = state.clone();
-        move |_| match state.credential_store.save(app_service::CREDENTIAL_SERVICE, app_service::SELECTED_STT_PROVIDER_ACCOUNT, stt_active_provider().key()) {
+        move |_| match state.credential_store.save(
+            app_service::CREDENTIAL_SERVICE,
+            app_service::SELECTED_STT_PROVIDER_ACCOUNT,
+            stt_active_provider().key(),
+        ) {
             Ok(()) => stt_active_message.set(Some("保存しました".to_string())),
             Err(e) => stt_active_message.set(Some(format!("保存に失敗しました: {e}"))),
         }
@@ -940,15 +1086,21 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                     summary_credential_message.set(Some("プロジェクトID・ロケーション・サービスアカウントJSONをすべて入力してください".to_string()));
                     return;
                 }
-                let credentials = summarize::VertexCredentials::new(project, location).with_service_account_json(json);
+                let credentials = summarize::VertexCredentials::new(project, location)
+                    .with_service_account_json(json);
                 let serialized = match serde_json::to_string(&credentials) {
                     Ok(s) => s,
                     Err(e) => {
-                        summary_credential_message.set(Some(format!("認証情報の変換に失敗しました: {e}")));
+                        summary_credential_message
+                            .set(Some(format!("認証情報の変換に失敗しました: {e}")));
                         return;
                     }
                 };
-                match state.credential_store.save(summarize::CREDENTIAL_SERVICE, api_key_account, &serialized) {
+                match state.credential_store.save(
+                    summarize::CREDENTIAL_SERVICE,
+                    api_key_account,
+                    &serialized,
+                ) {
                     Ok(()) => {
                         summary_edit_key_configured.set(true);
                         summary_vertex_project_input.set(String::new());
@@ -956,7 +1108,9 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                         summary_vertex_json_input.set(String::new());
                         summary_credential_message.set(Some("保存しました".to_string()));
                     }
-                    Err(e) => summary_credential_message.set(Some(format!("保存に失敗しました: {e}"))),
+                    Err(e) => {
+                        summary_credential_message.set(Some(format!("保存に失敗しました: {e}")))
+                    }
                 }
                 return;
             }
@@ -966,7 +1120,10 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                 summary_credential_message.set(Some("APIキーを入力してください".to_string()));
                 return;
             }
-            match state.credential_store.save(summarize::CREDENTIAL_SERVICE, api_key_account, &key) {
+            match state
+                .credential_store
+                .save(summarize::CREDENTIAL_SERVICE, api_key_account, &key)
+            {
                 Ok(()) => {
                     summary_edit_key_configured.set(true);
                     summary_edit_key_input.set(String::new());
@@ -990,7 +1147,16 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
         // "カスタム..." option in the `<select>` while leaving the custom-text input
         // hidden, since that input's visibility is keyed off `model_select() ==
         // CUSTOM_MODEL`, not off `default_model()` directly.
-        model_select.set(if new_provider.known_models().contains(&default_model.as_str()) { default_model } else { CUSTOM_MODEL.to_string() });
+        model_select.set(
+            if new_provider
+                .known_models()
+                .contains(&default_model.as_str())
+            {
+                default_model
+            } else {
+                CUSTOM_MODEL.to_string()
+            },
+        );
         summary_active_message.set(None);
     };
 
@@ -1011,13 +1177,25 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
         move |_| {
             let model = {
                 let m = model_input().trim().to_string();
-                if m.is_empty() { summary_active_provider().default_model().to_string() } else { m }
+                if m.is_empty() {
+                    summary_active_provider().default_model().to_string()
+                } else {
+                    m
+                }
             };
-            if let Err(e) = state.credential_store.save(summarize::CREDENTIAL_SERVICE, summarize::SELECTED_PROVIDER_ACCOUNT, summary_active_provider().key()) {
+            if let Err(e) = state.credential_store.save(
+                summarize::CREDENTIAL_SERVICE,
+                summarize::SELECTED_PROVIDER_ACCOUNT,
+                summary_active_provider().key(),
+            ) {
                 summary_active_message.set(Some(format!("保存に失敗しました: {e}")));
                 return;
             }
-            if let Err(e) = state.credential_store.save(summarize::CREDENTIAL_SERVICE, summarize::SELECTED_MODEL_ACCOUNT, &model) {
+            if let Err(e) = state.credential_store.save(
+                summarize::CREDENTIAL_SERVICE,
+                summarize::SELECTED_MODEL_ACCOUNT,
+                &model,
+            ) {
                 summary_active_message.set(Some(format!("保存に失敗しました: {e}")));
                 return;
             }
@@ -1038,7 +1216,11 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
         let state = state.clone();
         move |_| {
             let trimmed = ollama_base_url_input().trim().to_string();
-            let new_value = if trimmed.is_empty() { None } else { Some(trimmed) };
+            let new_value = if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed)
+            };
 
             let save_result = {
                 let mut settings = state.app_settings.lock().unwrap();
@@ -1112,8 +1294,16 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
         move |_| {
             let mic = mic_device_select();
             let render = render_device_select();
-            let new_mic = if mic == FOLLOW_SYSTEM_DEFAULT_DEVICE { None } else { Some(mic) };
-            let new_render = if render == FOLLOW_SYSTEM_DEFAULT_DEVICE { None } else { Some(render) };
+            let new_mic = if mic == FOLLOW_SYSTEM_DEFAULT_DEVICE {
+                None
+            } else {
+                Some(mic)
+            };
+            let new_render = if render == FOLLOW_SYSTEM_DEFAULT_DEVICE {
+                None
+            } else {
+                Some(render)
+            };
 
             let save_result = {
                 let mut settings = state.app_settings.lock().unwrap();
@@ -1129,7 +1319,9 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                 result
             };
             match save_result {
-                Ok(()) => device_message.set(Some("保存しました。次回の録音開始時から反映されます".to_string())),
+                Ok(()) => device_message.set(Some(
+                    "保存しました。次回の録音開始時から反映されます".to_string(),
+                )),
                 Err(e) => device_message.set(Some(format!("保存に失敗しました: {e}"))),
             }
         }
@@ -1156,7 +1348,12 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
         move |_| {
             let enabled = hint_enabled_select();
             let provider = hint_provider_select();
-            let debounce_seconds = hint_debounce_input().trim().parse::<u32>().ok().filter(|s| *s > 0).unwrap_or(15);
+            let debounce_seconds = hint_debounce_input()
+                .trim()
+                .parse::<u32>()
+                .ok()
+                .filter(|s| *s > 0)
+                .unwrap_or(15);
             hint_debounce_input.set(debounce_seconds.to_string());
 
             let save_result = {
@@ -1176,7 +1373,9 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                 result
             };
             match save_result {
-                Ok(()) => hint_message.set(Some("保存しました。次回の録音開始時から反映されます".to_string())),
+                Ok(()) => hint_message.set(Some(
+                    "保存しました。次回の録音開始時から反映されます".to_string(),
+                )),
                 Err(e) => hint_message.set(Some(format!("保存に失敗しました: {e}"))),
             }
         }
@@ -1195,11 +1394,17 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
             let api_token = hint_cloudflare_api_token_input().trim().to_string();
             let instance_name = hint_cloudflare_instance_input().trim().to_string();
             if account_id.is_empty() || api_token.is_empty() || instance_name.is_empty() {
-                hint_message.set(Some("アカウントID・APIトークン・インスタンス名をすべて入力してください".to_string()));
+                hint_message.set(Some(
+                    "アカウントID・APIトークン・インスタンス名をすべて入力してください".to_string(),
+                ));
                 return;
             }
 
-            let credentials = rhai_engine::CloudflareCredentials { account_id, api_token, instance_name };
+            let credentials = rhai_engine::CloudflareCredentials {
+                account_id,
+                api_token,
+                instance_name,
+            };
             let serialized = match serde_json::to_string(&credentials) {
                 Ok(s) => s,
                 Err(e) => {
@@ -1208,7 +1413,11 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                 }
             };
 
-            match state.credential_store.save(rhai_engine::CLOUDFLARE_CREDENTIAL_SERVICE, rhai_engine::CLOUDFLARE_AI_SEARCH_ACCOUNT, &serialized) {
+            match state.credential_store.save(
+                rhai_engine::CLOUDFLARE_CREDENTIAL_SERVICE,
+                rhai_engine::CLOUDFLARE_AI_SEARCH_ACCOUNT,
+                &serialized,
+            ) {
                 Ok(()) => {
                     hint_cloudflare_account_id_input.set(String::new());
                     hint_cloudflare_api_token_input.set(String::new());
@@ -1242,7 +1451,8 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
             } else if selected == summary_template::CUSTOM_TEMPLATE {
                 let text = summary_template_custom_input().trim().to_string();
                 if text.is_empty() {
-                    summary_template_message.set(Some("カスタムプロンプトを入力してください".to_string()));
+                    summary_template_message
+                        .set(Some("カスタムプロンプトを入力してください".to_string()));
                     return;
                 }
                 Some(text)

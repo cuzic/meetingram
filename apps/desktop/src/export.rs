@@ -29,10 +29,17 @@ use crate::transcript;
 /// Segments without a `start_ms` timestamp (a provider that doesn't report
 /// ranges) are rendered with no leading timestamp rather than a placeholder or
 /// panic.
-pub fn render_markdown(started_at: DateTime<Utc>, segments: &[TranscriptSegment], summary: Option<&str>) -> String {
+pub fn render_markdown(
+    started_at: DateTime<Utc>,
+    segments: &[TranscriptSegment],
+    summary: Option<&str>,
+) -> String {
     let mut out = String::new();
 
-    out.push_str(&format!("# 会議セッション {}\n\n", started_at.format("%Y-%m-%d %H:%M:%S")));
+    out.push_str(&format!(
+        "# 会議セッション {}\n\n",
+        started_at.format("%Y-%m-%d %H:%M:%S")
+    ));
 
     out.push_str("## 文字起こし\n\n");
     let finals: Vec<&TranscriptSegment> = segments.iter().filter(|s| s.is_final).collect();
@@ -42,7 +49,11 @@ pub fn render_markdown(started_at: DateTime<Utc>, segments: &[TranscriptSegment]
         for seg in finals {
             let label = transcript::speaker_label(seg.track, seg.speaker);
             match seg.start_ms {
-                Some(start_ms) => out.push_str(&format!("- **[{}] {label}**: {}\n", format_timestamp(start_ms), seg.text)),
+                Some(start_ms) => out.push_str(&format!(
+                    "- **[{}] {label}**: {}\n",
+                    format_timestamp(start_ms),
+                    seg.text
+                )),
                 None => out.push_str(&format!("- **{label}**: {}\n", seg.text)),
             }
         }
@@ -73,7 +84,8 @@ fn format_timestamp(ms: u64) -> String {
 fn export_dir(state: &AppState) -> Result<PathBuf, String> {
     let configured = state.app_settings.lock().unwrap().exports_root.clone();
     let dir = configured.unwrap_or_else(|| state.app_data_dir.join("exports"));
-    std::fs::create_dir_all(&dir).map_err(|e| format!("エクスポート先フォルダの作成に失敗しました: {e}"))?;
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("エクスポート先フォルダの作成に失敗しました: {e}"))?;
     Ok(dir)
 }
 
@@ -92,17 +104,29 @@ fn export_dir(state: &AppState) -> Result<PathBuf, String> {
 /// Same-named files (i.e. two exports of the same session) are overwritten —
 /// no numbered-suffix handling, per this feature's scope.
 pub fn export_session(state: &AppState, session_id: SessionId) -> Result<PathBuf, String> {
-    let segments = state.store.list_transcript_segments(session_id).map_err(|e| format!("文字起こしの取得に失敗しました: {e}"))?;
-    let summary = state.store.get_latest_summary(session_id).map_err(|e| format!("要約の取得に失敗しました: {e}"))?;
+    let segments = state
+        .store
+        .list_transcript_segments(session_id)
+        .map_err(|e| format!("文字起こしの取得に失敗しました: {e}"))?;
+    let summary = state
+        .store
+        .get_latest_summary(session_id)
+        .map_err(|e| format!("要約の取得に失敗しました: {e}"))?;
 
-    let started_at = DateTime::<Utc>::from_timestamp_millis(session_id.0.timestamp_ms() as i64).unwrap_or_else(Utc::now);
+    let started_at = DateTime::<Utc>::from_timestamp_millis(session_id.0.timestamp_ms() as i64)
+        .unwrap_or_else(Utc::now);
 
-    let markdown = render_markdown(started_at, &segments, summary.as_ref().map(|s| s.text.as_str()));
+    let markdown = render_markdown(
+        started_at,
+        &segments,
+        summary.as_ref().map(|s| s.text.as_str()),
+    );
 
     let dir = export_dir(state)?;
     let file_name = format!("{}.md", started_at.format("%Y-%m-%d_%H%M%S"));
     let path = dir.join(file_name);
-    std::fs::write(&path, markdown).map_err(|e| format!("ファイルの書き込みに失敗しました: {e}"))?;
+    std::fs::write(&path, markdown)
+        .map_err(|e| format!("ファイルの書き込みに失敗しました: {e}"))?;
 
     Ok(path)
 }
@@ -112,12 +136,30 @@ mod tests {
     use super::*;
     use recorder_domain::TrackKind;
 
-    fn seg(track: Option<TrackKind>, speaker: Option<u32>, text: &str, start_ms: Option<u64>, end_ms: Option<u64>, is_final: bool) -> TranscriptSegment {
-        TranscriptSegment { session_id: SessionId::new(), track, speaker, text: text.to_string(), start_ms, end_ms, is_final, is_retranscribed: false }
+    fn seg(
+        track: Option<TrackKind>,
+        speaker: Option<u32>,
+        text: &str,
+        start_ms: Option<u64>,
+        end_ms: Option<u64>,
+        is_final: bool,
+    ) -> TranscriptSegment {
+        TranscriptSegment {
+            session_id: SessionId::new(),
+            track,
+            speaker,
+            text: text.to_string(),
+            start_ms,
+            end_ms,
+            is_final,
+            is_retranscribed: false,
+        }
     }
 
     fn sample_started_at() -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339("2026-07-18T14:30:22Z").unwrap().with_timezone(&Utc)
+        DateTime::parse_from_rfc3339("2026-07-18T14:30:22Z")
+            .unwrap()
+            .with_timezone(&Utc)
     }
 
     #[test]
@@ -129,42 +171,99 @@ mod tests {
     #[test]
     fn interim_segments_are_filtered_out() {
         let segments = vec![
-            seg(Some(TrackKind::SelfMic), None, "final one", Some(0), Some(1000), true),
-            seg(Some(TrackKind::SelfMic), None, "interim in-progress guess", Some(1000), None, false),
+            seg(
+                Some(TrackKind::SelfMic),
+                None,
+                "final one",
+                Some(0),
+                Some(1000),
+                true,
+            ),
+            seg(
+                Some(TrackKind::SelfMic),
+                None,
+                "interim in-progress guess",
+                Some(1000),
+                None,
+                false,
+            ),
         ];
         let markdown = render_markdown(sample_started_at(), &segments, None);
 
-        assert!(markdown.contains("final one"), "final segment should be included:\n{markdown}");
-        assert!(!markdown.contains("interim in-progress guess"), "interim segment must be dropped:\n{markdown}");
+        assert!(
+            markdown.contains("final one"),
+            "final segment should be included:\n{markdown}"
+        );
+        assert!(
+            !markdown.contains("interim in-progress guess"),
+            "interim segment must be dropped:\n{markdown}"
+        );
     }
 
     #[test]
     fn empty_finals_render_a_placeholder_line() {
-        let segments = vec![seg(Some(TrackKind::SelfMic), None, "not yet final", None, None, false)];
+        let segments = vec![seg(
+            Some(TrackKind::SelfMic),
+            None,
+            "not yet final",
+            None,
+            None,
+            false,
+        )];
         let markdown = render_markdown(sample_started_at(), &segments, None);
         assert!(markdown.contains("(文字起こしはありません)"));
     }
 
     #[test]
     fn segment_with_timestamps_renders_a_bracketed_range_start() {
-        let segments = vec![seg(Some(TrackKind::RemoteAudio), None, "hello there", Some(65_000), Some(67_000), true)];
+        let segments = vec![seg(
+            Some(TrackKind::RemoteAudio),
+            None,
+            "hello there",
+            Some(65_000),
+            Some(67_000),
+            true,
+        )];
         let markdown = render_markdown(sample_started_at(), &segments, None);
-        assert!(markdown.contains("- **[01:05] 相手**: hello there"), "unexpected markdown:\n{markdown}");
+        assert!(
+            markdown.contains("- **[01:05] 相手**: hello there"),
+            "unexpected markdown:\n{markdown}"
+        );
     }
 
     #[test]
     fn segment_without_timestamp_omits_the_bracket_without_panicking() {
-        let segments = vec![seg(Some(TrackKind::SelfMic), None, "no timing info", None, None, true)];
+        let segments = vec![seg(
+            Some(TrackKind::SelfMic),
+            None,
+            "no timing info",
+            None,
+            None,
+            true,
+        )];
         let markdown = render_markdown(sample_started_at(), &segments, None);
-        assert!(markdown.contains("- **自分**: no timing info"), "unexpected markdown:\n{markdown}");
+        assert!(
+            markdown.contains("- **自分**: no timing info"),
+            "unexpected markdown:\n{markdown}"
+        );
         assert!(!markdown.contains("- **[]"));
     }
 
     #[test]
     fn diarized_speaker_label_is_reused_from_transcript_module() {
-        let segments = vec![seg(Some(TrackKind::RemoteAudio), Some(1), "second speaker", Some(0), None, true)];
+        let segments = vec![seg(
+            Some(TrackKind::RemoteAudio),
+            Some(1),
+            "second speaker",
+            Some(0),
+            None,
+            true,
+        )];
         let markdown = render_markdown(sample_started_at(), &segments, None);
-        assert!(markdown.contains("相手 (話者2)"), "unexpected markdown:\n{markdown}");
+        assert!(
+            markdown.contains("相手 (話者2)"),
+            "unexpected markdown:\n{markdown}"
+        );
     }
 
     #[test]

@@ -189,9 +189,17 @@ mod tests {
     #[test]
     fn save_overwrites_previous_contents_entirely() {
         let dir = tempfile::tempdir().expect("tempdir");
-        AppSettings { ollama_base_url: Some("http://old:11434".to_string()), ..Default::default() }.save(dir.path()).expect("save 1");
+        AppSettings {
+            ollama_base_url: Some("http://old:11434".to_string()),
+            ..Default::default()
+        }
+        .save(dir.path())
+        .expect("save 1");
 
-        let second = AppSettings { summary_template: Some("new template".to_string()), ..Default::default() };
+        let second = AppSettings {
+            summary_template: Some("new template".to_string()),
+            ..Default::default()
+        };
         second.save(dir.path()).expect("save 2");
 
         let loaded = AppSettings::load(dir.path());
@@ -202,11 +210,18 @@ mod tests {
     #[test]
     fn load_reads_partial_existing_file_with_missing_fields_defaulted() {
         let dir = tempfile::tempdir().expect("tempdir");
-        std::fs::write(AppSettings::path(dir.path()), r#"{"ollama_base_url":"http://localhost:11434"}"#).expect("write partial file");
+        std::fs::write(
+            AppSettings::path(dir.path()),
+            r#"{"ollama_base_url":"http://localhost:11434"}"#,
+        )
+        .expect("write partial file");
 
         let loaded = AppSettings::load(dir.path());
 
-        assert_eq!(loaded.ollama_base_url, Some("http://localhost:11434".to_string()));
+        assert_eq!(
+            loaded.ollama_base_url,
+            Some("http://localhost:11434".to_string())
+        );
         assert_eq!(loaded.summary_template, None);
         assert_eq!(loaded.whisper_model_path, None);
         assert_eq!(loaded.exports_root, None);
@@ -221,7 +236,8 @@ mod tests {
     #[test]
     fn load_falls_back_to_defaults_on_corrupt_json() {
         let dir = tempfile::tempdir().expect("tempdir");
-        std::fs::write(AppSettings::path(dir.path()), "not valid json").expect("write corrupt file");
+        std::fs::write(AppSettings::path(dir.path()), "not valid json")
+            .expect("write corrupt file");
 
         let loaded = AppSettings::load(dir.path());
 

@@ -31,10 +31,20 @@ pub struct Status {
 }
 
 fn segment_progress(state: &AppState, session_id: SessionId) -> (usize, usize) {
-    let pending = state.store.pending_uploads(session_id).map(|v| v.len()).unwrap_or(0);
+    let pending = state
+        .store
+        .pending_uploads(session_id)
+        .map(|v| v.len())
+        .unwrap_or(0);
     let total: usize = [TrackKind::SelfMic, TrackKind::RemoteAudio]
         .iter()
-        .map(|track| state.store.segments_for_track(session_id, *track).map(|v| v.len()).unwrap_or(0))
+        .map(|track| {
+            state
+                .store
+                .segments_for_track(session_id, *track)
+                .map(|v| v.len())
+                .unwrap_or(0)
+        })
         .sum();
     (total.saturating_sub(pending), pending)
 }
@@ -69,7 +79,8 @@ pub fn current(state: &AppState) -> Status {
     // `Unavailable` for both tracks rather than the default `NotConfigured`, since
     // there's no settings-screen fix for "unavailable".
     #[cfg(windows)]
-    let transcription_status: crate::transcription_status::TranscriptionStatus = active.transcription_status.lock().unwrap().clone().into();
+    let transcription_status: crate::transcription_status::TranscriptionStatus =
+        active.transcription_status.lock().unwrap().clone().into();
     #[cfg(not(windows))]
     let transcription_status = crate::transcription_status::TranscriptionStatus::unavailable();
 

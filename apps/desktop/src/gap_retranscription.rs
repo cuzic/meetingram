@@ -37,9 +37,14 @@ pub enum GapRetranscribeState {
 /// settings screen at any time between renders. Falls back to
 /// `SttProviderKind::default()` (Deepgram) the same way `settings::SttProvider::from_key`
 /// does when nothing has been saved yet.
-pub fn selected_provider_kind(credential_store: &dyn CredentialStore) -> app_service::SttProviderKind {
+pub fn selected_provider_kind(
+    credential_store: &dyn CredentialStore,
+) -> app_service::SttProviderKind {
     credential_store
-        .load(app_service::CREDENTIAL_SERVICE, app_service::SELECTED_STT_PROVIDER_ACCOUNT)
+        .load(
+            app_service::CREDENTIAL_SERVICE,
+            app_service::SELECTED_STT_PROVIDER_ACCOUNT,
+        )
         .ok()
         .and_then(|key| app_service::SttProviderKind::from_account_value(&key))
         .unwrap_or_default()
@@ -78,7 +83,9 @@ pub async fn retranscribe(
     store: &SessionStore,
     credential_store: &dyn CredentialStore,
 ) -> Result<Vec<TranscriptSegment>, String> {
-    app_service::retranscribe_gap(gap, provider_kind, store, credential_store).await.map_err(describe_error)
+    app_service::retranscribe_gap(gap, provider_kind, store, credential_store)
+        .await
+        .map_err(describe_error)
 }
 #[cfg(not(windows))]
 pub async fn retranscribe(
@@ -98,11 +105,21 @@ pub async fn retranscribe(
 #[cfg(windows)]
 fn describe_error(err: app_service::RetranscribeError) -> String {
     match err {
-        app_service::RetranscribeError::GapStillOpen { .. } => "この区間はまだ接続が回復していないため、再文字起こしできません".to_string(),
-        app_service::RetranscribeError::UnsupportedProvider { .. } => "選択中のSTTプロバイダは再文字起こしに対応していません".to_string(),
-        app_service::RetranscribeError::CredentialMissing { .. } => "設定画面でAPIキーを設定してください".to_string(),
-        app_service::RetranscribeError::NoAudioInRange { .. } => "この区間の録音データが見つかりませんでした".to_string(),
-        app_service::RetranscribeError::SegmentStore(e) => format!("音声の読み込みに失敗しました: {e}"),
+        app_service::RetranscribeError::GapStillOpen { .. } => {
+            "この区間はまだ接続が回復していないため、再文字起こしできません".to_string()
+        }
+        app_service::RetranscribeError::UnsupportedProvider { .. } => {
+            "選択中のSTTプロバイダは再文字起こしに対応していません".to_string()
+        }
+        app_service::RetranscribeError::CredentialMissing { .. } => {
+            "設定画面でAPIキーを設定してください".to_string()
+        }
+        app_service::RetranscribeError::NoAudioInRange { .. } => {
+            "この区間の録音データが見つかりませんでした".to_string()
+        }
+        app_service::RetranscribeError::SegmentStore(e) => {
+            format!("音声の読み込みに失敗しました: {e}")
+        }
         app_service::RetranscribeError::Stt(e) => format!("文字起こしに失敗しました: {e}"),
         app_service::RetranscribeError::SessionStore(e) => format!("保存に失敗しました: {e}"),
     }

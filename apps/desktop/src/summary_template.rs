@@ -32,8 +32,11 @@ pub(crate) enum SummaryTemplatePreset {
 }
 
 impl SummaryTemplatePreset {
-    pub(crate) const ALL: [SummaryTemplatePreset; 3] =
-        [SummaryTemplatePreset::OneOnOne, SummaryTemplatePreset::SalesCall, SummaryTemplatePreset::Standup];
+    pub(crate) const ALL: [SummaryTemplatePreset; 3] = [
+        SummaryTemplatePreset::OneOnOne,
+        SummaryTemplatePreset::SalesCall,
+        SummaryTemplatePreset::Standup,
+    ];
 
     /// Stable identifier used as the `<select>` `value` and stored nowhere else
     /// (the preset's *text*, not its key, is what ends up in
@@ -151,7 +154,10 @@ pub(crate) const CUSTOM_TEMPLATE: &str = "__custom__";
 pub(crate) fn select_key_for(stored: &Option<String>) -> &'static str {
     match stored {
         None => NO_TEMPLATE,
-        Some(text) => match SummaryTemplatePreset::ALL.into_iter().find(|p| p.prompt() == text) {
+        Some(text) => match SummaryTemplatePreset::ALL
+            .into_iter()
+            .find(|p| p.prompt() == text)
+        {
             Some(preset) => preset.key(),
             None => CUSTOM_TEMPLATE,
         },
@@ -164,7 +170,10 @@ pub(crate) fn select_key_for(stored: &Option<String>) -> &'static str {
 /// `None` leaves it unset so `crates/summarize`'s own
 /// `DEFAULT_SYSTEM_PROMPT` fallback (`build_chat_request`/`build_cli_prompt`,
 /// shared by every `Summarizer` impl regardless of provider) applies.
-pub(crate) fn summarize_options_for(model: impl Into<String>, template: Option<String>) -> summarize::SummarizeOptions {
+pub(crate) fn summarize_options_for(
+    model: impl Into<String>,
+    template: Option<String>,
+) -> summarize::SummarizeOptions {
     match template {
         Some(template) => summarize::SummarizeOptions::new(model).with_system_prompt(template),
         None => summarize::SummarizeOptions::new(model),
@@ -190,28 +199,54 @@ mod tests {
     #[test]
     fn one_on_one_preset_is_structured_around_progress_issues_and_next_actions() {
         let prompt = SummaryTemplatePreset::OneOnOne.prompt();
-        assert!(prompt.contains("進捗"), "expected the 1on1 preset to ask about progress");
-        assert!(prompt.contains("課題"), "expected the 1on1 preset to ask about issues/concerns");
-        assert!(prompt.contains("Next Action"), "expected the 1on1 preset to ask for action items");
-        assert!(prompt.contains("meetingram"), "expected the 1on1 preset to reference this app by name");
+        assert!(
+            prompt.contains("進捗"),
+            "expected the 1on1 preset to ask about progress"
+        );
+        assert!(
+            prompt.contains("課題"),
+            "expected the 1on1 preset to ask about issues/concerns"
+        );
+        assert!(
+            prompt.contains("Next Action"),
+            "expected the 1on1 preset to ask for action items"
+        );
+        assert!(
+            prompt.contains("meetingram"),
+            "expected the 1on1 preset to reference this app by name"
+        );
     }
 
     #[test]
     fn every_preset_has_a_distinct_non_empty_prompt_and_label() {
-        let prompts: Vec<&str> = SummaryTemplatePreset::ALL.iter().map(|p| p.prompt()).collect();
+        let prompts: Vec<&str> = SummaryTemplatePreset::ALL
+            .iter()
+            .map(|p| p.prompt())
+            .collect();
         for prompt in &prompts {
             assert!(!prompt.is_empty());
         }
         let mut unique_prompts = prompts.clone();
         unique_prompts.sort_unstable();
         unique_prompts.dedup();
-        assert_eq!(unique_prompts.len(), prompts.len(), "expected every preset prompt to be distinct");
+        assert_eq!(
+            unique_prompts.len(),
+            prompts.len(),
+            "expected every preset prompt to be distinct"
+        );
 
-        let labels: Vec<&str> = SummaryTemplatePreset::ALL.iter().map(|p| p.label()).collect();
+        let labels: Vec<&str> = SummaryTemplatePreset::ALL
+            .iter()
+            .map(|p| p.label())
+            .collect();
         let mut unique_labels = labels.clone();
         unique_labels.sort_unstable();
         unique_labels.dedup();
-        assert_eq!(unique_labels.len(), labels.len(), "expected every preset label to be distinct");
+        assert_eq!(
+            unique_labels.len(),
+            labels.len(),
+            "expected every preset label to be distinct"
+        );
     }
 
     #[test]
@@ -237,7 +272,10 @@ mod tests {
     fn summarize_options_for_none_leaves_system_prompt_unset_falling_back_to_builtin_default() {
         let options = summarize_options_for("claude-sonnet-4-5", None);
         assert_eq!(options.model, "claude-sonnet-4-5");
-        assert!(options.system_prompt.is_none(), "None should not override summarize::DEFAULT_SYSTEM_PROMPT");
+        assert!(
+            options.system_prompt.is_none(),
+            "None should not override summarize::DEFAULT_SYSTEM_PROMPT"
+        );
     }
 
     #[test]

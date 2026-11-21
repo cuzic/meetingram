@@ -43,7 +43,12 @@ pub fn start_recording(state: &AppState) -> Result<Status, String> {
             // `session.{id}.stopped` broker signal `recording::stop`
             // publishes (see that module).
             if let Some(active) = state.current.lock().unwrap().as_ref() {
-                ui_consumer::spawn_ui_consumer(state.broker.clone(), session_id, state.store.clone(), active.transcript_buffer.clone());
+                ui_consumer::spawn_ui_consumer(
+                    state.broker.clone(),
+                    session_id,
+                    state.store.clone(),
+                    active.transcript_buffer.clone(),
+                );
 
                 // Opt-in (see `AppSettings::hint_enabled`'s doc comment) —
                 // an unconfigured/disabled install shouldn't subscribe to
@@ -51,11 +56,22 @@ pub fn start_recording(state: &AppState) -> Result<Status, String> {
                 // on every debounce interval of every recording.
                 let hint_settings = {
                     let settings = state.app_settings.lock().unwrap();
-                    (settings.hint_enabled.unwrap_or(false), settings.hint_debounce_seconds.unwrap_or(15))
+                    (
+                        settings.hint_enabled.unwrap_or(false),
+                        settings.hint_debounce_seconds.unwrap_or(15),
+                    )
                 };
                 if let (true, debounce_seconds) = hint_settings {
-                    hint_consumer::spawn_hint_consumer(state.broker.clone(), session_id, active.hint_buffer.clone());
-                    state.rhai_engine.spawn_hint_debounce_driver(&state.broker, session_id, std::time::Duration::from_secs(debounce_seconds as u64));
+                    hint_consumer::spawn_hint_consumer(
+                        state.broker.clone(),
+                        session_id,
+                        active.hint_buffer.clone(),
+                    );
+                    state.rhai_engine.spawn_hint_debounce_driver(
+                        &state.broker,
+                        session_id,
+                        std::time::Duration::from_secs(debounce_seconds as u64),
+                    );
                 }
             }
             state.summary_consumer.spawn_auto_summary(session_id);

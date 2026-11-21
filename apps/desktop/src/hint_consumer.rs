@@ -41,7 +41,9 @@ pub struct HintBuffer {
 
 impl HintBuffer {
     pub fn new() -> Self {
-        Self { state: Arc::new(Mutex::new(None)) }
+        Self {
+            state: Arc::new(Mutex::new(None)),
+        }
     }
 
     pub fn take(&self) -> Option<HintState> {
@@ -56,7 +58,11 @@ impl HintBuffer {
 /// `apps/desktop/src/recording.rs::stop`) — see `ui_consumer::spawn_ui_consumer`'s
 /// doc comment for why waiting on the broker channel to close on its own
 /// (the previous design here) never actually happens and leaks the task.
-pub fn spawn_hint_consumer(broker: LocalBroker, session_id: SessionId, buffer: HintBuffer) -> tokio::task::JoinHandle<()> {
+pub fn spawn_hint_consumer(
+    broker: LocalBroker,
+    session_id: SessionId,
+    buffer: HintBuffer,
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         run_hint_consumer(broker, session_id, buffer).await;
     })
@@ -88,7 +94,11 @@ async fn run_hint_consumer(broker: LocalBroker, session_id: SessionId, buffer: H
             }
         };
 
-        *buffer.state.lock().unwrap() = Some(HintState { text: parsed.text, provider: parsed.provider, updated_at: Instant::now() });
+        *buffer.state.lock().unwrap() = Some(HintState {
+            text: parsed.text,
+            provider: parsed.provider,
+            updated_at: Instant::now(),
+        });
     }
 }
 

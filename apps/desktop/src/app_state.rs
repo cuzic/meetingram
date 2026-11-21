@@ -1,6 +1,6 @@
 use std::path::PathBuf;
-use std::sync::Mutex;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Instant;
 
 use local_broker::LocalBroker;

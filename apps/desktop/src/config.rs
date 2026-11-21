@@ -17,7 +17,8 @@ pub struct Config {
 
 impl Config {
     pub fn load(app_data_dir: PathBuf) -> Self {
-        let api_base_url = std::env::var("RECORDER_API_BASE_URL").unwrap_or_else(|_| "http://127.0.0.1:8787".to_string());
+        let api_base_url = std::env::var("RECORDER_API_BASE_URL")
+            .unwrap_or_else(|_| "http://127.0.0.1:8787".to_string());
         Self {
             api_base_url,
             credential_service: "meetingram".to_string(),

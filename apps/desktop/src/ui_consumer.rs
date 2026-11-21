@@ -20,7 +20,9 @@ pub struct TranscriptBuffer {
 
 impl TranscriptBuffer {
     pub fn new() -> Self {
-        Self { segments: Arc::new(Mutex::new(Vec::new())) }
+        Self {
+            segments: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 
     pub fn take(&self) -> Vec<TranscriptSegment> {
@@ -139,7 +141,10 @@ fn parse_speaker_from_label(label: &str) -> Option<u32> {
     if let Some(open) = label.find("(話者") {
         let rest = &label[open + "(話者".len()..];
         if let Some(close) = rest.find(')') {
-            return rest[..close].parse::<u32>().ok().map(|n| n.saturating_sub(1));
+            return rest[..close]
+                .parse::<u32>()
+                .ok()
+                .map(|n| n.saturating_sub(1));
         }
     }
     None
