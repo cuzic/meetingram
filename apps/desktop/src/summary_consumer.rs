@@ -255,23 +255,21 @@ impl SummaryConsumer {
         let summarizer: Result<Box<dyn Summarizer>, String> = if let Some(backend) = provider.cli_backend() {
             Ok(Box::new(summarize::CliSummarizer(backend)))
         } else if provider == SummaryProvider::ClaudeOAuth {
-            Ok(Box::new(summarize::GenaiSummarizer(summarize::build_claude_oauth_client())))
+            genai_summarizer(summarize::build_claude_oauth_client())
         } else if provider.is_vertex() {
             let raw = stored_credential.and_then(Result::ok).unwrap_or_default();
             match serde_json::from_str::<summarize::VertexCredentials>(&raw) {
-                Ok(credentials) => Ok(Box::new(summarize::GenaiSummarizer(summarize::build_vertex_client(credentials)))),
+                Ok(credentials) => genai_summarizer(summarize::build_vertex_client(credentials)),
                 Err(e) => Err(format!("認証情報の読み込みに失敗しました: {e}")),
             }
         } else if provider == SummaryProvider::Ollama {
             let base_url = self.app_settings.lock().unwrap().ollama_base_url.clone();
-            Ok(Box::new(summarize::GenaiSummarizer(summarize::build_ollama_client(base_url))))
+            genai_summarizer(summarize::build_ollama_client(base_url))
         } else if let Some(account) = provider.api_key_account() {
             let resolver = summarize::credential_store_auth_resolver(self.credential_store.clone(), account);
-            let client = genai::Client::builder().with_auth_resolver(resolver).build();
-            Ok(Box::new(summarize::GenaiSummarizer(client)))
+            genai_summarizer(genai::Client::builder().with_auth_resolver(resolver).build())
         } else {
-            let client = genai::Client::builder().build();
-            Ok(Box::new(summarize::GenaiSummarizer(client)))
+            genai_summarizer(genai::Client::builder().build())
         };
 
         match summarizer {
@@ -317,4 +315,12 @@ fn load_finalized_from_store(
             });
         }
     }
+}
+/// Wraps a freshly built genai client as a [`Summarizer`]. Building only fails
+/// when the HTTP client can't be initialized (e.g. TLS setup), which is shown
+/// to the user like any other summary error.
+fn genai_summarizer(client: Result<genai::Client, genai::Error>) -> Result<Box<dyn Summarizer>, String> {
+    client
+        .map(|client| Box::new(summarize::GenaiSummarizer(client)) as Box<dyn Summarizer>)
+        .map_err(|e| format!("AIクライアントの作成に失敗しました: {e}"))
 }
