@@ -1,7 +1,8 @@
 function Start-ScreenRecording {
     param([string]$Output)
 
-    $settings = [System.Diagnostics.ProcessStartInfo]::new((Get-Command ffmpeg -CommandType Application).Source)
+    $ffmpeg = Get-Command ffmpeg -CommandType Application | Select-Object -First 1
+    $settings = [System.Diagnostics.ProcessStartInfo]::new($ffmpeg.Source)
     $settings.WorkingDirectory = $Output
     $settings.UseShellExecute = $false
     $settings.RedirectStandardInput = $true
