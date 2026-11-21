@@ -33,7 +33,13 @@ pub(super) fn GraphHistory(initial_session: Option<SessionId>) -> Element {
     if sessions.is_empty() {
         return rsx! {};
     }
-    let selected_value = selected().map(|id| id.to_string()).unwrap_or_default();
+    let selected_session = selected()
+        .and_then(|id| sessions.iter().find(|(session_id, _)| *session_id == id))
+        .cloned();
+    let selected_value = selected_session
+        .as_ref()
+        .map(|(id, _)| id.to_string())
+        .unwrap_or_default();
 
     rsx! {
         section { class: "history-container",
@@ -49,8 +55,8 @@ pub(super) fn GraphHistory(initial_session: Option<SessionId>) -> Element {
                         }
                     }
                 }
-                if let Some(session_id) = selected() {
-                    GraphStatusRow { key: "{session_id}", session_id, history: true }
+                if let Some((session_id, date)) = selected_session {
+                    GraphStatusRow { key: "{session_id}", session_id, session_label: date }
                 }
             }
         }

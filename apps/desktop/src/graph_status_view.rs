@@ -1,26 +1,28 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use dioxus::prelude::*;
 use recorder_domain::{CaptureState, SessionId};
 
-use crate::{app_state::AppState, graph_consumer::GraphStatus};
+use crate::{
+    app_state::AppState,
+    graph_consumer::{DisabledReason, GraphStatus},
+};
 
-use super::graph_view::{should_refresh_pending, GraphView};
+use super::graph_view::{
+    continue_is_pending, rebuild_confirmation, should_read_capture_state, should_refresh_pending,
+    GraphView, HistoryPending,
+};
 
-fn is_recording(state: &AppState, session_id: SessionId) -> bool {
-    if state
+fn is_current_recording(state: &AppState, session_id: SessionId) -> bool {
+    state
         .current
         .lock()
         .unwrap()
         .as_ref()
         .is_some_and(|active| active.session_id == session_id)
-    {
-        return true;
-    }
-    !matches!(
-        state.store.capture_state(session_id),
-        Ok(CaptureState::Finalized | CaptureState::Failed { .. })
-    )
 }
 
 fn graph_enabled(state: &AppState) -> bool {
@@ -33,10 +35,12 @@ fn graph_enabled(state: &AppState) -> bool {
 }
 
 #[component]
-pub(super) fn GraphStatusRow(session_id: SessionId, history: bool) -> Element {
+pub(super) fn GraphStatusRow(session_id: SessionId, session_label: Option<String>) -> Element {
     let state = use_context::<Arc<AppState>>();
-    let mut snapshot = use_signal(|| (None::<Result<GraphStatus, ()>>, false));
-    let mut refresh_pending = use_signal(|| false);
+    let history = session_label.is_some();
+    let mut snapshot = use_signal(|| None::<(GraphStatus, bool, bool)>);
+    let mut refresh_requested = use_signal(|| false);
+    let mut continue_request = use_signal(|| None::<(Instant, Option<DisabledReason>)>);
     let mut confirming = use_signal(|| false);
 
     use_future({
@@ -44,57 +48,85 @@ pub(super) fn GraphStatusRow(session_id: SessionId, history: bool) -> Element {
         move || {
             let state = state.clone();
             async move {
-                let mut history_pending = None;
+                let mut history_pending = HistoryPending::default();
+                let mut capture_recording = None;
+                let mut was_busy = false;
+                let mut stopped = None;
+                let mut refresh_pending = true;
                 loop {
-                    let mut recording = !history || is_recording(&state, session_id);
-                    let mut status = state.graph_consumer.status(session_id);
-                    let refresh_requested = *refresh_pending.peek();
-                    if refresh_requested {
-                        refresh_pending.set(false);
+                    let current_recording = history && is_current_recording(&state, session_id);
+                    // The stop event arrives after capture finalization, even with the graph disabled.
+                    if current_recording && stopped.is_none() {
+                        stopped = Some(
+                            state
+                                .broker
+                                .subscribe(&local_broker::session_stopped_subject(session_id)),
+                        );
                     }
-                    let idle_history = should_refresh_pending(history, recording, &status, true);
+                    if stopped
+                        .as_mut()
+                        .is_some_and(|receiver| receiver.try_recv().is_ok())
+                    {
+                        stopped = None;
+                        refresh_requested.set(true);
+                    }
 
-                    // Refresh on entry and once a session becomes idle after an operation.
-                    if !idle_history || refresh_requested {
-                        history_pending = None;
+                    let mut status = state.graph_consumer.status(session_id);
+                    let request = *continue_request.peek();
+                    if let Some((started, previous_reason)) = request {
+                        if !continue_is_pending(&status, previous_reason, started.elapsed()) {
+                            continue_request.set(None);
+                            refresh_requested.set(true);
+                        }
                     }
-                    if should_refresh_pending(
+
+                    let busy = current_recording || status.running || status.rebuilding;
+                    if should_read_capture_state(
                         history,
-                        recording,
-                        &status,
-                        history_pending.is_none(),
+                        capture_recording.is_some(),
+                        was_busy,
+                        busy,
+                        *refresh_requested.peek(),
                     ) {
-                        let pending = state.graph_consumer.pending_count(session_id).await;
-                        recording = is_recording(&state, session_id);
+                        capture_recording = Some(!matches!(
+                            state.store.capture_state(session_id),
+                            Ok(CaptureState::Finalized | CaptureState::Failed { .. })
+                        ));
+                        refresh_requested.set(false);
+                        refresh_pending = true;
+                    }
+                    was_busy = busy;
+
+                    let mut recording =
+                        !history || current_recording || capture_recording == Some(true);
+                    if should_refresh_pending(history, recording, &status, refresh_pending) {
+                        history_pending
+                            .update(state.graph_consumer.pending_count(session_id).await);
+                        recording |= is_current_recording(&state, session_id);
                         status = state.graph_consumer.status(session_id);
-                        if should_refresh_pending(history, recording, &status, true) {
-                            history_pending = Some(pending);
+                        refresh_pending = false;
+                    }
+                    if should_refresh_pending(history, recording, &status, true) {
+                        if let Some(count) = history_pending.count {
+                            status.pending = count;
                         }
                     }
-                    let status = match history_pending {
-                        Some(Ok(pending)) => {
-                            status.pending = pending;
-                            Ok(status)
-                        }
-                        Some(Err(_)) => Err(()),
-                        None => Ok(status),
-                    };
-                    snapshot.set((Some(status), recording));
+                    snapshot.set(Some((status, recording, history_pending.failed)));
                     tokio::time::sleep(Duration::from_millis(250)).await;
                 }
             }
         }
     });
 
-    let (status, recording) = snapshot();
-    let status = match status {
-        Some(Ok(status)) => status,
-        Some(Err(())) => {
-            return rsx! { p { class: "hint", "未抽出件数を取得できませんでした" } };
-        }
-        None => return rsx! { p { class: "hint", "議論グラフの状態を取得しています" } },
+    let Some((status, recording, pending_failed)) = snapshot() else {
+        return rsx! { p { class: "hint", "議論グラフの状態を取得しています" } };
     };
-    let view = GraphView::new(&status, recording, graph_enabled(&state));
+    let view = GraphView::new(
+        &status,
+        recording,
+        graph_enabled(&state),
+        continue_request().is_some(),
+    );
     let label = view.label;
     let continue_state = state.clone();
 
@@ -102,18 +134,23 @@ pub(super) fn GraphStatusRow(session_id: SessionId, history: bool) -> Element {
         div {
             p { class: "hint", "議論グラフ · {label}" }
             if history && !recording {
+                if pending_failed {
+                    p { class: "hint", "未抽出件数を取得できませんでした" }
+                }
                 button {
                     disabled: !view.can_continue || confirming(),
                     onclick: move |_| {
                         let status = continue_state.graph_consumer.status(session_id);
-                        if !is_recording(&continue_state, session_id)
+                        if view.can_continue
+                            && !confirming()
+                            && continue_request.peek().is_none()
+                            && !is_current_recording(&continue_state, session_id)
                             && graph_enabled(&continue_state)
                             && !status.running
                             && !status.rebuilding
                             && continue_state.graph_consumer.continue_extraction(session_id)
                         {
-                            refresh_pending.set(true);
-                            snapshot.set((Some(Ok(continue_state.graph_consumer.status(session_id))), false));
+                            continue_request.set(Some((Instant::now(), status.disabled_reason)));
                         }
                     },
                     "続きを抽出"
@@ -123,23 +160,27 @@ pub(super) fn GraphStatusRow(session_id: SessionId, history: bool) -> Element {
                     onclick: move |_| confirming.set(true),
                     "グラフを作り直す"
                 }
-                if confirming() {
+                if let Some(reason) = view.action_reason {
+                    span { class: "hint", "{reason}" }
+                }
+                if let Some(session_label) = session_label.filter(|_| confirming()) {
                     div { role: "alert",
-                        p { "グラフを作り直すと、承認・却下の結果も消えます。" }
+                        p { "{rebuild_confirmation(&session_label)}" }
                         button {
                             disabled: !view.can_rebuild,
                             onclick: move |_| {
                                 let status = state.graph_consumer.status(session_id);
                                 let view = GraphView::new(
                                     &status,
-                                    is_recording(&state, session_id),
+                                    recording || is_current_recording(&state, session_id),
                                     graph_enabled(&state),
+                                    continue_request.peek().is_some(),
                                 );
                                 if confirming() && view.can_rebuild
                                     && state.graph_consumer.rebuild(session_id)
                                 {
-                                    refresh_pending.set(true);
-                                    snapshot.set((Some(Ok(state.graph_consumer.status(session_id))), false));
+                                    refresh_requested.set(true);
+                                    snapshot.set(Some((state.graph_consumer.status(session_id), false, pending_failed)));
                                 }
                                 confirming.set(false);
                             },

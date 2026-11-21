@@ -881,8 +881,10 @@ pub fn App() -> Element {
             .last_session_id
             .as_deref()
             .and_then(|id| id.parse::<SessionId>().ok())
-            .map(|session_id| rsx! {
-                graph_status_view::GraphStatusRow { key: "{session_id}", session_id, history: false }
+            .map(|session_id| {
+                rsx! {
+                    graph_status_view::GraphStatusRow { key: "{session_id}", session_id }
+                }
             })
     } else {
         None

@@ -60,6 +60,10 @@ impl GraphSettingsDraft {
     }
 }
 
+fn settings_timing_message() -> &'static str {
+    "有効・無効はすぐに反映されます（無効にすると録音中の会議でもそれ以降は送信しません）。モデルと窓の設定は次の録音から反映されます。"
+}
+
 #[component]
 pub(crate) fn GraphSettings(disabled_reason: Option<DisabledReason>) -> Element {
     let state = use_context::<Arc<AppState>>();
@@ -70,6 +74,7 @@ pub(crate) fn GraphSettings(disabled_reason: Option<DisabledReason>) -> Element 
     rsx! {
         section { class: "settings-section",
             h2 { "議論グラフ" }
+            p { class: "hint", "{settings_timing_message()}" }
             if let Some(reason) = disabled {
                 p { class: "hint", "セッションの起動結果 · {reason}" }
             }
@@ -140,6 +145,14 @@ pub(crate) fn GraphSettings(disabled_reason: Option<DisabledReason>) -> Element 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn explains_when_settings_take_effect() {
+        let message = settings_timing_message();
+        assert!(message.contains("有効・無効はすぐに反映されます"));
+        assert!(message.contains("無効にすると録音中の会議でもそれ以降は送信しません"));
+        assert!(message.contains("モデルと窓の設定は次の録音から反映されます"));
+    }
 
     #[test]
     fn saves_graph_fields_and_preserves_other_settings() {
