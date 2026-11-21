@@ -7,9 +7,9 @@ use std::time::Duration;
 
 use credential_store::{CredentialStore, FallbackCredentialStore};
 use discussion_graph::{
-    build_consolidate, build_incremental, graph_updated_subject, parse_ops, store::GraphStore,
-    AppliedOp, ConsolidateStyle, Graph, GraphUpdated, Op, ParseError, PatchSource, Prompt,
-    DEFAULT_INPUT_LIMIT,
+    build_consolidate_groups, build_consolidate_issues, build_incremental, graph_updated_subject,
+    parse_ops, store::GraphStore, AppliedOp, Graph, GraphUpdated, Op, ParseError, PatchSource,
+    Prompt, DEFAULT_INPUT_LIMIT,
 };
 use local_broker::LocalBroker;
 use recorder_domain::SessionId;
@@ -82,6 +82,8 @@ struct Sessions {
     active: HashMap<SessionId, Arc<Session>>,
     // A past backend failure cannot be recovered from the current settings.
     disabled: HashMap<SessionId, DisabledReason>,
+    // Keep completion across idle executor pruning. Unseen sessions need consolidation.
+    consolidated: BTreeSet<SessionId>,
 }
 
 impl Sessions {
@@ -222,8 +224,14 @@ impl GraphConsumer {
         }
     }
 
+    /// Imports finalized rows in a write transaction before counting pending rows.
+    /// For a recording session, use `status().pending`.
     pub async fn pending_count(self: &Arc<Self>, sid: SessionId) -> Result<usize, &'static str> {
-        self.db(move |store| store.pending_count(sid)).await
+        self.db(move |store| {
+            store.import_utterances(sid)?;
+            store.pending_count(sid)
+        })
+        .await
     }
 
     #[allow(dead_code)] // Read by the graph view in task 6.
@@ -593,13 +601,7 @@ impl<'a> Run<'a> {
 
     async fn import(&self) -> Result<usize, &'static str> {
         let sid = self.sid;
-        let count = self
-            .consumer
-            .db(move |store| {
-                store.import_utterances(sid)?;
-                store.pending_count(sid)
-            })
-            .await?;
+        let count = self.consumer.pending_count(sid).await?;
         self.session.state().status.pending = count;
         Ok(count)
     }
@@ -650,7 +652,10 @@ impl<'a> Run<'a> {
                 return Err("input_limit");
             }
             self.apply(source, prompt).await?;
-            let count = self.consumer.pending_count(sid).await?;
+            let count = self
+                .consumer
+                .db(move |store| store.pending_count(sid))
+                .await?;
             self.session.state().status.pending = count;
             Ok(true)
         } else {
@@ -659,6 +664,7 @@ impl<'a> Run<'a> {
     }
 
     async fn flush(&mut self, consolidate_without_new_patch: bool) {
+        let was_consolidated = self.consumer.sessions().consolidated.remove(&self.sid);
         self.saved_flush_patch = false;
         let mut failures = 0;
         loop {
@@ -676,34 +682,45 @@ impl<'a> Run<'a> {
             }
         }
 
-        if !consolidate_without_new_patch && !self.saved_flush_patch {
+        if !consolidate_without_new_patch && !self.saved_flush_patch && was_consolidated {
+            self.consumer.sessions().consolidated.insert(self.sid);
             return;
         }
-        if let Err(kind) = self.consolidate().await {
-            if kind != "cancelled" {
-                self.log_failure(PatchSource::Consolidate, kind);
+        match self.consolidate().await {
+            Ok(()) => {
+                self.consumer.sessions().consolidated.insert(self.sid);
             }
+            Err("cancelled") => {}
+            Err(kind) => self.log_failure(PatchSource::Consolidate, kind),
         }
     }
 
     async fn consolidate(&mut self) -> Result<(), &'static str> {
         let sid = self.sid;
-        let prompts = self
-            .consumer
-            .db(move |store| {
-                let graph = store.load_graph(sid)?;
-                if !graph.nodes.values().any(|node| node.is_live()) {
-                    return Ok(Ok(Vec::new()));
-                }
-                Ok(build_consolidate(
-                    &graph,
-                    ConsolidateStyle::Strengthened,
-                    INPUT_LIMIT,
-                ))
-            })
-            .await?
-            .map_err(|_| "input_limit")?;
-        for prompt in prompts {
+        let graph = self.consumer.db(move |store| store.load_graph(sid)).await?;
+        if !graph.nodes.values().any(|node| node.is_live()) {
+            return Ok(());
+        }
+
+        let issues = build_consolidate_issues(&graph, INPUT_LIMIT).map_err(|_| "input_limit")?;
+        let graph = if let Some(prompt) = issues {
+            if prompt.omitted_issues > 0 {
+                tracing::debug!(
+                    omitted = prompt.omitted_issues,
+                    "issues omitted from consolidation"
+                );
+            }
+            self.apply(PatchSource::Consolidate, prompt).await?;
+            self.consumer.db(move |store| store.load_graph(sid)).await?
+        } else {
+            graph
+        };
+
+        let (groups, omitted) = build_consolidate_groups(&graph, INPUT_LIMIT);
+        if omitted > 0 {
+            tracing::debug!(omitted, "nodes omitted from consolidation");
+        }
+        for prompt in groups {
             self.apply(PatchSource::Consolidate, prompt).await?;
         }
         Ok(())
@@ -1276,24 +1293,134 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn continue_only_consolidates_after_a_new_extraction_patch() {
+    async fn pending_count_imports_finalized_rows() {
         let f = Fixture::new();
-        // A previous increment leaves a live node without running consolidation.
+        f.append("synthetic finalized turn without a notification", false);
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
+    }
+
+    const TWO_ISSUES: &str = r#"{"ops":[
+        {"op":"add_node","tmp":"a","kind":"issue","text":"Synthetic issue A","confidence":1,"grounds":[{"uid":"u1"}]},
+        {"op":"add_node","tmp":"b","kind":"issue","text":"Synthetic issue B","confidence":1,"grounds":[{"uid":"u1"}]}
+    ]}"#;
+    const ATTACH_ISSUE: &str = r#"{"ops":[
+        {"op":"add_edge","src":"n2","dst":"n1","kind":"sub_issue_of","confidence":1,"grounds":[{"uid":"u1"}]}
+    ]}"#;
+
+    #[tokio::test]
+    async fn consolidation_builds_groups_after_saving_issue_patch() {
+        let mut f = Fixture::new();
+        f.append("synthetic turn with two issues", false);
+        let (fake, mut calls) = Fake::scripted(0..0, vec![TWO_ISSUES, ATTACH_ISSUE], false);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
+        let issues = calls.try_recv().unwrap();
+        assert_eq!(issues.timeout, Duration::from_secs(120));
+        assert!(!issues.user.contains(r#""kind":"sub_issue_of""#));
+        let groups = calls.try_recv().unwrap();
+        assert_eq!(groups.timeout, Duration::from_secs(120));
+        assert!(groups.user.contains(r#""kind":"sub_issue_of""#));
+        assert!(calls.try_recv().is_err());
+        let events = f.events();
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[1].source, PatchSource::Consolidate);
+        assert_eq!(events[1].added, 1);
+        assert_eq!(events[2].source, PatchSource::Consolidate);
+    }
+
+    #[tokio::test]
+    async fn consolidation_retries_each_unreadable_stage_once() {
+        let mut f = Fixture::new();
+        f.append("synthetic turn with two issues", false);
+        let (fake, mut calls) = Fake::scripted(
+            0..0,
+            vec![
+                TWO_ISSUES,
+                "invalid JSON",
+                ATTACH_ISSUE,
+                "invalid JSON",
+                EMPTY_PATCH,
+            ],
+            false,
+        );
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
+        let issues = assert_consolidation_retry(&mut calls);
+        assert!(!issues.user.contains(r#""kind":"sub_issue_of""#));
+        let groups = assert_consolidation_retry(&mut calls);
+        assert!(groups.user.contains(r#""kind":"sub_issue_of""#));
+        assert!(calls.try_recv().is_err());
+        let events = f.events();
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[1].source, PatchSource::Consolidate);
+        assert_eq!(events[1].added, 1);
+        assert_eq!(events[2].source, PatchSource::Consolidate);
+    }
+
+    fn assert_consolidation_retry(
+        calls: &mut mpsc::UnboundedReceiver<CompletionRequest>,
+    ) -> CompletionRequest {
+        let first = calls.try_recv().unwrap();
+        let retry = calls
+            .try_recv()
+            .expect("unreadable response should be retried");
+        assert_eq!(first.timeout, Duration::from_secs(120));
+        assert_eq!(retry.timeout, first.timeout);
+        assert_eq!(retry.user, format!("{}{RETRY_NOTE}no_object", first.user));
+        first
+    }
+
+    #[tokio::test]
+    async fn invalid_issue_response_skips_groups_and_can_resume_without_a_new_patch() {
+        let mut f = Fixture::new();
+        f.append("synthetic turn with two issues", false);
+        let (initial, mut initial_calls) = Fake::scripted(
+            0..0,
+            vec![TWO_ISSUES, "invalid JSON", "invalid JSON"],
+            false,
+        );
+        f.post(PostMeeting::Continue, initial).await.unwrap();
+        assert_eq!(
+            initial_calls.try_recv().unwrap().timeout,
+            Duration::from_secs(60)
+        );
+        assert_consolidation_retry(&mut initial_calls);
+        assert!(initial_calls.try_recv().is_err());
+        let events = f.events();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].source, PatchSource::Flush);
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 0);
+
+        let (fake, mut calls) = Fake::new(false, false);
+        f.post(PostMeeting::Continue, fake.clone()).await.unwrap();
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
+        assert!(calls.try_recv().is_err());
+
+        f.post(PostMeeting::Continue, fake.clone()).await.unwrap();
+        assert!(calls.try_recv().is_err());
+
+        f.append("synthetic new turn after consolidation", false);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
+        assert!(calls.try_recv().is_err());
+    }
+
+    #[tokio::test]
+    async fn continue_consolidates_a_session_without_a_completion_mark() {
+        let f = Fixture::new();
         f.append("synthetic retranscribed turn", true);
         let (initial, _) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
         f.post(PostMeeting::Retranscribed, initial).await.unwrap();
 
         let (fake, mut calls) = Fake::new(false, false);
-        f.post(PostMeeting::Continue, fake.clone()).await.unwrap();
-        assert!(calls.try_recv().is_err());
-
-        f.append("synthetic pending turn", false);
-        f.post(PostMeeting::Continue, fake.clone()).await.unwrap();
-        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
-        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
-        assert!(calls.try_recv().is_err());
-
         f.post(PostMeeting::Continue, fake).await.unwrap();
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
         assert!(calls.try_recv().is_err());
     }
 
@@ -1393,6 +1520,38 @@ mod tests {
         assert!(calls.try_recv().is_err());
         assert!(f.events().is_empty());
         assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn failed_flush_leaves_consolidation_pending_without_a_new_patch() {
+        let mut f = Fixture::new();
+        f.append("synthetic issue turn", false);
+        let (initial, _) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
+        f.post(PostMeeting::Continue, initial).await.unwrap();
+        assert_eq!(f.events().last().unwrap().source, PatchSource::Consolidate);
+
+        f.append("synthetic pending turn", false);
+        let (failing, mut failed_calls) = Fake::new(true, false);
+        f.post(PostMeeting::Continue, failing).await.unwrap();
+        assert_failed_flush_skips_consolidation(&f, &mut failed_calls).await;
+        assert!(f.events().is_empty());
+
+        // Mark the remaining turn extracted in the store so the next Continue
+        // cannot trigger consolidation by saving a flush patch of its own.
+        let sid = f.sid;
+        f.consumer
+            .db(move |store| store.apply_patch(sid, PatchSource::Flush, None, &[], &["u2"], &[]))
+            .await
+            .unwrap();
+        assert_eq!(f.consumer.pending_count(sid).await.unwrap(), 0);
+
+        let (retry, mut calls) = Fake::new(false, false);
+        f.post(PostMeeting::Continue, retry).await.unwrap();
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
+        assert!(calls.try_recv().is_err());
+        let events = f.events();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].source, PatchSource::Consolidate);
     }
 
     #[tokio::test]
