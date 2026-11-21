@@ -1,6 +1,6 @@
 # ADR 0002: E2E 用の台本どおりに動く文字起こしと LLM
 
-- Status: Proposed
+- Status: Accepted
 - 日付: 2026-11-21
 - 関連: ADR 0001（議論グラフ）、`.github/workflows/windows-e2e.yml`（PR #19）、meetingram-core の S1 の合成会議
   （meetingram-core PR #9、`spikes/s1-discussion-graph/data/*.jsonl` と `gold/*.json`）、
@@ -70,7 +70,7 @@ CI に API キーも認証済みの CLI も無いので、文字起こしは `No
 ### 1. 有効にする条件（本番に混ざらないこと）
 
 - アプリの cargo feature `e2e-scripted`（既定は無効）を付けたときだけ、偽物のコードが入る。
-  - release ビルドでこの feature を付けるとコンパイルできないようにする:
+  - release ビルドでこの feature を付けるとコンパイルできないようにする（`desktop` crate の feature で判定し、`desktop` に置く）:
     `#[cfg(all(feature = "e2e-scripted", not(debug_assertions)))] compile_error!(...)`。
   - `desktop-bundle.yml`（`dx build --release`）で出来た exe に、目印の文字列（`e2e scenario active`）が無いことを grep で確かめる。
 - その上で、環境変数 `MEETINGRAM_E2E_SCENARIO=<シナリオのディレクトリ>` があるときだけ使う。無ければ本番と同じ動き。
@@ -82,9 +82,10 @@ CI に API キーも認証済みの CLI も無いので、文字起こしは `No
 
 ### 2. 偽の文字起こし（`ScriptedSttProvider`）
 
-- **コアの変更**（meetingram-core、`live-transcription` feature の中だけ）:
-  - `run_windows_capture_session` に、引数を 1 つ足す: `LiveTranscriptionOptions { silence_gate_enabled, stt_override: Option<SttOverride> }`。
-    今の `silence_gate_enabled` 引数はこの中に移す。今後の追加もこの構造体に足す。
+- **コアの変更**（meetingram-core）:
+  - `run_windows_capture_session` に、引数を 1 つ足す: `LiveTranscriptionOptions`。今の `silence_gate_enabled` 引数はこの中に移す。
+    今後の追加もこの構造体に足す。構造体は常に定義し（`windows-supervisor` だけの構成でも stub が使う）、作るのは `Default` とビルダー。
+    `stt_override: Option<SttOverride>` のフィールドと `with_stt_override` だけを `#[cfg(feature = "live-transcription")]` にする。
   - `SttOverride { self_track: Arc<dyn SttProvider>, remote_track: Arc<dyn SttProvider> }`。トラックごとにするのは、
     `SttSessionConfig` にトラックが無く、1 つのプロバイダではどちらのセッションか分からないため。
   - `run_live_transcription` は、`stt_override` があれば `:815`（資格情報ストアが無い）と `:828`（組み立て）の**前**で分岐し、
@@ -99,7 +100,9 @@ CI に API キーも認証済みの CLI も無いので、文字起こしは `No
     `audio_start_ms` / `audio_end_ms` は `start_ms / speed`、`end_ms / speed`。
   - **進み具合はプロバイダが持つ**: 次に出す行をプロバイダが覚え、再接続のときは続きから出す。
   - **送信側はセッションが持ち続ける**: イベントのチャネルは `finalize` まで閉じない（閉じると欠落と再接続になる）。
-    `finalize` では、まだ出していない発話を出さずに終える（録音を止めた時点までが会議）。
+    `finalize` では、まだ出していない発話を出さずに終える（録音を止めた時点までが会議）。出す役のタスクを止め、
+    送信側をすべて手放してから戻る（残すと `run_live_transcription` のループ（`:941`）が終わらず、停止が終わらない）。
+  - `FinalTranscript` の `words` は `None` にする（話者の番号があるとラベルが「自分 (話者1)」になり、§3 の照合が外れる）。
   - `send_audio` は音を捨てる。
   - 15 分のシナリオを 10 倍で流すと 90 秒。CI では 100 秒録音してから止める。
 - 再文字起こし（`BatchSttProvider`）は偽物を作らない。E2E では欠落が起きない前提で、起きたら §5 の確認で落ちる。
@@ -112,17 +115,23 @@ CI に API キーも認証済みの CLI も無いので、文字起こしは `No
   - 偽物の工場は `Backend` を直接返し、キーリングのプロバイダ・Q6・CLI の `is_available` を通らない。
     `SummaryProvider` に偽の値は足さない（保存済みの鍵の互換とコアのテストのため）。
   - `graph_enabled` と Windows の判定は工場の外なので、偽物でも効く。
+  - `graph()` は、録音の開始だけでなく、会議の後の操作（続きを抽出、再文字起こしの後、作り直し）でも使う。
+  - シナリオによるグラフの設定の上書き（§4）は、`AppSettings` を書き換えず、工場か consumer に渡す所で当てる。
 - **プロンプトの解析はコアの公開関数**（`discussion_graph`）: 増分のプロンプトの user から、
   `new` と `reference` の発話（`uid`、`speaker_label`、本文）と、`context` のノード（`nid`、`kind`、本文）を取り出す。
   増分でなければ `None`（それで整理などと見分ける。system では見分けない）。
   `prompt.rs` の形を変える PR は、この関数と、§5 の単体テストも一緒に直す。`prompt.rs` に触る前に PR #15 の作者に声をかける。
 - **増分の抽出への応答**:
-  - 発話の照合は（`speaker_label`、本文の全文、その組の出現順）で行う。先頭の数文字では「はい」などが重なる。
+  - 発話の照合は（`speaker_label`、本文の全文）で行う。先頭の数文字では「はい」などが重なる。同じ組が複数あるときは、
+    偽の LLM がセッションごとに「`uid` → `row_id`」の対応を覚え、台本の行を前から順に消費する
+    （再試行や流し切りで同じ `uid` がもう一度来たら同じ行）。
   - 正解グラフのノードのうち、根拠の最初の `row_id` が今回の `new` にあるものを `add_node` で返す
     （`tmp` は正解の id、`grounds` は根拠のうち今回見えている発話（`new` と `reference`）の `uid`、`confidence` は 0.8）。
     同じ本文のノードが `context` にすでにあれば返さない（失敗後の再試行で二重にしない）。
-  - エッジは、両端が「今回作るもの（`tmp`）」か「`context` のノード（本文の完全一致で `nid`）」でそろったときに `add_edge` で返す。
-    `grounds` は、後からそろった端点の根拠の最初の発話の `uid`、`confidence` は 0.8。
+  - エッジは、**端点の少なくとも一方が今回の `add_node`（`tmp`）**で、もう一方が `tmp` か `context` のノード
+    （本文の完全一致で `nid`）のときだけ `add_edge` で返す。両端とも `context` のエッジは返さない
+    （`context` には既存のエッジが載らず、偽物は状態を持たないので、返すと毎回重複・根拠の範囲外で却下される）。
+    `grounds` は、今回作る端点の根拠の最初の発話の `uid`（必ず今回の `new` にある）、`confidence` は 0.8。
     片方がまだ無ければ返さず、後で作られたときに返す。`context` から外れて見えないときは出さない。
   - 何も返すものが無ければ `{"ops":[]}`。
 - **それ以外の `complete`**（整理など）: `{"ops":[]}`。整理の効き目はこの仕組みでは確かめない（S2 の役目）。
@@ -149,8 +158,8 @@ CI に API キーも認証済みの CLI も無いので、文字起こしは `No
 - **Windows の E2E**（`windows-e2e.yml`。`--features e2e-scripted` でビルドし、`MEETINGRAM_E2E_SCENARIO` を付けて起動）:
   - 録音中の `meetingramctl --json status` で、`transcription_status.self_status` と `remote_status` がどちらも `Connected`。
   - 停止後、セッションに文字起こしの行が 1 件以上ある（確かめ方は実装で決める。本文はログに出さない）。
-  - グラフの `rev` が 1 以上（ctl の `status` に載せる。`GraphStatus.rev` は PR #15 の作者が足し、control-protocol の DTO と
-    control_server はタスク 4 で足す）。
+  - 停止後、`last_session_id` のセッションのグラフの `rev` が 1 以上（ctl の `status` に載せる。`GraphStatus.rev` は PR #15 の作者が足す。
+    コアの `control-protocol` の `StatusDto` に `#[serde(default)]` 付きで足すのは分割 3、アプリの control_server は分割 4）。
   - 照合できた発話の件数が 0 でない（偽の LLM のログ）。
   - `transcription_gaps` が 0 件（偽の STT の切断が無い）。
   - 録画に、文字起こしが流れる様子と「E2E シナリオ」の帯が写ること（人が見る。図はタスク 6・7 の後）。
@@ -173,7 +182,9 @@ ADR 0001 §8 と同じ。偽物も本文・プロンプト・応答をログに�
 2. **アプリ（文字起こし）**: `apps/e2e-scripted` の `ScriptedSttProvider`、シナリオの読み込み、feature と環境変数、
    `compile_error!`、帯、E2E の延長と §5 の文字起こしの確認、配布物の grep。
    コアのタグを上げるので `Cargo.toml` と `Cargo.lock` が PR #15 と重なる。**PR #15 のマージ後**に始める。
-3. **コア（解析）**: `discussion_graph` のプロンプト解析の公開関数とテスト。`prompt.rs` の作業と重なりうるので、始める前に PR #15 の作者と時期を合わせる。
+3. **コア（解析と DTO）**: `discussion_graph` のプロンプト解析の公開関数とテスト、文脈の窓の選び方（PR #15 の `recent_nodes`）を
+   単体テストと共有できるよう公開する、`StatusDto` にグラフの `rev`。→ マイナー版を上げてタグ。
+   `prompt.rs` と `graph_consumer` の作業と重なりうるので、始める前に PR #15 の作者と時期と置き場所を合わせる。
 4. **アプリ（LLM）**: LLM の工場、`ScriptedSummarizer`、§5 の単体テスト、ctl の `status` にグラフの `rev`、E2E のグラフの確認。
    2・3 と `GraphStatus.rev` の後。
 
@@ -187,3 +198,4 @@ ADR 0001 §8 と同じ。偽物も本文・プロンプト・応答をログに�
 | --- | --- |
 | r1 | 初版（Proposed） |
 | r2 | round 1 を反映。B1: ヒントを範囲外に。M1: 口は `run_windows_capture_session` の `LiveTranscriptionOptions`、feature の中だけ、両方の分岐の前。M2: AppState の LLM の工場（PR #15 の作者と合意）。M3: エッジの根拠と確信度。M4: 送信側を持ち続ける、進み具合と時計を共有。M5: 単体テストと feature 付きの CI。m1〜m12: 照合のキー、見分け方は解析の関数で、二重の add_node、silence gate を無効、「使わない」、`compile_error!` と exe の grep、`Connected`、rev は ctl の status、タイムアウトの確認を外す、上書きはメモリだけ、分割 2 は #15 の後、決まるのは最終形だけ。解析はコアの公開関数に（PR #15 の作者の提案） |
+| r3 | round 2 を反映して Accepted。M-1: エッジは少なくとも一方が今回の `add_node` のときだけ。m-a: `LiveTranscriptionOptions` は常に定義し `stt_override` だけ cfg。m-b: `finalize` で送信側を手放す。m-c: `words` は `None`。m-d: `uid` → `row_id` を覚えて順に消費。m-e: 文脈の窓の選び方を共有。m-f: `StatusDto` はコア（分割 3）。m-g: 会議の後の操作でも工場、上書きは `AppSettings` に書かない。m-h: `compile_error!` は `desktop` |
