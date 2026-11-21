@@ -71,6 +71,62 @@ struct Session {
     generation: watch::Sender<u64>,
 }
 
+impl Session {
+    fn state(&self) -> std::sync::MutexGuard<'_, SessionState> {
+        self.state.lock().unwrap_or_else(|error| error.into_inner())
+    }
+}
+
+#[derive(Default)]
+struct Sessions {
+    active: HashMap<SessionId, Arc<Session>>,
+    // A past backend failure cannot be recovered from the current settings.
+    disabled: HashMap<SessionId, DisabledReason>,
+}
+
+impl Sessions {
+    fn prune_idle(&mut self, sid: SessionId) {
+        let Some(session) = self.active.get(&sid) else {
+            return;
+        };
+        if Arc::strong_count(session) != 1 {
+            return;
+        }
+        let state = session.state();
+        if state.recording {
+            return;
+        }
+        if let Some(reason) = state.status.disabled_reason {
+            self.disabled.insert(sid, reason);
+        }
+        drop(state);
+        self.active.remove(&sid);
+    }
+}
+
+struct SessionLease {
+    consumer: Arc<GraphConsumer>,
+    sid: SessionId,
+    session: Option<Arc<Session>>,
+}
+
+impl std::ops::Deref for SessionLease {
+    type Target = Session;
+
+    fn deref(&self) -> &Session {
+        self.session.as_deref().expect("session lease is active")
+    }
+}
+
+impl Drop for SessionLease {
+    fn drop(&mut self) {
+        let mut sessions = self.consumer.sessions();
+        // Release the reference while holding the same lock used to acquire leases.
+        drop(self.session.take());
+        sessions.prune_idle(self.sid);
+    }
+}
+
 struct RunGuard<'a> {
     session: &'a Session,
     rebuild: bool,
@@ -78,7 +134,7 @@ struct RunGuard<'a> {
 
 impl Drop for RunGuard<'_> {
     fn drop(&mut self) {
-        let mut state = self.session.state.lock().unwrap();
+        let mut state = self.session.state();
         state.status.running = false;
         if self.rebuild {
             state.status.rebuilding = false;
@@ -93,7 +149,7 @@ pub struct GraphConsumer {
     credentials: Arc<FallbackCredentialStore>,
     settings: Arc<Mutex<AppSettings>>,
     cli_temp_base: PathBuf,
-    sessions: Mutex<HashMap<SessionId, Arc<Session>>>,
+    sessions: Mutex<Sessions>,
 }
 
 struct Backend {
@@ -128,22 +184,42 @@ impl GraphConsumer {
             credentials,
             settings,
             cli_temp_base,
-            sessions: Mutex::new(HashMap::new()),
+            sessions: Mutex::default(),
         }
     }
 
-    fn session(&self, sid: SessionId) -> Arc<Session> {
+    fn sessions(&self) -> std::sync::MutexGuard<'_, Sessions> {
         self.sessions
             .lock()
-            .unwrap()
-            .entry(sid)
-            .or_default()
-            .clone()
+            .unwrap_or_else(|error| error.into_inner())
     }
 
+    fn session(self: &Arc<Self>, sid: SessionId) -> SessionLease {
+        let mut sessions = self.sessions();
+        let disabled_reason = sessions.disabled.remove(&sid);
+        let session = sessions.active.entry(sid).or_default().clone();
+        if disabled_reason.is_some() {
+            session.state().status.disabled_reason = disabled_reason;
+        }
+        SessionLease {
+            consumer: Arc::clone(self),
+            sid,
+            session: Some(session),
+        }
+    }
+
+    // After the executor is released, read the pending count via pending_count.
     #[allow(dead_code)] // Read by the graph view in task 6.
     pub fn status(&self, sid: SessionId) -> GraphStatus {
-        self.session(sid).state.lock().unwrap().status.clone()
+        let sessions = self.sessions();
+        if let Some(session) = sessions.active.get(&sid) {
+            session.state().status.clone()
+        } else {
+            GraphStatus {
+                disabled_reason: sessions.disabled.get(&sid).copied(),
+                ..GraphStatus::default()
+            }
+        }
     }
 
     pub async fn pending_count(self: &Arc<Self>, sid: SessionId) -> Result<usize, &'static str> {
@@ -154,7 +230,7 @@ impl GraphConsumer {
     pub fn review_threshold(&self) -> f64 {
         self.settings
             .lock()
-            .unwrap()
+            .unwrap_or_else(|error| error.into_inner())
             .graph_review_threshold
             .unwrap_or(0.6)
     }
@@ -226,10 +302,14 @@ impl GraphConsumer {
         load_backend: impl FnOnce(AppSettings) -> F + Send + 'static,
     ) -> Option<tokio::task::JoinHandle<()>> {
         let session = self.session(sid);
-        session.state.lock().unwrap().recording = true;
-        let settings = self.settings.lock().unwrap().clone();
+        session.state().recording = true;
+        let settings = self
+            .settings
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .clone();
         if let Err(reason) = Self::enabled(windows, &settings) {
-            session.state.lock().unwrap().status.disabled_reason = Some(reason);
+            session.state().status.disabled_reason = Some(reason);
             return None;
         }
 
@@ -249,7 +329,7 @@ impl GraphConsumer {
             let backend = match load_backend(settings).await {
                 Ok(backend) => backend,
                 Err(reason) => {
-                    session.state.lock().unwrap().status.disabled_reason = Some(reason);
+                    session.state().status.disabled_reason = Some(reason);
                     return;
                 }
             };
@@ -262,7 +342,11 @@ impl GraphConsumer {
     }
 
     pub fn recording_stopped(&self, sid: SessionId) {
-        self.session(sid).state.lock().unwrap().recording = false;
+        let mut sessions = self.sessions();
+        if let Some(session) = sessions.active.get(&sid) {
+            session.state().recording = false;
+        }
+        sessions.prune_idle(sid);
     }
 
     #[allow(dead_code)] // Called by the graph view in task 6.
@@ -298,10 +382,14 @@ impl GraphConsumer {
         load_backend: impl FnOnce(AppSettings) -> F + Send + 'static,
     ) -> Option<tokio::task::JoinHandle<()>> {
         let session = self.session(sid);
-        let settings = self.settings.lock().unwrap().clone();
+        let settings = self
+            .settings
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .clone();
         let rebuild = matches!(action, PostMeeting::Rebuild);
         let generation = {
-            let mut state = session.state.lock().unwrap();
+            let mut state = session.state();
             if state.recording || state.status.rebuilding {
                 return None;
             }
@@ -319,7 +407,7 @@ impl GraphConsumer {
             let backend = match load_backend(settings).await {
                 Ok(backend) => backend,
                 Err(reason) => {
-                    let mut state = session.state.lock().unwrap();
+                    let mut state = session.state();
                     state.status.disabled_reason = Some(reason);
                     if rebuild {
                         state.status.rebuilding = false;
@@ -426,7 +514,7 @@ impl<'a> Run<'a> {
     }
 
     fn mark_running(&self, rebuild: bool) -> RunGuard<'a> {
-        let mut state = self.session.state.lock().unwrap();
+        let mut state = self.session.state();
         state.status.running = true;
         state.status.disabled_reason = None;
         RunGuard {
@@ -489,7 +577,7 @@ impl<'a> Run<'a> {
                 }
                 last = Instant::now();
             }
-            let mut state = self.session.state.lock().unwrap();
+            let mut state = self.session.state();
             state.status.live_halted = failures >= FAILURE_LIMIT;
             deadline = if state.status.pending == 0 || failures >= FAILURE_LIMIT {
                 None
@@ -510,7 +598,7 @@ impl<'a> Run<'a> {
                 store.pending_count(sid)
             })
             .await?;
-        self.session.state.lock().unwrap().status.pending = count;
+        self.session.state().status.pending = count;
         Ok(count)
     }
 
@@ -561,7 +649,7 @@ impl<'a> Run<'a> {
             }
             self.apply(source, prompt).await?;
             let count = self.consumer.pending_count(sid).await?;
-            self.session.state.lock().unwrap().status.pending = count;
+            self.session.state().status.pending = count;
             Ok(true)
         } else {
             Ok(false)
@@ -594,10 +682,16 @@ impl<'a> Run<'a> {
 
     async fn consolidate(&mut self) -> Result<(), &'static str> {
         let sid = self.sid;
+        let database = self.consumer.database.clone();
         let prompts = self
             .consumer
             .db(move |store| {
                 let graph = store.load_graph(sid)?;
+                if !graph.nodes.values().any(|node| node.is_live())
+                    || !has_unconsolidated_patches(&database, sid)?
+                {
+                    return Ok(Ok(Vec::new()));
+                }
                 Ok(build_consolidate(
                     &graph,
                     ConsolidateStyle::Strengthened,
@@ -707,6 +801,24 @@ impl<'a> Run<'a> {
     fn log_failure(&self, source: PatchSource, kind: &'static str) {
         tracing::warn!(session_id = %self.sid, ?source, kind, "graph operation failed");
     }
+}
+
+fn has_unconsolidated_patches(
+    database: &std::path::Path,
+    sid: SessionId,
+) -> rusqlite::Result<bool> {
+    // GraphStore v0.3.0 exposes the current revision but no patch-source lookup.
+    let connection = rusqlite::Connection::open_with_flags(
+        database,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+    )?;
+    connection.query_row(
+        "SELECT COALESCE(MAX(CASE WHEN source IN ('live', 'flush') THEN rev END), 0)
+              > COALESCE(MAX(CASE WHEN source = 'consolidate' THEN rev END), 0)
+         FROM graph_patches WHERE session_id = ?1",
+        [sid.to_string()],
+        |row| row.get(0),
+    )
 }
 
 fn parse_kind(error: ParseError) -> &'static str {
@@ -894,15 +1006,13 @@ mod tests {
         }
     }
 
-    struct Call {
-        model: String,
-        user: String,
-        timeout: Duration,
-    }
+    const EMPTY_PATCH: &str = r#"{"ops":[]}"#;
+    const ISSUE_PATCH: &str = r#"{"ops":[{"op":"add_node","tmp":"issue","kind":"issue","text":"Synthetic issue","confidence":1,"grounds":[{"uid":"u1"}]}]}"#;
 
     struct Fake {
-        calls: mpsc::UnboundedSender<Call>,
-        failed: bool,
+        calls: mpsc::UnboundedSender<CompletionRequest>,
+        provider_failures: usize,
+        responses: Vec<&'static str>,
         first_block: Option<Semaphore>,
         active: AtomicUsize,
         count: AtomicUsize,
@@ -910,11 +1020,23 @@ mod tests {
     }
 
     impl Fake {
-        fn new(failed: bool, block_first: bool) -> (Arc<Self>, mpsc::UnboundedReceiver<Call>) {
+        fn new(
+            failed: bool,
+            block_first: bool,
+        ) -> (Arc<Self>, mpsc::UnboundedReceiver<CompletionRequest>) {
+            Self::scripted(if failed { usize::MAX } else { 0 }, Vec::new(), block_first)
+        }
+
+        fn scripted(
+            provider_failures: usize,
+            responses: Vec<&'static str>,
+            block_first: bool,
+        ) -> (Arc<Self>, mpsc::UnboundedReceiver<CompletionRequest>) {
             let (calls, receiver) = mpsc::unbounded_channel();
             let fake = Self {
                 calls,
-                failed,
+                provider_failures,
+                responses,
                 first_block: block_first.then(|| Semaphore::new(0)),
                 active: AtomicUsize::new(0),
                 count: AtomicUsize::new(0),
@@ -961,25 +1083,33 @@ mod tests {
             let _guard = ActiveCall(&fake.active);
             fake.max_active.fetch_max(active, Ordering::SeqCst);
             let count = fake.count.fetch_add(1, Ordering::SeqCst);
-            let _ = fake.calls.send(Call {
-                model: request.model.clone(),
-                user: request.user.clone(),
-                timeout: request.timeout,
-            });
+            let _ = fake.calls.send(CompletionRequest::new(
+                request.system.clone(),
+                request.user.clone(),
+                request.model.clone(),
+                request.timeout,
+            ));
             if count == 0 {
                 if let Some(block) = &fake.first_block {
                     block.acquire().await.unwrap().forget();
                 }
             }
-            if fake.failed {
+            if count < fake.provider_failures {
                 Err(SummarizerError::CompletionProvider)
             } else {
-                Ok(r#"{"ops":[]}"#.into())
+                Ok(fake
+                    .responses
+                    .get(count - fake.provider_failures)
+                    .copied()
+                    .unwrap_or(EMPTY_PATCH)
+                    .into())
             }
         }
     }
 
-    async fn next_call(calls: &mut mpsc::UnboundedReceiver<Call>) -> Call {
+    async fn next_call(
+        calls: &mut mpsc::UnboundedReceiver<CompletionRequest>,
+    ) -> CompletionRequest {
         tokio::time::timeout(Duration::from_secs(5), calls.recv())
             .await
             .unwrap()
@@ -1017,7 +1147,7 @@ mod tests {
     async fn three_live_failures_stop_calls_but_keep_importing() {
         let f = Fixture::new();
         f.consumer.settings.lock().unwrap().graph_batch_utterances = Some(1);
-        let (fake, mut calls) = Fake::new(true, false);
+        let (fake, mut calls) = Fake::scripted(3, Vec::new(), false);
         let live = f.start(fake.clone());
         for count in 1..=3 {
             f.append("synthetic turn", false);
@@ -1032,15 +1162,188 @@ mod tests {
         assert_eq!(fake.count.load(Ordering::SeqCst), 3);
         f.stopped();
         live.await.unwrap();
-        assert_eq!(fake.count.load(Ordering::SeqCst), 6);
-        assert_eq!(f.consumer.status(f.sid).pending, 4);
+        assert!(next_call(&mut calls)
+            .await
+            .user
+            .contains("synthetic turn after halt"));
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 0);
+    }
+
+    #[tokio::test]
+    async fn post_meeting_actions_are_rejected_while_recording() {
+        let f = Fixture::new();
+        let (fake, _) = Fake::new(false, false);
+        let live = f.start(fake.clone());
+        for action in [
+            PostMeeting::Continue,
+            PostMeeting::Rebuild,
+            PostMeeting::Retranscribed,
+        ] {
+            assert!(f
+                .consumer
+                .post_meeting_with(f.sid, action, true, |_| async {
+                    panic!("post-meeting backend loaded during recording")
+                })
+                .is_none());
+        }
+        f.stopped();
+        live.await.unwrap();
+        f.post(PostMeeting::Continue, fake.clone()).await.unwrap();
+        f.post(PostMeeting::Rebuild, fake).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn unreadable_response_is_retried_once_with_error_kind() {
+        for second in [EMPTY_PATCH, "unreadable"] {
+            let f = Fixture::new();
+            f.append("synthetic turn", false);
+            let (fake, mut calls) = Fake::scripted(0, vec!["unreadable", second], false);
+            // A single increment isolates parse retries from the flush failure budget.
+            let backend = fake.backend(&AppSettings::default());
+            let session = f.consumer.session(f.sid);
+            let mut run = Run::new(
+                &f.consumer,
+                f.sid,
+                &session,
+                &backend,
+                session.generation.subscribe(),
+            );
+            let result = run.increment(PatchSource::Flush, false).await;
+            assert_eq!(
+                result,
+                if second == EMPTY_PATCH {
+                    Ok(true)
+                } else {
+                    Err("no_object")
+                }
+            );
+            let first = calls.try_recv().unwrap();
+            let retry = calls.try_recv().unwrap();
+            assert_eq!(
+                retry.user,
+                format!("{}\nReturn the patch as a JSON object with an ops array. Previous error: no_object", first.user)
+            );
+            assert_eq!(
+                f.consumer.pending_count(f.sid).await.unwrap(),
+                usize::from(second != EMPTY_PATCH)
+            );
+            assert!(calls.try_recv().is_err());
+        }
+    }
+
+    #[tokio::test]
+    async fn consolidation_uses_a_longer_timeout_than_extraction() {
+        let mut f = Fixture::new();
+        f.append("synthetic turn", false);
+        let (fake, mut calls) = Fake::scripted(0, vec![ISSUE_PATCH], false);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
+        assert!(calls.try_recv().is_err());
+        assert_eq!(f.events().last().unwrap().source, PatchSource::Consolidate);
+    }
+
+    #[tokio::test]
+    async fn consolidation_skips_graphs_without_live_nodes() {
+        let mut f = Fixture::new();
+        f.append("synthetic turn without graph nodes", false);
+        let (fake, mut calls) = Fake::new(false, false);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
+        assert!(calls.try_recv().is_err());
+        assert_eq!(f.events().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn continue_only_consolidates_after_a_new_extraction_patch() {
+        let f = Fixture::new();
+        f.append("synthetic first turn", false);
+        let (initial, _) = Fake::scripted(0, vec![ISSUE_PATCH], false);
+        f.post(PostMeeting::Continue, initial).await.unwrap();
+
+        let (fake, mut calls) = Fake::new(false, false);
+        // Use a fresh consumer to verify that the previous consolidation is read from disk.
+        let consumer = Arc::new(GraphConsumer::new(
+            f.consumer.broker.clone(),
+            f.consumer.database.clone(),
+            f.consumer.credentials.clone(),
+            f.consumer.settings.clone(),
+            f.consumer.cli_temp_base.clone(),
+        ));
+        for new_patch in [false, true, false] {
+            if new_patch {
+                f.append("synthetic retranscribed turn", true);
+                f.post(PostMeeting::Retranscribed, fake.clone())
+                    .await
+                    .unwrap();
+                assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
+            }
+            let fake = fake.clone();
+            consumer
+                .post_meeting_with(f.sid, PostMeeting::Continue, true, |settings| async move {
+                    Ok(fake.backend(&settings))
+                })
+                .unwrap()
+                .await
+                .unwrap();
+            if new_patch {
+                assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
+            }
+            assert!(calls.try_recv().is_err());
+        }
+    }
+
+    #[test]
+    fn run_guard_drop_recovers_a_poisoned_state() {
+        let session = Session::default();
+        session.state.lock().unwrap().status.running = true;
+        let _ = std::panic::catch_unwind(|| {
+            let _state = session.state.lock().unwrap();
+            panic!("poison the session state");
+        });
+        drop(RunGuard {
+            session: &session,
+            rebuild: false,
+        });
+        assert!(
+            !session
+                .state
+                .lock()
+                .unwrap_or_else(|error| error.into_inner())
+                .status
+                .running
+        );
+    }
+
+    #[tokio::test]
+    async fn finished_sessions_release_their_executor_but_keep_disabled_reason() {
+        let f = Fixture::new();
+        let task = f
+            .consumer
+            .start_recording_with(f.sid, true, |_| async { Err(DisabledReason::Backend) })
+            .unwrap();
+        task.await.unwrap();
+        assert!(f.consumer.sessions().active.contains_key(&f.sid));
+        f.consumer.recording_stopped(f.sid);
+        assert_eq!(
+            f.consumer.status(f.sid).disabled_reason,
+            Some(DisabledReason::Backend)
+        );
+        assert!(!f.consumer.sessions().active.contains_key(&f.sid));
+
+        let (fake, _) = Fake::new(false, false);
+        let live = f.start(fake);
+        f.stopped();
+        live.await.unwrap();
+        assert_eq!(f.consumer.status(f.sid).disabled_reason, None);
+        assert!(!f.consumer.sessions().active.contains_key(&f.sid));
     }
 
     #[tokio::test]
     async fn only_stopped_flushes_partial_window_and_rows_saved_after_session_end() {
         for count in 1..=5 {
             let mut f = Fixture::new();
-            let (fake, mut calls) = Fake::new(false, false);
+            let (fake, mut calls) = Fake::scripted(0, vec![ISSUE_PATCH], false);
             let live = f.start(fake);
             for _ in 0..count {
                 f.append("synthetic partial window", false);
@@ -1063,8 +1366,9 @@ mod tests {
             f.stopped();
             live.await.unwrap();
             let updates = f.events();
-            assert_eq!(updates.last().unwrap().source, PatchSource::Consolidate);
-            assert_eq!(updates.first().unwrap().source, PatchSource::Flush);
+            assert_eq!(updates.len(), 2);
+            assert_eq!(updates[0].source, PatchSource::Flush);
+            assert_eq!(updates[1].source, PatchSource::Consolidate);
             assert!(next_call(&mut calls)
                 .await
                 .user
@@ -1084,7 +1388,7 @@ mod tests {
         }
         assert!(calls.try_recv().is_err());
         assert!(f.events().is_empty());
-        assert_eq!(f.consumer.status(f.sid).pending, 1);
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
     }
 
     #[tokio::test]
@@ -1099,14 +1403,14 @@ mod tests {
                 && call.user.contains("synthetic later turn")));
         let updates = f.events();
         assert_eq!(updates[0].rev, 1);
-        assert_eq!(f.consumer.status(f.sid).pending, 0);
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 0);
     }
 
     #[tokio::test(start_paused = true)]
     async fn continue_requests_use_one_executor_and_rebuild_cancels_running_flush() {
         let f = Fixture::new();
         f.append("synthetic turn for rebuild", false);
-        let (fake, mut calls) = Fake::new(false, true);
+        let (fake, mut calls) = Fake::scripted(0, vec![EMPTY_PATCH, ISSUE_PATCH], true);
         let flush = f.post(PostMeeting::Continue, fake.clone());
         next_call(&mut calls).await;
         let (loaded_tx, loaded_rx) = tokio::sync::oneshot::channel();
@@ -1137,6 +1441,7 @@ mod tests {
         queued.await.unwrap();
         rebuild.await.unwrap();
         assert_eq!(fake.count.load(Ordering::SeqCst), 3);
+        assert!(!f.consumer.sessions().active.contains_key(&f.sid));
         assert_eq!(fake.max_active.load(Ordering::SeqCst), 1);
         assert!(!f.consumer.status(f.sid).rebuilding);
         assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 0);
@@ -1159,7 +1464,7 @@ mod tests {
         assert!(!call.user.contains("synthetic ordinary pending turn"));
         assert!(calls.try_recv().is_err());
         assert_eq!(f.events().len(), 1);
-        assert_eq!(f.consumer.status(f.sid).pending, 1);
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
     }
 
     #[tokio::test]

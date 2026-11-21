@@ -40,6 +40,7 @@ serde_json = { workspace = true }
 transcript-event = { workspace = true }
 summarize = { workspace = true }
 discussion-graph = { workspace = true }
+rusqlite = "0.43"
 # For building the `genai::Client` that `summarize::summarize` (#38) takes — the
 # app owns client construction (model string picked in settings + auth resolver
 # wiring) since `summarize` itself stays provider-agnostic.
