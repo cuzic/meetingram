@@ -5,7 +5,7 @@ use recorder_domain::{CaptureState, SessionId};
 
 use crate::{app_state::AppState, graph_consumer::GraphStatus};
 
-use super::graph_view::GraphView;
+use super::graph_view::{should_refresh_pending, GraphView};
 
 fn is_recording(state: &AppState, session_id: SessionId) -> bool {
     if state
@@ -36,6 +36,7 @@ fn graph_enabled(state: &AppState) -> bool {
 pub(super) fn GraphStatusRow(session_id: SessionId, history: bool) -> Element {
     let state = use_context::<Arc<AppState>>();
     let mut snapshot = use_signal(|| (None::<Result<GraphStatus, ()>>, false));
+    let mut refresh_pending = use_signal(|| false);
     let mut confirming = use_signal(|| false);
 
     use_future({
@@ -43,27 +44,42 @@ pub(super) fn GraphStatusRow(session_id: SessionId, history: bool) -> Element {
         move || {
             let state = state.clone();
             async move {
+                let mut history_pending = None;
                 loop {
-                    let recording = !history || is_recording(&state, session_id);
+                    let mut recording = !history || is_recording(&state, session_id);
                     let mut status = state.graph_consumer.status(session_id);
-                    if history && !status.running && !status.rebuilding && !recording {
-                        // The consumer releases its in-memory state when idle.
-                        status = match state.graph_consumer.pending_count(session_id).await {
-                            Ok(pending) => {
-                                let mut latest = state.graph_consumer.status(session_id);
-                                if !latest.running && !latest.rebuilding {
-                                    latest.pending = pending;
-                                }
-                                latest
-                            }
-                            Err(_) => {
-                                snapshot.set((Some(Err(())), recording));
-                                tokio::time::sleep(Duration::from_millis(250)).await;
-                                continue;
-                            }
-                        };
+                    let refresh_requested = *refresh_pending.peek();
+                    if refresh_requested {
+                        refresh_pending.set(false);
                     }
-                    snapshot.set((Some(Ok(status)), recording));
+                    let idle_history = should_refresh_pending(history, recording, &status, true);
+
+                    // Refresh on entry and once a session becomes idle after an operation.
+                    if !idle_history || refresh_requested {
+                        history_pending = None;
+                    }
+                    if should_refresh_pending(
+                        history,
+                        recording,
+                        &status,
+                        history_pending.is_none(),
+                    ) {
+                        let pending = state.graph_consumer.pending_count(session_id).await;
+                        recording = is_recording(&state, session_id);
+                        status = state.graph_consumer.status(session_id);
+                        if should_refresh_pending(history, recording, &status, true) {
+                            history_pending = Some(pending);
+                        }
+                    }
+                    let status = match history_pending {
+                        Some(Ok(pending)) => {
+                            status.pending = pending;
+                            Ok(status)
+                        }
+                        Some(Err(_)) => Err(()),
+                        None => Ok(status),
+                    };
+                    snapshot.set((Some(status), recording));
                     tokio::time::sleep(Duration::from_millis(250)).await;
                 }
             }
@@ -94,8 +110,10 @@ pub(super) fn GraphStatusRow(session_id: SessionId, history: bool) -> Element {
                             && graph_enabled(&continue_state)
                             && !status.running
                             && !status.rebuilding
+                            && continue_state.graph_consumer.continue_extraction(session_id)
                         {
-                            continue_state.graph_consumer.continue_extraction(session_id);
+                            refresh_pending.set(true);
+                            snapshot.set((Some(Ok(continue_state.graph_consumer.status(session_id))), false));
                         }
                     },
                     "続きを抽出"
@@ -120,6 +138,7 @@ pub(super) fn GraphStatusRow(session_id: SessionId, history: bool) -> Element {
                                 if confirming() && view.can_rebuild
                                     && state.graph_consumer.rebuild(session_id)
                                 {
+                                    refresh_pending.set(true);
                                     snapshot.set((Some(Ok(state.graph_consumer.status(session_id))), false));
                                 }
                                 confirming.set(false);

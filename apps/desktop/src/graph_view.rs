@@ -15,6 +15,15 @@ pub(super) fn disabled_message(reason: DisabledReason) -> &'static str {
     }
 }
 
+pub(super) fn should_refresh_pending(
+    history: bool,
+    recording: bool,
+    status: &GraphStatus,
+    needs_refresh: bool,
+) -> bool {
+    history && !recording && !status.running && !status.rebuilding && needs_refresh
+}
+
 impl GraphView {
     pub(super) fn new(status: &GraphStatus, recording: bool, enabled: bool) -> Self {
         let pending = format!("未抽出 {} 件", status.pending);
@@ -41,6 +50,29 @@ impl GraphView {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn live_view_never_refreshes_pending_count() {
+        let status = GraphStatus {
+            pending: 4,
+            ..GraphStatus::default()
+        };
+        assert!(!should_refresh_pending(false, false, &status, true));
+        assert_eq!(GraphView::new(&status, true, true).label, "未抽出 4 件");
+    }
+
+    #[test]
+    fn pending_count_refresh_requires_idle_history_and_an_invalidation() {
+        let mut status = GraphStatus::default();
+        assert!(should_refresh_pending(true, false, &status, true));
+        assert!(!should_refresh_pending(true, false, &status, false));
+        assert!(!should_refresh_pending(true, true, &status, true));
+        status.running = true;
+        assert!(!should_refresh_pending(true, false, &status, true));
+        status.running = false;
+        status.rebuilding = true;
+        assert!(!should_refresh_pending(true, false, &status, true));
+    }
 
     #[test]
     fn describes_graph_states() {
