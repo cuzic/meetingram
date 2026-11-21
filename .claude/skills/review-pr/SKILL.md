@@ -16,7 +16,8 @@ Codex の PR 本文は自己申告として読み、主張はすべて差分と�
 ## 手順
 
 1. **独立したコピーで作業する**: スクラッチ領域に
-   `git clone --reference ~/src/<repo> https://github.com/cuzic/<repo> <dir>` して `gh pr checkout NN`。
+   `git clone --reference ~/src/<repo> git@github.com:cuzic/<repo>.git <dir>` して `gh pr checkout NN`
+   （ssh で取る。https だと gh のトークンに `workflow` スコープが無く、workflow を含むブランチへの push が拒否されうる）。
    レビューする head の SHA（`git rev-parse HEAD`）を控える。共有の checkout や Codex の clone を使わない。
 2. **CI を読む**: `gh pr checks NN`。赤なら、ログの失敗箇所を根拠に指摘にする（推測で直さない）。
    Linux で通るもの（コアのテスト、`capture-windows` の Windows 向け型チェック、`desktop-cli`）は手元でも回す。
@@ -33,7 +34,12 @@ Codex の PR 本文は自己申告として読み、主張はすべて差分と�
    - **2 つの repo**: アプリがタグ参照か（ブランチ参照のままでないか）、`rhai` の版がそろっているか、
      コアの公開 API の変更にアプリが追従しているか。
    - **Rhai**: hook から呼んだヘルパー関数がモジュールの変数を読んでいないか（`plugins/default/hint.rhai` 冒頭の注記）。
-6. **テストの効き目**: 新しいテストが、壊した実装で落ちるか。手書きの変異を数個入れて確かめる。
+   - **CI の workflow**: `paths` の絞り込みが、テストの読むディレクトリ（`plugins/**` など）を覆っているか。
+     PR の変更が絞り込みに当たらず、checks が 0 件のまま「緑」に見えていないか。
+6. **機械的なコミット**（`cargo fmt`、一括置換、生成物）は、同じコマンドを親コミットにかけ直して一致を確かめる:
+   `git worktree add <dir> <sha>^ && (cd <dir> && cargo fmt --all && git diff --quiet <sha> -- .)`。
+   一致しなければ、手での変更が混ざっている。その差分を指摘にする。
+7. **テストの効き目**: 新しいテストが、壊した実装で落ちるか。手書きの変異を数個入れて確かめる。
    プローブや変異はコミットしない。
 
 ## 重大度
