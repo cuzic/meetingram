@@ -34,7 +34,7 @@ env:
   # Pinned to match Cargo.lock's `dioxus` version — `dx` and the `dioxus` crate
   # it drives must stay in lockstep (see Dioxus's own version-compatibility
   # guidance); bump both together.
-  DX_VERSION: "0.7.9"
+  DX_VERSION: "0.7.10"
 
 jobs:
   bundle-windows:

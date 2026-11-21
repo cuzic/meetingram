@@ -11,7 +11,7 @@ description = "meetingram desktop app (dioxus-desktop shell)"
 [dependencies]
 dioxus = { version = "0.7", features = ["desktop"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros"] }
-dirs = "6"
+dirs = "7"
 chrono = "0.4"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -23,7 +23,7 @@ session-store = { workspace = true }
 credential-store = { workspace = true }
 local-broker = { workspace = true }
 rhai-engine = { workspace = true }
-rhai = "=1.20.0"
+rhai = "=1.27.0"
 upload-client = { workspace = true }
 # All four `stt-*` adapter crates (not just Deepgram) so the settings screen (#49)
 # can read each one's `credential-store` account constants — and, for Google,
@@ -42,7 +42,7 @@ summarize = { workspace = true }
 # For building the `genai::Client` that `summarize::summarize` (#38) takes — the
 # app owns client construction (model string picked in settings + auth resolver
 # wiring) since `summarize` itself stays provider-agnostic.
-genai = "0.7.0-beta.13"
+genai = "0.7.5"
 
 # On Windows, app-service's windows-supervisor feature (real WASAPI capture via
 # capture-windows) actually builds — see crates/app-service/README.md. On macOS,
