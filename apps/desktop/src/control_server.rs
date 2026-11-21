@@ -265,6 +265,7 @@ mod tests {
             store.clone(),
             credential_store.clone(),
             app_settings.clone(),
+            crate::cli_temp_base(dir),
         );
         let settings_provider = Arc::new(crate::AppSettingsProvider {
             app_settings: app_settings.clone(),

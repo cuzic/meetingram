@@ -72,10 +72,21 @@ fn init_logging(app_data_dir: &std::path::Path) {
     }));
 }
 
+fn cli_temp_base(app_data_dir: &std::path::Path) -> std::path::PathBuf {
+    app_data_dir.join("cli-tmp")
+}
+
 fn main() {
     let app_data_dir = app_data_dir();
     std::fs::create_dir_all(&app_data_dir).ok();
     init_logging(&app_data_dir);
+
+    let cli_temp_base = cli_temp_base(&app_data_dir);
+    if let Err(error) = std::fs::create_dir_all(&cli_temp_base)
+        .and_then(|()| summarize::cli_backend::cleanup_stale_cli_dirs(&cli_temp_base))
+    {
+        tracing::warn!(kind = ?error.kind(), "failed to prepare CLI temporary directory");
+    }
 
     tracing::info!("meetingram starting up (pid {})", std::process::id());
 
@@ -131,6 +142,7 @@ fn main() {
         store.clone(),
         credential_store.clone(),
         app_settings.clone(),
+        cli_temp_base,
     );
 
     // Settings provider for Rhai plugins
@@ -235,7 +247,7 @@ impl rhai_engine::SettingsProvider for AppSettingsProvider {
                 summarize::SELECTED_MODEL_ACCOUNT,
             )
             .unwrap_or_else(|_| {
-                crate::settings::SummaryProvider::from_key(&provider_key)
+                summarize::SummaryProvider::from_key(&provider_key)
                     .default_model()
                     .to_string()
             })
@@ -243,5 +255,16 @@ impl rhai_engine::SettingsProvider for AppSettingsProvider {
 
     fn session_metadata(&self, _session_id: recorder_domain::SessionId) -> rhai::Map {
         rhai::Map::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cli_temp_base_is_under_app_data_dir() {
+        let app_data_dir = std::path::Path::new("meetingram-data");
+        assert_eq!(cli_temp_base(app_data_dir), app_data_dir.join("cli-tmp"),);
     }
 }
