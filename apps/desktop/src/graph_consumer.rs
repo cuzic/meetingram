@@ -224,6 +224,8 @@ impl GraphConsumer {
         }
     }
 
+    /// Imports finalized rows in a write transaction before counting pending rows.
+    /// For a recording session, use `status().pending`.
     pub async fn pending_count(self: &Arc<Self>, sid: SessionId) -> Result<usize, &'static str> {
         self.db(move |store| {
             store.import_utterances(sid)?;
@@ -700,8 +702,7 @@ impl<'a> Run<'a> {
             return Ok(());
         }
 
-        let issues =
-            build_consolidate_issues(&graph, DEFAULT_INPUT_LIMIT).map_err(|_| "input_limit")?;
+        let issues = build_consolidate_issues(&graph, INPUT_LIMIT).map_err(|_| "input_limit")?;
         let graph = if let Some(prompt) = issues {
             if prompt.omitted_issues > 0 {
                 tracing::debug!(
@@ -715,7 +716,7 @@ impl<'a> Run<'a> {
             graph
         };
 
-        let (groups, omitted) = build_consolidate_groups(&graph, DEFAULT_INPUT_LIMIT);
+        let (groups, omitted) = build_consolidate_groups(&graph, INPUT_LIMIT);
         if omitted > 0 {
             tracing::debug!(omitted, "nodes omitted from consolidation");
         }
@@ -740,7 +741,6 @@ impl<'a> Run<'a> {
         );
         let ops = match self.complete(&req).await? {
             Ok(ops) => ops,
-            Err(error) if source == PatchSource::Consolidate => return Err(parse_kind(error)),
             Err(error) => {
                 let kind = parse_kind(error);
                 self.log_failure(source, kind);
@@ -1331,20 +1331,63 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn consolidation_retries_each_unreadable_stage_once() {
+        let mut f = Fixture::new();
+        f.append("synthetic turn with two issues", false);
+        let (fake, mut calls) = Fake::scripted(
+            0..0,
+            vec![
+                TWO_ISSUES,
+                "invalid JSON",
+                ATTACH_ISSUE,
+                "invalid JSON",
+                EMPTY_PATCH,
+            ],
+            false,
+        );
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
+        let issues = assert_consolidation_retry(&mut calls);
+        assert!(!issues.user.contains(r#""kind":"sub_issue_of""#));
+        let groups = assert_consolidation_retry(&mut calls);
+        assert!(groups.user.contains(r#""kind":"sub_issue_of""#));
+        assert!(calls.try_recv().is_err());
+        let events = f.events();
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[1].source, PatchSource::Consolidate);
+        assert_eq!(events[1].added, 1);
+        assert_eq!(events[2].source, PatchSource::Consolidate);
+    }
+
+    fn assert_consolidation_retry(
+        calls: &mut mpsc::UnboundedReceiver<CompletionRequest>,
+    ) -> CompletionRequest {
+        let first = calls.try_recv().unwrap();
+        let retry = calls
+            .try_recv()
+            .expect("unreadable response should be retried");
+        assert_eq!(first.timeout, Duration::from_secs(120));
+        assert_eq!(retry.timeout, first.timeout);
+        assert_eq!(retry.user, format!("{}{RETRY_NOTE}no_object", first.user));
+        first
+    }
+
+    #[tokio::test]
     async fn invalid_issue_response_skips_groups_and_can_resume_without_a_new_patch() {
         let mut f = Fixture::new();
         f.append("synthetic turn with two issues", false);
-        let (initial, mut initial_calls) =
-            Fake::scripted(0..0, vec![TWO_ISSUES, "invalid JSON"], false);
+        let (initial, mut initial_calls) = Fake::scripted(
+            0..0,
+            vec![TWO_ISSUES, "invalid JSON", "invalid JSON"],
+            false,
+        );
         f.post(PostMeeting::Continue, initial).await.unwrap();
         assert_eq!(
             initial_calls.try_recv().unwrap().timeout,
             Duration::from_secs(60)
         );
-        assert_eq!(
-            initial_calls.try_recv().unwrap().timeout,
-            Duration::from_secs(120)
-        );
+        assert_consolidation_retry(&mut initial_calls);
         assert!(initial_calls.try_recv().is_err());
         let events = f.events();
         assert_eq!(events.len(), 1);
@@ -1477,6 +1520,38 @@ mod tests {
         assert!(calls.try_recv().is_err());
         assert!(f.events().is_empty());
         assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn failed_flush_leaves_consolidation_pending_without_a_new_patch() {
+        let mut f = Fixture::new();
+        f.append("synthetic issue turn", false);
+        let (initial, _) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
+        f.post(PostMeeting::Continue, initial).await.unwrap();
+        assert_eq!(f.events().last().unwrap().source, PatchSource::Consolidate);
+
+        f.append("synthetic pending turn", false);
+        let (failing, mut failed_calls) = Fake::new(true, false);
+        f.post(PostMeeting::Continue, failing).await.unwrap();
+        assert_failed_flush_skips_consolidation(&f, &mut failed_calls).await;
+        assert!(f.events().is_empty());
+
+        // Mark the remaining turn extracted in the store so the next Continue
+        // cannot trigger consolidation by saving a flush patch of its own.
+        let sid = f.sid;
+        f.consumer
+            .db(move |store| store.apply_patch(sid, PatchSource::Flush, None, &[], &["u2"], &[]))
+            .await
+            .unwrap();
+        assert_eq!(f.consumer.pending_count(sid).await.unwrap(), 0);
+
+        let (retry, mut calls) = Fake::new(false, false);
+        f.post(PostMeeting::Continue, retry).await.unwrap();
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
+        assert!(calls.try_recv().is_err());
+        let events = f.events();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].source, PatchSource::Consolidate);
     }
 
     #[tokio::test]
