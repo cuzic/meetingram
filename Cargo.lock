@@ -1411,12 +1411,14 @@ name = "desktop"
 version = "0.1.0"
 dependencies = [
  "app-service",
+ "async-trait",
  "chrono",
  "control-protocol",
  "credential-store",
  "crossbeam-channel",
  "dioxus",
  "dirs 7.0.0",
+ "discussion-graph",
  "genai",
  "interprocess",
  "local-broker",
@@ -1897,6 +1899,19 @@ dependencies = [
  "option-ext",
  "redox_users",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "discussion-graph"
+version = "0.1.0"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.3.0#6cf164f1411a2f6ffc178522921cfe2c58de6bc3"
+dependencies = [
+ "recorder-domain",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "session-store",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

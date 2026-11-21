@@ -10,7 +10,7 @@ description = "meetingram desktop app (dioxus-desktop shell)"
 
 [dependencies]
 dioxus = { version = "0.7", features = ["desktop"] }
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros", "sync"] }
 dirs = "7"
 chrono = "0.4"
 tracing = "0.1"
@@ -39,6 +39,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 transcript-event = { workspace = true }
 summarize = { workspace = true }
+discussion-graph = { workspace = true }
 # For building the `genai::Client` that `summarize::summarize` (#38) takes — the
 # app owns client construction (model string picked in settings + auth resolver
 # wiring) since `summarize` itself stays provider-agnostic.
@@ -69,4 +70,6 @@ crossbeam-channel = "0.5"
 app-service = { workspace = true }
 
 [dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
+async-trait = "0.1"
 tempfile = "3"

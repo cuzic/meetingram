@@ -278,10 +278,19 @@ mod tests {
             settings_provider,
         );
 
+        let config = Config::load(dir.to_path_buf());
+        let graph_consumer = Arc::new(crate::graph_consumer::GraphConsumer::new(
+            broker.clone(),
+            dir.join("sessions.db"),
+            credential_store.clone(),
+            app_settings.clone(),
+            crate::cli_temp_base(dir),
+        ));
         Arc::new(AppState {
+            graph_consumer,
             store,
             adapter,
-            config: Config::load(dir.to_path_buf()),
+            config,
             broker,
             summary_consumer,
             rhai_engine,

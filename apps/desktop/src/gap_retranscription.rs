@@ -82,10 +82,14 @@ pub async fn retranscribe(
     provider_kind: app_service::SttProviderKind,
     store: &SessionStore,
     credential_store: &dyn CredentialStore,
+    graph_consumer: &std::sync::Arc<crate::graph_consumer::GraphConsumer>,
 ) -> Result<Vec<TranscriptSegment>, String> {
-    app_service::retranscribe_gap(gap, provider_kind, store, credential_store)
+    let session_id = gap.session_id;
+    let segments = app_service::retranscribe_gap(gap, provider_kind, store, credential_store)
         .await
-        .map_err(describe_error)
+        .map_err(describe_error)?;
+    graph_consumer.retranscribed(session_id);
+    Ok(segments)
 }
 #[cfg(not(windows))]
 pub async fn retranscribe(
@@ -93,6 +97,7 @@ pub async fn retranscribe(
     _provider_kind: app_service::SttProviderKind,
     _store: &SessionStore,
     _credential_store: &dyn CredentialStore,
+    _graph_consumer: &std::sync::Arc<crate::graph_consumer::GraphConsumer>,
 ) -> Result<Vec<TranscriptSegment>, String> {
     Err("この環境では再文字起こしに対応していません".to_string())
 }

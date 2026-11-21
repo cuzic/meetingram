@@ -6,6 +6,7 @@ mod config;
 mod control_server;
 mod export;
 mod gap_retranscription;
+mod graph_consumer;
 mod hint_consumer;
 mod history;
 mod level;
@@ -142,7 +143,7 @@ fn main() {
         store.clone(),
         credential_store.clone(),
         app_settings.clone(),
-        cli_temp_base,
+        cli_temp_base.clone(),
     );
 
     // Settings provider for Rhai plugins
@@ -164,7 +165,15 @@ fn main() {
         tracing::warn!(%err, "failed to load Rhai plugins");
     }
 
+    let graph_consumer = Arc::new(graph_consumer::GraphConsumer::new(
+        broker.clone(),
+        config.session_db_path.clone(),
+        credential_store.clone(),
+        app_settings.clone(),
+        cli_temp_base,
+    ));
     let state = Arc::new(AppState {
+        graph_consumer,
         store,
         adapter,
         config,

@@ -21,6 +21,7 @@ pub struct AppState {
     pub config: Config,
     pub broker: LocalBroker,
     pub summary_consumer: SummaryConsumer,
+    pub graph_consumer: Arc<crate::graph_consumer::GraphConsumer>,
     pub rhai_engine: RhaiEngine,
     /// Backs the settings screen (Deepgram / summary provider API keys and the
     /// selected-provider/model strings) — same instance `main.rs` already builds

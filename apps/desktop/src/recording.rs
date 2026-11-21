@@ -63,6 +63,7 @@ fn publish_session_stopped(state: &AppState, session_id: SessionId) {
         &local_broker::session_stopped_subject(session_id),
         Vec::new(),
     );
+    state.graph_consumer.recording_stopped(session_id);
 }
 
 #[cfg(windows)]
@@ -126,6 +127,7 @@ pub fn start(state: &AppState) -> Result<SessionId, String> {
     // Not yet tuned against real hardware; see this crate's README.
     const CALLBACK_TIMEOUT_MS: u32 = 500;
 
+    state.graph_consumer.start_recording(session_id);
     let join_handle = tokio::spawn(async move {
         app_service::run_windows_capture_session(
             &manifest_for_task,
@@ -254,6 +256,7 @@ pub fn start(state: &AppState) -> Result<SessionId, String> {
     // Windows Phase 1A's own capture format.
     const CHANNELS: u16 = 1;
 
+    state.graph_consumer.start_recording(session_id);
     let join_handle = tokio::spawn(async move {
         app_service::run_macos_capture_session(
             &manifest_for_task,
@@ -326,6 +329,7 @@ pub async fn stop(state: &AppState) -> Result<SessionSummary, String> {
 pub fn start(state: &AppState) -> Result<SessionId, String> {
     let manifest = build_manifest(DEFAULT_DEVICE_ID, DEFAULT_DEVICE_ID);
     let session_id = manifest.session_id;
+    state.graph_consumer.start_recording(session_id);
     *state.current.lock().unwrap() = Some(ActiveRecording {
         session_id,
         manifest,
