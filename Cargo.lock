@@ -102,7 +102,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "app-service"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "audio-timeline",
  "capture-api",
@@ -388,7 +388,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "audio-timeline"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "serde",
 ]
@@ -682,12 +682,12 @@ dependencies = [
 [[package]]
 name = "capture-api"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 
 [[package]]
 name = "capture-macos"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "capture-api",
  "crossbeam-channel",
@@ -702,7 +702,7 @@ dependencies = [
 [[package]]
 name = "capture-windows"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "capture-api",
  "crossbeam-channel",
@@ -1008,7 +1008,7 @@ dependencies = [
 [[package]]
 name = "control-protocol"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "dirs 7.0.0",
  "interprocess",
@@ -1155,7 +1155,7 @@ dependencies = [
 [[package]]
 name = "credential-store"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "aes-gcm",
  "async-trait",
@@ -1896,7 +1896,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2091,7 +2091,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e35d6e78f4cebb90e51d543db8fe41528851d6deeef6ef21ebd4bfdc1e784776"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3075,7 +3075,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.62.2",
+ "windows-core 0.61.2",
 ]
 
 [[package]]
@@ -3316,15 +3316,6 @@ name = "itertools"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
 dependencies = [
  "either",
 ]
@@ -3766,7 +3757,7 @@ checksum = "47d9d19d1d6efa0109d2f65ff4c85cddd50bd572e5a00127ab10987290bcefae"
 [[package]]
 name = "local-broker"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "dashmap",
  "serde",
@@ -4197,7 +4188,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4305,7 +4296,7 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "680998035259dcfcafe653688bf2aa6d3e2dc05e98be6ab46afb089dc84f1df8"
 dependencies = [
- "proc-macro-crate 3.5.0",
+ "proc-macro-crate 1.3.1",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -5047,8 +5038,8 @@ version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6e4d69d0fa3e7f6f9cf6b53a0e83e4fc99ba3586f65ce166cff30bd13bb4ad2"
 dependencies = [
- "heck 0.5.0",
- "itertools 0.15.0",
+ "heck 0.4.1",
+ "itertools",
  "log",
  "multimap",
  "petgraph",
@@ -5069,7 +5060,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ad9c5423459fa2f729b8d9235fab810aa29628b171467744fc86d21460ad70d"
 dependencies = [
  "anyhow",
- "itertools 0.15.0",
+ "itertools",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -5179,7 +5170,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5355,7 +5346,7 @@ dependencies = [
  "built",
  "cfg-if",
  "interpolate_name",
- "itertools 0.14.0",
+ "itertools",
  "libc",
  "libfuzzer-sys",
  "log",
@@ -5424,7 +5415,7 @@ dependencies = [
 [[package]]
 name = "recorder-domain"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "async-trait",
  "chrono",
@@ -5603,7 +5594,7 @@ dependencies = [
 [[package]]
 name = "rhai-engine"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -5709,7 +5700,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5768,7 +5759,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5904,7 +5895,7 @@ dependencies = [
 [[package]]
 name = "segment-store"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "ogg",
  "opus",
@@ -6082,7 +6073,7 @@ dependencies = [
 [[package]]
 name = "session-store"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "chrono",
  "recorder-domain",
@@ -6303,7 +6294,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -6415,7 +6406,7 @@ dependencies = [
 [[package]]
 name = "stt-api"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "async-trait",
  "serde",
@@ -6427,7 +6418,7 @@ dependencies = [
 [[package]]
 name = "stt-assemblyai"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -6444,7 +6435,7 @@ dependencies = [
 [[package]]
 name = "stt-deepgram"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -6462,7 +6453,7 @@ dependencies = [
 [[package]]
 name = "stt-google"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -6485,7 +6476,7 @@ dependencies = [
 [[package]]
 name = "stt-openai"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -6536,7 +6527,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 [[package]]
 name = "summarize"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "async-trait",
  "credential-store",
@@ -6708,7 +6699,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -7226,7 +7217,7 @@ dependencies = [
 [[package]]
 name = "transcript-event"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "chrono",
  "recorder-domain",
@@ -7311,7 +7302,7 @@ checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
 dependencies = [
  "memoffset",
  "tempfile",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -7374,7 +7365,7 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 [[package]]
 name = "upload-client"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=deps%2Fupgrade-latest#23cc7b3bbbc93ec81f00c00f388c4ff963006cca"
+source = "git+https://github.com/cuzic/meetingram-core?tag=v0.2.0#43d5579c488b4b108b4427c4d80dec797907a2f3"
 dependencies = [
  "async-trait",
  "chrono",
@@ -7790,7 +7781,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
