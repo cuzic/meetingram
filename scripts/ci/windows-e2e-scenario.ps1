@@ -1,9 +1,11 @@
+. "$PSScriptRoot/hide-windows-runner-details.ps1"
+
 function Save-MeetingramStatus {
     param([string]$Ctl, [string]$Path, [bool]$Recording)
 
     $json = & $Ctl --json status 2>$null
     if ($LASTEXITCODE -ne 0) { throw "meetingramctl status failed with exit code $LASTEXITCODE" }
-    $json | Set-Content -LiteralPath $Path -Encoding utf8
+    Hide-WindowsRunnerDetails ($json -join "`n") | Set-Content -LiteralPath $Path -Encoding utf8
     $status = ConvertFrom-Json -InputObject ($json -join "`n")
     if (($status.recording -isnot [bool]) -or ($status.recording -ne $Recording)) {
         throw "Expected meetingramctl status to report recording:$($Recording.ToString().ToLowerInvariant())"

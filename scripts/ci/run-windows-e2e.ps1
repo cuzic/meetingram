@@ -26,7 +26,7 @@ try {
         Stop-ScreenRecording $recorder
     }
 
-    $newSessions = @(Get-ChildItem -LiteralPath $sessions -Directory |
+    $newSessions = @(Get-ChildItem -LiteralPath $sessions -Directory -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -notin $existingSessions.Name })
     if ($newSessions.Count -eq 0) { throw 'No new meetingram session directory was created' }
     Write-Host "New meetingram session directories: $($newSessions.Count)"
