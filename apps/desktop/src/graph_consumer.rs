@@ -336,7 +336,7 @@ impl GraphConsumer {
             let mut run = Run::new(&consumer, sid, &session, &backend, generation);
             let _guard = run.mark_running(false);
             if run.live(window, segments, stopped).await {
-                run.flush(false).await;
+                run.flush(true).await;
             }
         }))
     }
@@ -658,7 +658,7 @@ impl<'a> Run<'a> {
         }
     }
 
-    async fn flush(&mut self, rebuild: bool) {
+    async fn flush(&mut self, consolidate_without_new_patch: bool) {
         self.saved_flush_patch = false;
         let mut failures = 0;
         loop {
@@ -676,7 +676,7 @@ impl<'a> Run<'a> {
             }
         }
 
-        if !rebuild && !self.saved_flush_patch {
+        if !consolidate_without_new_patch && !self.saved_flush_patch {
             return;
         }
         if let Err(kind) = self.consolidate().await {
@@ -1215,6 +1215,31 @@ mod tests {
             );
             assert!(calls.try_recv().is_err());
         }
+    }
+
+    #[tokio::test]
+    async fn stopped_consolidates_when_live_extraction_has_caught_up() {
+        let mut f = Fixture::new();
+        f.consumer.settings.lock().unwrap().graph_batch_utterances = Some(1);
+        let (fake, mut calls) = Fake::scripted(0, vec![ISSUE_PATCH], false);
+        let live = f.start(fake);
+        f.append("synthetic turn extracted during recording", false);
+        f.finalized();
+        assert_eq!(next_call(&mut calls).await.timeout, Duration::from_secs(60));
+        f.wait_for_status(|status| status.pending == 0).await;
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 0);
+        let updates = f.events();
+        assert_eq!(updates.len(), 1);
+        assert_eq!(updates[0].source, PatchSource::Live);
+        assert!(calls.try_recv().is_err());
+
+        f.stopped();
+        live.await.unwrap();
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
+        assert!(calls.try_recv().is_err());
+        let updates = f.events();
+        assert_eq!(updates.len(), 1);
+        assert_eq!(updates[0].source, PatchSource::Consolidate);
     }
 
     #[tokio::test]
