@@ -13,6 +13,7 @@ pub(super) fn disabled_message(reason: DisabledReason) -> &'static str {
     match reason {
         DisabledReason::Platform => "議論グラフは Windows で利用できます",
         DisabledReason::Disabled => "議論グラフの設定が無効です",
+        DisabledReason::DisabledDuringRun => "設定で無効にしたため、議論グラフの処理を停止しました",
         DisabledReason::Provider => "要約が Codex CLI のため議論グラフは使えません。要約のプロバイダを Claude CLI か API に変えると使えます",
         DisabledReason::Backend => "要約の API キーまたは CLI の設定を確認してください",
     }
@@ -177,6 +178,10 @@ mod tests {
                 "議論グラフは Windows で利用できます",
             ),
             (DisabledReason::Disabled, "議論グラフの設定が無効です"),
+            (
+                DisabledReason::DisabledDuringRun,
+                "設定で無効にしたため、議論グラフの処理を停止しました",
+            ),
             (
                 DisabledReason::Provider,
                 "要約が Codex CLI のため議論グラフは使えません。要約のプロバイダを Claude CLI か API に変えると使えます",
