@@ -104,6 +104,16 @@ pub struct AppSettings {
     /// field with a working settings-screen `<input type="number">` (unlike
     /// `silence_gate_enabled`, which has none yet).
     pub hint_debounce_seconds: Option<u32>,
+    /// Whether discussion graph extraction is enabled. Defaults to true.
+    pub graph_enabled: Option<bool>,
+    /// Number of pending utterances that triggers extraction. Defaults to 6.
+    pub graph_batch_utterances: Option<usize>,
+    /// Time between extractions when utterances are pending. Defaults to 45 seconds.
+    pub graph_batch_seconds: Option<u64>,
+    /// Confidence threshold for graph review. Defaults to 0.6.
+    pub graph_review_threshold: Option<f64>,
+    /// Model override within the summary provider. Defaults to an empty string.
+    pub graph_model: Option<String>,
 }
 
 impl AppSettings {
@@ -178,6 +188,11 @@ mod tests {
             hint_enabled: Some(true),
             hint_provider: Some("vertex".to_string()),
             hint_debounce_seconds: Some(30),
+            graph_enabled: Some(false),
+            graph_batch_utterances: Some(12),
+            graph_batch_seconds: Some(90),
+            graph_review_threshold: Some(0.8),
+            graph_model: Some("sonnet".to_string()),
         };
 
         settings.save(dir.path()).expect("save");
@@ -231,6 +246,11 @@ mod tests {
         assert_eq!(loaded.hint_enabled, None);
         assert_eq!(loaded.hint_provider, None);
         assert_eq!(loaded.hint_debounce_seconds, None);
+        assert_eq!(loaded.graph_enabled, None);
+        assert_eq!(loaded.graph_batch_utterances, None);
+        assert_eq!(loaded.graph_batch_seconds, None);
+        assert_eq!(loaded.graph_review_threshold, None);
+        assert_eq!(loaded.graph_model, None);
     }
 
     #[test]
