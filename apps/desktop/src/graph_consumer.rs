@@ -45,6 +45,7 @@ impl Window {
 pub enum DisabledReason {
     Platform,
     Disabled,
+    DisabledDuringRun,
     Provider,
     Backend,
 }
@@ -443,7 +444,7 @@ impl GraphConsumer {
                 PostMeeting::Continue => run.flush(false).await,
                 PostMeeting::Retranscribed => {
                     if let Err(kind) = run.increment(PatchSource::Flush, true).await {
-                        if kind != "cancelled" {
+                        if !matches!(kind, "cancelled" | "disabled") {
                             run.log_failure(PatchSource::Flush, kind);
                         }
                     }
@@ -579,7 +580,7 @@ impl<'a> Run<'a> {
                 };
                 match outcome {
                     Ok(_) => failures = 0,
-                    Err("cancelled") => return false,
+                    Err("cancelled" | "disabled") => return false,
                     Err(kind) => {
                         failures += 1;
                         self.log_failure(PatchSource::Live, kind);
@@ -671,7 +672,7 @@ impl<'a> Run<'a> {
             match self.increment(PatchSource::Flush, false).await {
                 Ok(false) => break,
                 Ok(true) => failures = 0,
-                Err("cancelled") => return,
+                Err("cancelled" | "disabled") => return,
                 Err(kind) => {
                     self.log_failure(PatchSource::Flush, kind);
                     failures += 1;
@@ -690,7 +691,7 @@ impl<'a> Run<'a> {
             Ok(()) => {
                 self.consumer.sessions().consolidated.insert(self.sid);
             }
-            Err("cancelled") => {}
+            Err("cancelled" | "disabled") => {}
             Err(kind) => self.log_failure(PatchSource::Consolidate, kind),
         }
     }
@@ -812,9 +813,20 @@ impl<'a> Run<'a> {
         let response = tokio::select! {
             biased;
             _ = self.cancel.changed() => return Err("cancelled"),
-            result = tokio::time::timeout(req.timeout, self.backend.summarizer.complete(req)) => {
-                result.map_err(|_| "timeout")?.map_err(|error| error.kind())?
-            }
+            result = async {
+                let enabled = self.consumer.settings.lock()
+                    .unwrap_or_else(|error| error.into_inner())
+                    .graph_enabled
+                    .unwrap_or(true);
+                if !enabled {
+                    self.session.state().status.disabled_reason = Some(DisabledReason::DisabledDuringRun);
+                    return Err("disabled");
+                }
+                tokio::time::timeout(req.timeout, self.backend.summarizer.complete(req))
+                    .await
+                    .map_err(|_| "timeout")?
+                    .map_err(|error| error.kind())
+            } => result?,
         };
         Ok(parse_ops(&response))
     }
@@ -1241,6 +1253,74 @@ mod tests {
                 usize::from(second != EMPTY_PATCH)
             );
             assert!(calls.try_recv().is_err());
+        }
+    }
+
+    #[tokio::test]
+    async fn disabling_during_recording_stops_live_calls_and_continue_can_resume() {
+        let mut f = Fixture::new();
+        f.consumer.settings.lock().unwrap().graph_batch_utterances = Some(1);
+        let (fake, mut calls) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
+        let live = f.start(fake.clone());
+        f.append("synthetic first turn", false);
+        f.finalized();
+        next_call(&mut calls).await;
+        f.wait_for_status(|status| status.pending == 0).await;
+
+        f.consumer.settings.lock().unwrap().graph_enabled = Some(false);
+        f.append("synthetic turn after disabling", false);
+        f.finalized();
+        tokio::select! {
+            _ = f.wait_for_status(|status| status.disabled_reason.is_some()) => {}
+            call = calls.recv() => panic!("unexpected live call: {}", call.unwrap().timeout.as_secs()),
+        }
+        live.await.unwrap();
+        f.consumer.recording_stopped(f.sid);
+        assert!(calls.try_recv().is_err());
+        assert_eq!(f.events().len(), 1);
+        assert_eq!(
+            f.consumer.status(f.sid).disabled_reason,
+            Some(DisabledReason::DisabledDuringRun)
+        );
+
+        f.consumer.settings.lock().unwrap().graph_enabled = Some(true);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
+        assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(120));
+        assert!(calls.try_recv().is_err());
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 0);
+        assert_eq!(f.consumer.status(f.sid).disabled_reason, None);
+    }
+
+    #[tokio::test]
+    async fn disabling_before_stop_blocks_flush_and_consolidation() {
+        for pending_at_stop in [true, false] {
+            let mut f = Fixture::new();
+            f.consumer.settings.lock().unwrap().graph_batch_utterances = Some(1);
+            let (fake, mut calls) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
+            let live = f.start(fake);
+            f.append("synthetic first turn", false);
+            f.finalized();
+            next_call(&mut calls).await;
+            f.wait_for_status(|status| status.pending == 0).await;
+
+            f.consumer.settings.lock().unwrap().graph_enabled = Some(false);
+            if pending_at_stop {
+                f.append("synthetic turn just before stop", false);
+            }
+            f.stopped();
+            live.await.unwrap();
+            assert!(
+                calls.try_recv().is_err(),
+                "pending at stop: {pending_at_stop}"
+            );
+            let updates = f.events();
+            assert_eq!(updates.len(), 1);
+            assert_eq!(updates[0].source, PatchSource::Live);
+            assert_eq!(
+                f.consumer.status(f.sid).disabled_reason,
+                Some(DisabledReason::DisabledDuringRun)
+            );
         }
     }
 
