@@ -880,10 +880,15 @@ pub fn App() -> Element {
     // necessarily the one that was connected when the gap itself was recorded;
     // see `retranscribe_gap`'s own doc comment) needs a `BatchSttProvider`
     // adapter (#91) for that to make sense.
-    let selected_provider_kind =
-        gap_retranscription::selected_provider_kind(state.credential_store.as_ref());
-    let can_retranscribe =
-        gap_retranscription::supports_batch_retranscription(selected_provider_kind);
+    let (selected_provider_kind, can_retranscribe) = if crate::scripted_stt_active() {
+        (app_service::SttProviderKind::default(), false)
+    } else {
+        let provider = gap_retranscription::selected_provider_kind(state.credential_store.as_ref());
+        (
+            provider,
+            gap_retranscription::supports_batch_retranscription(provider),
+        )
+    };
 
     #[cfg(windows)]
     let live_graph = if recording_active {
@@ -1114,7 +1119,7 @@ pub fn App() -> Element {
                 }
                 button {
                     class: "primary",
-                    disabled: !has_session || is_summary_busy,
+                    disabled: !has_session || is_summary_busy || crate::scripted_stt_active(),
                     onclick: on_generate_summary,
                     if is_summary_busy { "要約を生成中..." } else { "要約を生成" }
                 }

@@ -114,6 +114,9 @@ jobs:
         run: |
           $exe = Get-ChildItem -Path .\target\dx\desktop\release\windows\app -File -Include "*.exe" -Recurse
           if (-not $exe) { throw "Expected desktop.exe was not produced." }
+          # Decode bytes one-to-one so the ASCII marker can be checked in a PE binary.
+          $binary = [Text.Encoding]::Latin1.GetString([IO.File]::ReadAllBytes($exe[0].FullName))
+          if ($binary.Contains('e2e scenario active')) { throw 'Scripted STT marker found in release exe.' }
           $exe | ForEach-Object { $_.FullName }
           New-Item -ItemType Directory -Path .\dist -Force | Out-Null
           Copy-Item $exe[0].FullName -Destination .\dist\meetingram-windows-x64.exe

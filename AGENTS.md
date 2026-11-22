@@ -29,8 +29,8 @@ Linux で通せるものは手元で、それ以外は PR の CI（`.github/work
 
 ```sh
 cargo fmt --all --check
-cargo test -p desktop-cli                     # Linux で通るテストはこれだけ
-gh pr checks <PR> --watch                     # Linux（fmt・desktop-cli）と Windows・macOS の clippy -D warnings とテスト
+cargo test -p desktop-cli -p e2e-scripted     # Linux で通るテスト
+gh pr checks <PR> --watch                     # Linux（fmt・desktop-cli・e2e-scripted）と Windows・macOS の clippy -D warnings とテスト
 ```
 
 - CI の 3 ジョブ（Linux・Windows・macOS）がすべて通ること。CI を通す前に「動く」と報告しない。

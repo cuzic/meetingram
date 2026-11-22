@@ -1,3 +1,6 @@
+#[cfg(all(feature = "e2e-scripted", not(debug_assertions)))]
+compile_error!("the e2e-scripted feature requires a debug build");
+
 mod actions;
 mod app_settings;
 mod app_state;
@@ -77,10 +80,39 @@ fn cli_temp_base(app_data_dir: &std::path::Path) -> std::path::PathBuf {
     app_data_dir.join("cli-tmp")
 }
 
+#[cfg(all(windows, feature = "e2e-scripted"))]
+static E2E_SCENARIO: std::sync::OnceLock<Option<e2e_scripted::Scenario>> =
+    std::sync::OnceLock::new();
+
+pub(crate) fn scripted_stt_active() -> bool {
+    #[cfg(all(windows, feature = "e2e-scripted"))]
+    {
+        E2E_SCENARIO.get().and_then(Option::as_ref).is_some()
+    }
+    #[cfg(not(all(windows, feature = "e2e-scripted")))]
+    false
+}
+
 fn main() {
     let app_data_dir = app_data_dir();
     std::fs::create_dir_all(&app_data_dir).ok();
     init_logging(&app_data_dir);
+
+    #[cfg(all(windows, feature = "e2e-scripted"))]
+    E2E_SCENARIO.get_or_init(|| {
+        match e2e_scripted::Scenario::load_optional(std::env::var_os("MEETINGRAM_E2E_SCENARIO")) {
+            Ok(scenario) => {
+                if let Some(scenario) = &scenario {
+                    tracing::info!(scenario = scenario.name(), "e2e scenario active");
+                }
+                scenario
+            }
+            Err(error) => {
+                tracing::error!(error, "could not load E2E scenario");
+                std::process::exit(1);
+            }
+        }
+    });
 
     let cli_temp_base = cli_temp_base(&app_data_dir);
     if let Err(error) = std::fs::create_dir_all(&cli_temp_base)
@@ -162,15 +194,25 @@ fn main() {
 
     // Load plugins from the app data directory
     let plugin_dir = app_data_dir.join("plugins");
-    if let Err(err) = rhai_engine.load_plugins(&plugin_dir) {
-        tracing::warn!(%err, "failed to load Rhai plugins");
+    if !scripted_stt_active() {
+        if let Err(err) = rhai_engine.load_plugins(&plugin_dir) {
+            tracing::warn!(%err, "failed to load Rhai plugins");
+        }
     }
+
+    let graph_settings = if scripted_stt_active() {
+        let mut settings = app_settings.lock().unwrap().clone();
+        settings.graph_enabled = Some(false);
+        Arc::new(Mutex::new(settings))
+    } else {
+        app_settings.clone()
+    };
 
     let graph_consumer = Arc::new(graph_consumer::GraphConsumer::new(
         broker.clone(),
         config.session_db_path.clone(),
         credential_store.clone(),
-        app_settings.clone(),
+        graph_settings,
         cli_temp_base,
     ));
     let state = Arc::new(AppState {
@@ -212,7 +254,19 @@ fn main() {
 }
 
 fn app_entry() -> Element {
-    ui::App()
+    let app = ui::App();
+    #[cfg(all(windows, feature = "e2e-scripted"))]
+    if scripted_stt_active() {
+        return rsx! {
+            div {
+                role: "status",
+                style: "background: #facc15; color: #1c1917; padding: 6px 12px; font-weight: bold;",
+                "E2E シナリオ"
+            }
+            {app}
+        };
+    }
+    app
 }
 
 /// Implements rhai_engine::SettingsProvider for the desktop app.

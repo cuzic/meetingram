@@ -8,7 +8,11 @@ description = "meetingram desktop app (dioxus-desktop shell)"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+e2e-scripted = ["dep:e2e-scripted"]
+
 [dependencies]
+e2e-scripted = { path = "../e2e-scripted", optional = true }
 dioxus = { version = "0.7", features = ["desktop"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros", "sync"] }
 dirs = "7"

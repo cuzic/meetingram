@@ -61,7 +61,9 @@ pub fn start_recording(state: &AppState) -> Result<Status, String> {
                         settings.hint_debounce_seconds.unwrap_or(15),
                     )
                 };
-                if let (true, debounce_seconds) = hint_settings {
+                if let (false, (true, debounce_seconds)) =
+                    (crate::scripted_stt_active(), hint_settings)
+                {
                     hint_consumer::spawn_hint_consumer(
                         state.broker.clone(),
                         session_id,
@@ -74,8 +76,10 @@ pub fn start_recording(state: &AppState) -> Result<Status, String> {
                     );
                 }
             }
-            state.summary_consumer.spawn_auto_summary(session_id);
-            state.rhai_engine.spawn_session(&state.broker, session_id);
+            if !crate::scripted_stt_active() {
+                state.summary_consumer.spawn_auto_summary(session_id);
+                state.rhai_engine.spawn_session(&state.broker, session_id);
+            }
             Ok(status::current(state))
         }
         Err(e) => {

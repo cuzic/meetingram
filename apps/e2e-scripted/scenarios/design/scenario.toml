@@ -1,0 +1,4 @@
+speed = 10
+latency_ms = 300
+
+# Graph settings overrides are reserved for the scripted LLM.

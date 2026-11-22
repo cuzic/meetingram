@@ -2,6 +2,8 @@ $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot/windows-screen-capture.ps1"
 . "$PSScriptRoot/windows-e2e-scenario.ps1"
 
+# meetingramctl launches the desktop with this environment on the first status call.
+$env:MEETINGRAM_E2E_SCENARIO = (Resolve-Path 'apps/e2e-scripted/scenarios/design').Path
 $ctl = (Resolve-Path 'target/x86_64-pc-windows-msvc/debug/meetingramctl.exe').Path
 $output = Join-Path $env:RUNNER_TEMP 'e2e-windows-recording'
 $progress = Join-Path $output 'capture-progress.txt'

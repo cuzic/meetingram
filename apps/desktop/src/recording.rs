@@ -120,6 +120,21 @@ pub fn start(state: &AppState) -> Result<SessionId, String> {
         .unwrap()
         .silence_gate_enabled
         .unwrap_or(false);
+    let transcription_options = app_service::LiveTranscriptionOptions::default()
+        .with_silence_gate(silence_gate_enabled_for_task);
+    #[cfg(feature = "e2e-scripted")]
+    let transcription_options =
+        if let Some(scenario) = crate::E2E_SCENARIO.get().and_then(Option::as_ref) {
+            let (self_track, remote_track) = scenario.providers();
+            transcription_options
+                .with_silence_gate(false)
+                .with_stt_override(app_service::SttOverride {
+                    self_track,
+                    remote_track,
+                })
+        } else {
+            transcription_options
+        };
     let broker_for_task = state.broker.clone();
 
     // WASAPI's callback timeout — how long the capture loop waits for a device
@@ -140,8 +155,7 @@ pub fn start(state: &AppState) -> Result<SessionId, String> {
             Some(level_for_task),
             Some(credential_store_for_task),
             Some(transcription_status_for_task),
-            app_service::LiveTranscriptionOptions::default()
-                .with_silence_gate(silence_gate_enabled_for_task),
+            transcription_options,
             Some(&broker_for_task),
             mic_device_id,
             render_device_id,
@@ -200,6 +214,20 @@ pub async fn stop(state: &AppState) -> Result<SessionSummary, String> {
         active.join_handle.await.map_err(|e| format!("capture task panicked: {e}"))?.map_err(|e| e.to_string())
     }
     .await;
+
+    #[cfg(feature = "e2e-scripted")]
+    if crate::scripted_stt_active() {
+        let store = state.store.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            if store
+                .gaps_for_session(session_id)
+                .is_ok_and(|gaps| !gaps.is_empty())
+            {
+                tracing::warn!("E2E scenario skipped gap retranscription");
+            }
+        })
+        .await;
+    }
 
     // Published *after* the capture task (and with it,
     // `app_service::live_transcription`'s own `UtteranceEnded(SessionEnd)`

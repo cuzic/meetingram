@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "apps/desktop",
     "apps/desktop-cli",
+    "apps/e2e-scripted",
 ]
 
 [workspace.package]
@@ -24,6 +25,7 @@ local-broker = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.
 recorder-domain = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
 rhai-engine = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
 session-store = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+stt-api = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
 stt-assemblyai = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
 stt-deepgram = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
 stt-google = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }

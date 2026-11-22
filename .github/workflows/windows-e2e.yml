@@ -40,6 +40,10 @@ jobs:
         with:
           cache-on-failure: true
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
       - name: Prepare artifact directory
         id: artifact-directory
         if: always()
@@ -47,7 +51,7 @@ jobs:
 
       - name: Build desktop
         id: desktop
-        run: cargo build -p desktop --target x86_64-pc-windows-msvc
+        run: cargo build -p desktop --features e2e-scripted --target x86_64-pc-windows-msvc
 
       - name: Build meetingramctl
         id: cli

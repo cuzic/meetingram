@@ -4,7 +4,7 @@ name: App Build & Test
 # the app ships for. The core crates (capture, STT, broker, Rhai) are tested in
 # cuzic/meetingram-core; this gate only covers the app crates themselves, so
 # clippy runs with --no-deps.
-# Linux checks workspace formatting and runs Clippy and tests for meetingramctl.
+# Linux checks workspace formatting and runs Clippy and tests for meetingramctl and scripted STT.
 #
 # The app-launching E2E pass that 1on1-recorder ran (virtual audio device +
 # `ctl start/stop` against a real running app) has not been ported yet.
@@ -63,6 +63,14 @@ jobs:
         shell: bash
         run: cargo test -p desktop -p desktop-cli --target ${{ matrix.target }} -- ${{ matrix.test_skip }}
 
+      - name: Clippy with scripted STT
+        shell: bash
+        run: cargo clippy -p desktop -p e2e-scripted --features desktop/e2e-scripted --target ${{ matrix.target }} --all-targets --no-deps -- -D warnings
+
+      - name: Test with scripted STT
+        shell: bash
+        run: cargo test -p desktop -p e2e-scripted --features desktop/e2e-scripted --target ${{ matrix.target }} -- ${{ matrix.test_skip }}
+
   linux:
     runs-on: ubuntu-latest
     steps:
@@ -78,7 +86,7 @@ jobs:
         run: cargo fmt --all --check
 
       - name: Clippy
-        run: cargo clippy -p desktop-cli --all-targets --no-deps -- -D warnings
+        run: cargo clippy -p desktop-cli -p e2e-scripted --all-targets --no-deps -- -D warnings
 
       - name: Test
-        run: cargo test -p desktop-cli
+        run: cargo test -p desktop-cli -p e2e-scripted
