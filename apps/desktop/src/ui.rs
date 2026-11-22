@@ -29,6 +29,9 @@ mod graph_history_view;
 #[path = "graph_outline_view.rs"]
 mod graph_outline_view;
 #[cfg(windows)]
+#[path = "graph_review_view.rs"]
+mod graph_review_view;
+#[cfg(windows)]
 #[path = "graph_settings_view.rs"]
 mod graph_settings_view;
 #[cfg(windows)]
