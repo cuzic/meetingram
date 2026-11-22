@@ -60,6 +60,7 @@ pub struct GraphStatus {
     pub rev: u64,
     // A rebuild can reuse revision numbers from the deleted graph.
     pub graph_generation: u64,
+    pub failure_count: u64,
 }
 
 #[derive(Default)]
@@ -84,8 +85,8 @@ impl Session {
 #[derive(Default)]
 struct Sessions {
     active: HashMap<SessionId, Arc<Session>>,
-    // A past backend failure cannot be recovered from the current settings.
-    disabled: HashMap<SessionId, DisabledReason>,
+    // Preserve the reason and failure count when releasing the idle executor.
+    failures: HashMap<SessionId, (Option<DisabledReason>, u64)>,
     revisions: HashMap<SessionId, (u64, u64)>,
     // Keep completion across idle executor pruning. Unseen sessions need consolidation.
     consolidated: BTreeSet<SessionId>,
@@ -103,8 +104,13 @@ impl Sessions {
         if state.recording {
             return;
         }
-        if let Some(reason) = state.status.disabled_reason {
-            self.disabled.insert(sid, reason);
+        let GraphStatus {
+            disabled_reason,
+            failure_count,
+            ..
+        } = state.status;
+        if disabled_reason.is_some() || failure_count > 0 {
+            self.failures.insert(sid, (disabled_reason, failure_count));
         }
         drop(state);
         self.active.remove(&sid);
@@ -203,10 +209,12 @@ impl GraphConsumer {
 
     fn session(self: &Arc<Self>, sid: SessionId) -> SessionLease {
         let mut sessions = self.sessions();
-        let disabled_reason = sessions.disabled.remove(&sid);
+        let previous_failure = sessions.failures.remove(&sid);
         let session = sessions.active.entry(sid).or_default().clone();
-        if disabled_reason.is_some() {
-            session.state().status.disabled_reason = disabled_reason;
+        if let Some((reason, count)) = previous_failure {
+            let mut state = session.state();
+            state.status.disabled_reason = reason;
+            state.status.failure_count = count;
         }
         SessionLease {
             consumer: Arc::clone(self),
@@ -220,9 +228,14 @@ impl GraphConsumer {
     pub fn status(&self, sid: SessionId) -> GraphStatus {
         let sessions = self.sessions();
         let mut status = sessions.active.get(&sid).map_or_else(
-            || GraphStatus {
-                disabled_reason: sessions.disabled.get(&sid).copied(),
-                ..GraphStatus::default()
+            || {
+                let (disabled_reason, failure_count) =
+                    sessions.failures.get(&sid).copied().unwrap_or_default();
+                GraphStatus {
+                    disabled_reason,
+                    failure_count,
+                    ..GraphStatus::default()
+                }
             },
             |session| session.state().status.clone(),
         );
@@ -429,6 +442,7 @@ impl GraphConsumer {
                 Err(reason) => {
                     let mut state = session.state();
                     state.status.disabled_reason = Some(reason);
+                    state.status.failure_count += 1;
                     if rebuild {
                         state.status.rebuilding = false;
                     }
@@ -886,6 +900,7 @@ impl<'a> Run<'a> {
     }
 
     fn log_failure(&self, source: PatchSource, kind: &'static str) {
+        self.session.state().status.failure_count += 1;
         tracing::warn!(session_id = %self.sid, ?source, kind, "graph operation failed");
     }
 }
@@ -1493,6 +1508,47 @@ mod tests {
         assert_eq!(f.consumer.status(f.sid).rev, 2);
         let graph = f.consumer.load_graph(f.sid).await.unwrap();
         assert_eq!(graph.rev, 2);
+    }
+
+    #[tokio::test]
+    async fn rebuilding_resets_revision_and_advances_graph_generation() {
+        let f = Fixture::new();
+        f.append("synthetic turn", true);
+        let (fake, _) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
+        f.post(PostMeeting::Retranscribed, fake).await.unwrap();
+        let before = f.consumer.status(f.sid);
+        assert_eq!(before.rev, 1);
+
+        let (fake, mut calls) = Fake::new(false, true);
+        let rebuild = f.post(PostMeeting::Rebuild, fake.clone());
+        next_call(&mut calls).await;
+        let after = f.consumer.status(f.sid);
+        assert_eq!(after.rev, 0);
+        assert_eq!(after.graph_generation, before.graph_generation + 1);
+        assert_eq!(f.consumer.load_graph(f.sid).await.unwrap().rev, 0);
+
+        fake.first_block.as_ref().unwrap().add_permits(1);
+        rebuild.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn repeated_backend_failure_survives_idle_executor_pruning() {
+        let f = Fixture::new();
+        for failure_count in 1..=2 {
+            f.consumer
+                .post_meeting_with(f.sid, PostMeeting::Continue, true, |_| async {
+                    Err(DisabledReason::Backend)
+                })
+                .unwrap()
+                .await
+                .unwrap();
+            assert!(!f.consumer.sessions().active.contains_key(&f.sid));
+            let status = f.consumer.status(f.sid);
+            assert_eq!(status.pending, 0);
+            assert_eq!(status.rev, 0);
+            assert_eq!(status.disabled_reason, Some(DisabledReason::Backend));
+            assert_eq!(status.failure_count, failure_count);
+        }
     }
 
     #[tokio::test]

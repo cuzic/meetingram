@@ -38,6 +38,7 @@ pub(super) fn continue_is_pending(
         && status.disabled_reason == previous.disabled_reason
         // An idle consumer can report zero pending before and after a successful run.
         && status.rev == previous.rev
+        && status.failure_count == previous.failure_count
         && elapsed < Duration::from_secs(30)
 }
 
@@ -268,6 +269,22 @@ mod tests {
             &previous,
             Duration::from_millis(250),
         ));
+    }
+
+    #[test]
+    fn continue_releases_after_a_new_failure_with_the_same_reason() {
+        let previous = GraphStatus {
+            disabled_reason: Some(DisabledReason::Backend),
+            failure_count: 1,
+            ..GraphStatus::default()
+        };
+        let status = GraphStatus {
+            failure_count: 2,
+            ..previous.clone()
+        };
+        let elapsed = Duration::from_millis(250);
+        assert!(continue_is_pending(&previous, &previous, elapsed));
+        assert!(!continue_is_pending(&status, &previous, elapsed));
     }
 
     #[test]

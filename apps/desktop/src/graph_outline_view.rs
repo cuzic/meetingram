@@ -85,16 +85,28 @@ fn status_label(status: Status) -> &'static str {
     }
 }
 
-fn should_load(loaded: Option<(u64, u64)>, current: (u64, u64)) -> bool {
-    loaded != Some(current)
+async fn load_changed_graph(
+    loaded: &mut Option<(u64, u64)>,
+    current: (u64, u64),
+    load: impl std::future::Future<Output = Result<Graph, &'static str>>,
+) -> Option<Result<Graph, &'static str>> {
+    if *loaded == Some(current) {
+        return None;
+    }
+    let result = load.await;
+    if result.is_ok() {
+        *loaded = Some(current);
+    }
+    Some(result)
 }
 
 #[component]
 pub(super) fn GraphOutline(session_id: SessionId) -> Element {
     let state = use_context::<Arc<AppState>>();
     let consumer = state.graph_consumer.clone();
-    let mut snapshot = use_signal(|| None::<Result<Graph, &'static str>>);
-    let threshold = use_hook(|| consumer.review_threshold());
+    let mut snapshot = use_signal(|| None::<Graph>);
+    let mut load_failed = use_signal(|| false);
+    let mut threshold = use_signal(|| consumer.review_threshold());
     let mut selected = use_signal(|| None::<String>);
     use_future(move || {
         let consumer = consumer.clone();
@@ -103,13 +115,23 @@ pub(super) fn GraphOutline(session_id: SessionId) -> Element {
             loop {
                 let status = consumer.status(session_id);
                 let current = (status.rev, status.graph_generation);
-                if should_load(loaded, current) {
-                    let graph = consumer.load_graph(session_id).await;
-                    if loaded.is_none_or(|(_, generation)| generation != current.1) {
-                        selected.set(None);
+                let reset_selection = loaded.is_none_or(|(_, generation)| generation != current.1);
+                match load_changed_graph(&mut loaded, current, consumer.load_graph(session_id))
+                    .await
+                {
+                    Some(Ok(graph)) => {
+                        if reset_selection {
+                            selected.set(None);
+                        }
+                        snapshot.set(Some(graph));
+                        load_failed.set(false);
                     }
-                    snapshot.set(Some(graph));
-                    loaded = Some(current);
+                    Some(Err(_)) if !*load_failed.peek() => load_failed.set(true),
+                    _ => {}
+                }
+                let current_threshold = consumer.review_threshold();
+                if *threshold.peek() != current_threshold {
+                    threshold.set(current_threshold);
                 }
                 tokio::time::sleep(Duration::from_millis(250)).await;
             }
@@ -117,12 +139,16 @@ pub(super) fn GraphOutline(session_id: SessionId) -> Element {
     });
 
     let snapshot = snapshot.read();
-    let graph = match snapshot.as_ref() {
-        None => return rsx! { p { class: "hint", "議論グラフを読み込んでいます" } },
-        Some(Err(_)) => return rsx! { p { class: "hint", "議論グラフを読み込めませんでした" } },
-        Some(Ok(graph)) => graph,
+    let error = load_failed().then(|| {
+        rsx! {
+            p { class: "hint", role: "status", "議論グラフを読み込めませんでした" }
+        }
+    });
+    let Some(graph) = snapshot.as_ref() else {
+        return error
+            .unwrap_or_else(|| rsx! { p { class: "hint", "議論グラフを読み込んでいます" } });
     };
-    let rows = outline_rows(&build_outline(graph), threshold);
+    let rows = outline_rows(&build_outline(graph), threshold());
     let selected_id = selected();
     let selected_node = selected_id
         .as_deref()
@@ -132,6 +158,9 @@ pub(super) fn GraphOutline(session_id: SessionId) -> Element {
 
     rsx! {
         section { class: "panel", role: "tabpanel", aria_label: "アウトライン",
+            if let Some(error) = error {
+                {error}
+            }
             if rows.is_empty() {
                 p { class: "hint", "表示できる議論グラフはありません" }
             }
@@ -233,15 +262,102 @@ pub(super) fn HistoryOutline(initial_session: Option<SessionId>) -> Element {
                     }
                 }
             }
-            GraphOutline { key: "{session_id}", session_id }
+            { history_outline_contents(session_id, rsx! { GraphOutline { session_id } }) }
         }
     }
+}
+
+fn history_outline_contents(session_id: SessionId, outline: Element) -> Element {
+    // The key must be on the root of its own template for Dioxus to remount the outline.
+    rsx! { Fragment { key: "{session_id}", {outline} } }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use discussion_graph::{Edge, Review};
+    use discussion_graph::{Edge, Ground, Review};
+    use std::{
+        cell::{Cell, RefCell},
+        rc::Rc,
+    };
+
+    #[test]
+    fn switching_history_sessions_remounts_the_outline() {
+        #[derive(Clone)]
+        struct History {
+            session: Rc<Cell<SessionId>>,
+            mounts: Rc<RefCell<Vec<SessionId>>>,
+        }
+
+        #[component]
+        fn Probe(session_id: SessionId) -> Element {
+            let history = use_context::<History>();
+            use_hook(move || history.mounts.borrow_mut().push(session_id));
+            rsx! { "outline" }
+        }
+
+        fn app() -> Element {
+            let session_id = use_context::<History>().session.get();
+            rsx! {
+                section {
+                    label { "session picker" }
+                    { history_outline_contents(session_id, rsx! { Probe { session_id } }) }
+                }
+            }
+        }
+
+        let first = SessionId::new();
+        let second = SessionId::new();
+        let history = History {
+            session: Rc::new(Cell::new(first)),
+            mounts: Rc::default(),
+        };
+        let mut dom = VirtualDom::new(app).with_root_context(history.clone());
+        dom.rebuild_in_place();
+        history.session.set(second);
+        dom.mark_dirty(ScopeId::APP);
+        dom.render_immediate_to_vec();
+
+        assert_eq!(*history.mounts.borrow(), [first, second]);
+    }
+
+    #[test]
+    fn evidence_is_filtered_sorted_and_deduplicated() {
+        let mut graph = Graph::default();
+        for (uid, row_id) in [("u1", 1), ("u2", 2), ("u3", 3)] {
+            graph.utterances.insert(
+                uid.into(),
+                Utterance {
+                    uid: uid.into(),
+                    row_id,
+                    track: None,
+                    speaker_label: "Synthetic speaker".into(),
+                    start_ms: None,
+                    end_ms: None,
+                    text: "Synthetic turn".into(),
+                    is_retranscribed: false,
+                },
+            );
+        }
+        for (target, uid) in [
+            ("n1", "u2"),
+            ("n2", "u3"),
+            ("n1", "u1"),
+            ("n1", "u2"),
+            ("n1", "missing"),
+        ] {
+            graph.grounds.push(Ground {
+                target: target.into(),
+                uid: uid.into(),
+                act: None,
+            });
+        }
+        let ids: Vec<_> = evidence(&graph, "n1")
+            .into_iter()
+            .map(|row| row.uid.as_str())
+            .collect();
+        assert_eq!(ids, ["u1", "u2"]);
+    }
 
     #[test]
     fn outline_lists_subquestions_first_and_unattached_last() {
@@ -254,6 +370,8 @@ mod tests {
             ("n5", NodeKind::Decision, Status::Merged, Review::Auto, 0.9),
             ("n6", NodeKind::Action, Status::Open, Review::Rejected, 0.9),
             ("n7", NodeKind::Action, Status::Open, Review::Auto, 0.9),
+            ("n8", NodeKind::Decision, Status::Decided, Review::Auto, 0.9),
+            ("n9", NodeKind::Action, Status::Open, Review::Auto, 0.9),
         ] {
             graph.nodes.insert(
                 id.into(),
@@ -275,6 +393,8 @@ mod tests {
             ("e2", "n3", "n1", EdgeKind::SubIssueOf),
             ("e3", "n4", "n2", EdgeKind::ObjectsTo),
             ("e4", "n5", "n1", EdgeKind::Resolves),
+            ("e5", "n8", "n1", EdgeKind::Resolves),
+            ("e6", "n9", "n1", EdgeKind::Assigns),
         ] {
             graph.edges.insert(
                 id.into(),
@@ -308,18 +428,50 @@ mod tests {
                 ("n3", 1, false, Some(EdgeKind::SubIssueOf)),
                 ("n2", 1, true, Some(EdgeKind::RespondsTo)),
                 ("n4", 2, false, Some(EdgeKind::ObjectsTo)),
+                ("n8", 1, false, Some(EdgeKind::Resolves)),
+                ("n9", 1, false, Some(EdgeKind::Assigns)),
                 ("未整理", 0, false, None),
                 ("n7", 0, false, None),
             ]
         );
     }
 
-    #[test]
-    fn reloads_only_when_revision_changes_or_a_graph_is_rebuilt() {
-        assert!(should_load(None, (0, 0)));
-        assert!(!should_load(Some((0, 0)), (0, 0)));
-        assert!(!should_load(Some((2, 0)), (2, 0)));
-        assert!(should_load(Some((2, 0)), (3, 0)));
-        assert!(should_load(Some((2, 0)), (2, 1)));
+    #[tokio::test]
+    async fn polls_reload_on_revision_or_generation_changes_and_retry_failed_reads() {
+        let mut loaded = None;
+        let reads = Cell::new(0);
+        let load = async |rev, success| {
+            reads.set(reads.get() + 1);
+            if success {
+                Ok(Graph {
+                    rev,
+                    ..Graph::default()
+                })
+            } else {
+                Err("db")
+            }
+        };
+
+        for (current, success, expected_reads) in [
+            ((0, 0), true, 1),
+            ((0, 0), true, 1),
+            ((1, 0), false, 2),
+            ((1, 0), true, 3),
+            ((1, 0), true, 3),
+            ((1, 1), true, 4),
+        ] {
+            let before = reads.get();
+            let update = load_changed_graph(&mut loaded, current, load(current.0, success)).await;
+            assert_eq!(reads.get(), expected_reads);
+            if before == expected_reads {
+                assert!(update.is_none());
+            } else if success {
+                assert_eq!(update.unwrap().unwrap().rev, current.0);
+                assert_eq!(loaded, Some(current));
+            } else {
+                assert_eq!(update.unwrap(), Err("db"));
+                assert_eq!(loaded, Some((0, 0)));
+            }
+        }
     }
 }
