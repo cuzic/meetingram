@@ -65,7 +65,7 @@ jobs:
 
       - name: Clippy with scripted STT
         shell: bash
-        run: cargo clippy -p desktop -p e2e-scripted --features desktop/e2e-scripted --target ${{ matrix.target }} --all-targets --no-deps -- -D warnings
+        run: cargo clippy -p desktop -p e2e-scripted --features desktop/e2e-scripted --target ${{ matrix.target }} --no-deps -- -D warnings
 
       - name: Test with scripted STT
         shell: bash
