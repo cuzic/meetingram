@@ -248,7 +248,9 @@ impl GraphConsumer {
             .active
             .get(&sid)
             .is_none_or(|session| !session.state().recording)
-            && !status.rebuilding;
+            && !status.rebuilding
+            && !status.running
+            && !sessions.interrupted_flushes.contains(&sid);
         status
     }
 
@@ -274,6 +276,7 @@ impl GraphConsumer {
         let consumer = self.clone();
         self.db(move |store| {
             // Keep the executor reserved even if the UI's future is dropped.
+            let _session = session;
             let _execution = execution;
             let target = if is_node {
                 ReviewTarget::Node(&id)
@@ -285,7 +288,7 @@ impl GraphConsumer {
                 consumer.sessions().revisions.entry(sid).or_default().0 = rev;
                 return Ok(Err("review_stale"));
             }
-            if !store.is_consolidated(sid)? {
+            if store.consolidation_completed(sid)?.is_none() {
                 return Ok(Err("review_unavailable"));
             }
             if let ReviewTarget::Edge(id) = target {
@@ -299,11 +302,9 @@ impl GraphConsumer {
                     return Err(discussion_graph::store::StoreError::UnreviewableTarget);
                 }
             }
-            let state = session.state();
-            if state.recording || state.status.rebuilding {
+            if !consumer.status(sid).review_allowed {
                 return Ok(Err("review_unavailable"));
             }
-            drop(state);
             let rev = store.set_review(sid, target, decision)?;
             consumer.sessions().revisions.entry(sid).or_default().0 = rev;
             Ok(Ok(()))
@@ -317,9 +318,13 @@ impl GraphConsumer {
         sid: SessionId,
         history: bool,
     ) -> Result<(Graph, bool), &'static str> {
+        let consumer = self.clone();
         self.db(move |store| {
             let graph = store.load_graph(sid)?;
-            Ok((graph, history && store.is_consolidated(sid)?))
+            let review_available = history
+                && store.consolidation_completed(sid)?.is_some()
+                && consumer.status(sid).review_allowed;
+            Ok((graph, review_available))
         })
         .await
     }
@@ -804,7 +809,10 @@ impl<'a> Run<'a> {
             let sid = self.sid;
             match self
                 .consumer
-                .db(move |store| store.is_consolidated(sid))
+                .db(move |store| {
+                    Ok(store.consolidation_completed(sid)?.is_some()
+                        && store.is_consolidated(sid)?)
+                })
                 .await
             {
                 Ok(true) => {
@@ -867,7 +875,9 @@ impl<'a> Run<'a> {
             self.apply(PatchSource::Consolidate, prompt, PatchContext::Other)
                 .await?;
         }
-        Ok(())
+        self.consumer
+            .db(move |store| store.mark_consolidation_completed(sid))
+            .await
     }
 
     async fn apply(
@@ -1116,6 +1126,16 @@ mod tests {
                 store,
                 updates,
             }
+        }
+
+        fn reopen_consumer(&self) -> Arc<GraphConsumer> {
+            Arc::new(GraphConsumer::new(
+                LocalBroker::new(),
+                self.consumer.database.clone(),
+                self.consumer.credentials.clone(),
+                self.consumer.settings.clone(),
+                self.consumer.cli_temp_base.clone(),
+            ))
         }
 
         fn append(&self, text: &str, retranscribed: bool) {
@@ -1546,6 +1566,7 @@ mod tests {
         assert_eq!(calls.try_recv().unwrap().timeout, Duration::from_secs(60));
         assert!(calls.try_recv().is_err());
         assert_eq!(f.events().len(), 1);
+        assert!(!f.consumer.load_outline(f.sid, true).await.unwrap().1);
     }
 
     #[tokio::test]
@@ -1757,15 +1778,22 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn review_rejects_recording_or_rebuilding_sessions() {
-        for (recording, rebuilding) in [(true, false), (false, true)] {
+    async fn review_is_unavailable_during_recording_rebuilding_or_extraction() {
+        for (recording, rebuilding, running) in [
+            (true, false, false),
+            (false, true, false),
+            (false, false, true),
+        ] {
             let (f, listed) = review_fixture().await;
             let session = f.consumer.session(f.sid);
             {
                 let mut state = session.state();
                 state.recording = recording;
                 state.status.rebuilding = rebuilding;
+                state.status.running = running;
             }
+            assert!(!f.consumer.status(f.sid).review_allowed);
+            assert!(!f.consumer.load_outline(f.sid, true).await.unwrap().1);
             assert_eq!(
                 f.consumer
                     .set_review(
@@ -1853,15 +1881,96 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn review_remains_available_after_retranscription_flush() {
+        const LOW_CONFIDENCE_ISSUE: &str = r#"{"ops":[{"op":"add_node","tmp":"issue","kind":"issue","text":"Synthetic issue","confidence":0.4,"grounds":[{"uid":"u1"}]}]}"#;
+        let f = Fixture::new();
+        f.append("synthetic first turn", false);
+        let (fake, _) = Fake::scripted(0..0, vec![LOW_CONFIDENCE_ISSUE], false);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        let (listed, available) = f.consumer.load_outline(f.sid, true).await.unwrap();
+        assert!(available);
+        assert!(listed.nodes["n1"].confidence < f.consumer.review_threshold());
+
+        f.append("synthetic retranscribed turn", true);
+        let (fake, _) = Fake::new(false, false);
+        f.post(PostMeeting::Retranscribed, fake).await.unwrap();
+
+        let (graph, available) = f.consumer.load_outline(f.sid, true).await.unwrap();
+        assert!(graph.rev > listed.rev);
+        assert!(available);
+        f.consumer
+            .set_review(
+                f.sid,
+                0,
+                graph.rev,
+                ReviewTarget::Node("n1"),
+                ReviewDecision::Approve,
+            )
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn unfinished_second_stage_cannot_be_reviewed_even_after_reopening() {
+        let f = Fixture::new();
+        f.append("synthetic turn with two issues", false);
+        let (fake, _) = Fake::scripted(2..3, vec![TWO_ISSUES, ATTACH_ISSUE], false);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        assert_eq!(f.consumer.status(f.sid).failure_count, 1);
+        let sid = f.sid;
+        assert!(f
+            .consumer
+            .db(move |store| store.is_consolidated(sid))
+            .await
+            .unwrap());
+
+        // Check the persisted state independently of the interrupted run.
+        for consumer in [f.reopen_consumer(), f.consumer.clone()] {
+            let (graph, available) = consumer.load_outline(sid, true).await.unwrap();
+            assert!(!available);
+            assert_eq!(
+                consumer
+                    .set_review(
+                        sid,
+                        0,
+                        graph.rev,
+                        ReviewTarget::Node("n1"),
+                        ReviewDecision::Approve
+                    )
+                    .await,
+                Err("review_unavailable")
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn interrupted_second_stage_blocks_review_with_an_older_completion() {
+        let (f, _) = review_fixture().await;
+        f.append("synthetic follow-up turn", false);
+        let (fake, _) = Fake::scripted(2..3, vec![EMPTY_PATCH, EMPTY_PATCH], false);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        assert_eq!(f.consumer.status(f.sid).failure_count, 1);
+
+        let (graph, available) = f.consumer.load_outline(f.sid, true).await.unwrap();
+        assert!(!available);
+        assert_eq!(
+            f.consumer
+                .set_review(
+                    f.sid,
+                    0,
+                    graph.rev,
+                    ReviewTarget::Node("n1"),
+                    ReviewDecision::Approve
+                )
+                .await,
+            Err("review_unavailable")
+        );
+    }
+
+    #[tokio::test]
     async fn review_list_uses_saved_consolidation_after_reopening() {
         let (f, listed) = review_fixture().await;
-        let reopened = Arc::new(GraphConsumer::new(
-            LocalBroker::new(),
-            f.consumer.database.clone(),
-            f.consumer.credentials.clone(),
-            f.consumer.settings.clone(),
-            f.consumer.cli_temp_base.clone(),
-        ));
+        let reopened = f.reopen_consumer();
         let (graph, consolidated) = reopened.load_outline(f.sid, true).await.unwrap();
         assert!(consolidated);
         assert_eq!(graph, listed);

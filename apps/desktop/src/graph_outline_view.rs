@@ -99,8 +99,8 @@ fn status_label(status: Status) -> &'static str {
 }
 
 async fn load_changed_graph<T>(
-    loaded: &mut Option<(u64, u64)>,
-    current: (u64, u64),
+    loaded: &mut Option<(u64, u64, bool)>,
+    current: (u64, u64, bool),
     load: impl std::future::Future<Output = Result<T, &'static str>>,
 ) -> Option<Result<T, &'static str>> {
     if *loaded == Some(current) {
@@ -118,11 +118,11 @@ fn next_retry_delay(delay: Duration) -> Duration {
 }
 
 fn reset_on_generation_change(
-    loaded: Option<(u64, u64)>,
+    loaded: Option<(u64, u64, bool)>,
     generation: u64,
     clear: impl FnOnce(),
 ) -> bool {
-    if loaded.is_some_and(|(_, previous)| previous != generation) {
+    if loaded.is_some_and(|(_, previous, _)| previous != generation) {
         clear();
         return true;
     }
@@ -147,11 +147,9 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
             let mut retry_at = tokio::time::Instant::now();
             loop {
                 let status = consumer.status(session_id);
-                let current = (status.rev, status.graph_generation);
-                let enabled = status.review_allowed && !status.running;
-                if history && *review_enabled.peek() != enabled {
-                    review_enabled.set(enabled);
-                }
+                let enabled = history && status.review_allowed;
+                // Review eligibility can change while the graph revision stays the same.
+                let current = (status.rev, status.graph_generation, enabled);
                 if reset_on_generation_change(loaded, current.1, || {
                     selected.set(None);
                     snapshot.set(None);
@@ -159,6 +157,9 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
                     loaded = None;
                     retry_at = tokio::time::Instant::now();
                     retry_delay = Duration::ZERO;
+                }
+                if *review_enabled.peek() != enabled {
+                    review_enabled.set(enabled);
                 }
                 if tokio::time::Instant::now() >= retry_at {
                     match load_changed_graph(
@@ -168,13 +169,13 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
                     )
                     .await
                     {
-                        Some(Ok((graph, consolidated))) => {
+                        Some(Ok((graph, review_available))) => {
                             let rows = if history {
                                 candidates(&graph)
                             } else {
                                 Vec::new()
                             };
-                            snapshot.set(Some((graph, rows, current.1, consolidated)));
+                            snapshot.set(Some((graph, rows, current.1, review_available)));
                             load_failed.set(false);
                             retry_delay = Duration::ZERO;
                         }
@@ -203,7 +204,7 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
             p { class: "hint", role: "status", "議論グラフを読み込めませんでした" }
         }
     });
-    let Some((graph, candidates, generation, consolidated)) = snapshot.as_ref() else {
+    let Some((graph, candidates, generation, review_available)) = snapshot.as_ref() else {
         return error
             .unwrap_or_else(|| rsx! { p { class: "hint", "議論グラフを読み込んでいます" } });
     };
@@ -258,8 +259,8 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
             if history && stale_review() {
                 p { class: "hint", role: "status", "一覧が更新されました" }
             }
-            if history && *consolidated {
-                {review_view(session_id, *generation, graph, candidates, threshold(), review_enabled() && !load_failed(), stale_review)}
+            if history && *review_available && review_enabled() {
+                {review_view(session_id, *generation, graph, candidates, threshold(), !load_failed(), stale_review)}
             }
         }
     }
@@ -542,7 +543,7 @@ mod tests {
 
     #[tokio::test]
     async fn failed_read_after_rebuild_clears_the_old_outline_and_selection() {
-        let mut loaded = Some((3, 0));
+        let mut loaded = Some((3, 0, true));
         let mut snapshot = Some(Graph::default());
         let mut selected = Some("n1");
         assert!(!reset_on_generation_change(loaded, 0, || {
@@ -554,14 +555,15 @@ mod tests {
         }) {
             loaded = None;
         }
-        let update = load_changed_graph::<Graph>(&mut loaded, (3, 1), async { Err("db") }).await;
+        let update =
+            load_changed_graph::<Graph>(&mut loaded, (3, 1, false), async { Err("db") }).await;
         assert_eq!(update, Some(Err("db")));
         assert!(snapshot.is_none());
         assert!(selected.is_none());
     }
 
     #[tokio::test]
-    async fn polls_reload_on_revision_or_generation_changes_and_retry_failed_reads() {
+    async fn polls_reload_on_revision_generation_or_review_changes_and_retry_failed_reads() {
         let mut loaded = None;
         let reads = Cell::new(0);
         let load = async |rev, success| {
@@ -577,12 +579,15 @@ mod tests {
         };
 
         for (current, success, expected_reads) in [
-            ((0, 0), true, 1),
-            ((0, 0), true, 1),
-            ((1, 0), false, 2),
-            ((1, 0), true, 3),
-            ((1, 0), true, 3),
-            ((1, 1), true, 4),
+            ((0, 0, true), true, 1),
+            ((0, 0, true), true, 1),
+            ((1, 0, true), false, 2),
+            ((1, 0, true), true, 3),
+            ((1, 0, true), true, 3),
+            ((1, 1, true), true, 4),
+            ((1, 1, false), true, 5),
+            ((1, 1, false), true, 5),
+            ((1, 1, true), true, 6),
         ] {
             let before = reads.get();
             let update = load_changed_graph(&mut loaded, current, load(current.0, success)).await;
@@ -594,7 +599,7 @@ mod tests {
                 assert_eq!(loaded, Some(current));
             } else {
                 assert_eq!(update.unwrap(), Err("db"));
-                assert_eq!(loaded, Some((0, 0)));
+                assert_eq!(loaded, Some((0, 0, true)));
             }
         }
     }

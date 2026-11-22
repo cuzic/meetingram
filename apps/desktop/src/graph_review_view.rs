@@ -136,7 +136,6 @@ fn ReviewPanel(
         let status = consumer.status(session_id);
         if !enabled
             || !status.review_allowed
-            || status.running
             || *saving.peek()
             || *submitted.peek() == Some(revision)
         {
