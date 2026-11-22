@@ -61,7 +61,7 @@ impl GraphSettingsDraft {
 }
 
 fn settings_timing_message() -> &'static str {
-    "有効・無効はすぐに反映されます（無効にすると録音中の会議でもそれ以降は送信しません）。モデルと窓の設定は次の録音から反映されます。"
+    "無効にすると、録音中の会議でもそれ以降は送信しません。有効に戻しても録音中の会議の抽出は再開しません。会議後に「続きを抽出」で再開できます。モデルと窓の変更は、録音中の抽出には次の録音から適用されます。「続きを抽出」と「グラフを作り直す」は操作時点の設定を使います。"
 }
 
 #[component]
@@ -149,9 +149,11 @@ mod tests {
     #[test]
     fn explains_when_settings_take_effect() {
         let message = settings_timing_message();
-        assert!(message.contains("有効・無効はすぐに反映されます"));
-        assert!(message.contains("無効にすると録音中の会議でもそれ以降は送信しません"));
-        assert!(message.contains("モデルと窓の設定は次の録音から反映されます"));
+        assert!(message.contains("無効にすると、録音中の会議でもそれ以降は送信しません"));
+        assert!(message.contains("有効に戻しても録音中の会議の抽出は再開しません"));
+        assert!(message.contains("会議後に「続きを抽出」で再開できます"));
+        assert!(message.contains("録音中の抽出には次の録音から適用されます"));
+        assert!(message.contains("「続きを抽出」と「グラフを作り直す」は操作時点の設定を使います"));
     }
 
     #[test]
