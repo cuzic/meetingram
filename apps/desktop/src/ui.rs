@@ -957,10 +957,11 @@ pub fn App() -> Element {
                         button { role: "tab", aria_selected: outline, onclick: move |_| showing_history_outline.set(true), "アウトライン" }
                     }
                 }
+                div { hidden: outline,
+                    graph_history_view::GraphHistory { initial_session: selected_session_id_value }
+                }
                 if outline {
                     graph_outline_view::HistoryOutline { initial_session: selected_session_id_value }
-                } else {
-                    graph_history_view::GraphHistory { initial_session: selected_session_id_value }
                 }
             }
         };

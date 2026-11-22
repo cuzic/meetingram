@@ -94,7 +94,7 @@ pub(super) fn GraphOutline(session_id: SessionId) -> Element {
     let state = use_context::<Arc<AppState>>();
     let consumer = state.graph_consumer.clone();
     let mut snapshot = use_signal(|| None::<Result<Graph, &'static str>>);
-    let mut threshold = use_signal(|| consumer.review_threshold());
+    let threshold = use_hook(|| consumer.review_threshold());
     let mut selected = use_signal(|| None::<String>);
     use_future(move || {
         let consumer = consumer.clone();
@@ -111,10 +111,6 @@ pub(super) fn GraphOutline(session_id: SessionId) -> Element {
                     snapshot.set(Some(graph));
                     loaded = Some(current);
                 }
-                let latest_threshold = consumer.review_threshold();
-                if *threshold.peek() != latest_threshold {
-                    threshold.set(latest_threshold);
-                }
                 tokio::time::sleep(Duration::from_millis(250)).await;
             }
         }
@@ -126,7 +122,7 @@ pub(super) fn GraphOutline(session_id: SessionId) -> Element {
         Some(Err(_)) => return rsx! { p { class: "hint", "議論グラフを読み込めませんでした" } },
         Some(Ok(graph)) => graph,
     };
-    let rows = outline_rows(&build_outline(graph), threshold());
+    let rows = outline_rows(&build_outline(graph), threshold);
     let selected_id = selected();
     let selected_node = selected_id
         .as_deref()
