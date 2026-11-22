@@ -6,6 +6,7 @@ mod config;
 mod control_server;
 mod export;
 mod gap_retranscription;
+mod graph_consumer;
 mod hint_consumer;
 mod history;
 mod level;
@@ -90,7 +91,7 @@ fn main() {
 
     tracing::info!("meetingram starting up (pid {})", std::process::id());
 
-    // `RhaiEngine::new()` below calls `tokio::spawn` (its background async_worker
+    // The Rhai engine constructor below calls `tokio::spawn` (its background async_worker
     // task) before `LaunchBuilder::desktop()...launch()` runs — but that's the
     // point in the app's lifecycle where dioxus-desktop's own `tokio_runtime`
     // feature (on by default; see `dioxus-desktop`'s launch.rs) creates its
@@ -99,7 +100,7 @@ fn main() {
     // for dioxus-desktop's own launch (which reuses whatever runtime is already
     // current instead of building a second one — see its
     // `launch_virtual_dom`/`assert_ne!(..., RuntimeFlavor::CurrentThread, ...)`).
-    // Without this, `RhaiEngine::new()` panicked with "there is no reactor
+    // Without this, the Rhai engine constructor panicked with "there is no reactor
     // running, must be called from the context of a Tokio 1.x runtime" (caught via
     // the panic hook set up in `init_logging` above — this app had only ever been
     // cross-compile-checked before, never actually run on real Windows hardware,
@@ -142,7 +143,7 @@ fn main() {
         store.clone(),
         credential_store.clone(),
         app_settings.clone(),
-        cli_temp_base,
+        cli_temp_base.clone(),
     );
 
     // Settings provider for Rhai plugins
@@ -151,11 +152,12 @@ fn main() {
         credential_store: credential_store.clone(),
     });
 
-    let mut rhai_engine = rhai_engine::RhaiEngine::new(
+    let mut rhai_engine = rhai_engine::RhaiEngine::new_with_cli_temp_base(
         broker.clone(),
         store.clone(),
         credential_store.clone(),
         settings_provider,
+        Some(cli_temp_base.clone()),
     );
 
     // Load plugins from the app data directory
@@ -164,7 +166,15 @@ fn main() {
         tracing::warn!(%err, "failed to load Rhai plugins");
     }
 
+    let graph_consumer = Arc::new(graph_consumer::GraphConsumer::new(
+        broker.clone(),
+        config.session_db_path.clone(),
+        credential_store.clone(),
+        app_settings.clone(),
+        cli_temp_base,
+    ));
     let state = Arc::new(AppState {
+        graph_consumer,
         store,
         adapter,
         config,

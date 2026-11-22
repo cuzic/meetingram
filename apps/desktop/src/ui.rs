@@ -378,6 +378,7 @@ fn GapMarker(
                 provider_kind,
                 &state.store,
                 state.credential_store.as_ref(),
+                &state.graph_consumer,
             )
             .await
             {
