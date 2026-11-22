@@ -117,18 +117,18 @@ fn ReviewPanel(session_id: SessionId, generation: u64, rows: Vec<ReviewRow>) -> 
         saving.set(true);
         failed.set(false);
         let consumer = consumer.clone();
-        spawn(async move {
+        let request = tokio::spawn(async move {
             let target = if is_node {
                 ReviewTarget::Node(&id)
             } else {
                 ReviewTarget::Edge(&id)
             };
-            failed.set(
-                consumer
-                    .set_review(session_id, generation, target, decision)
-                    .await
-                    .is_err(),
-            );
+            consumer
+                .set_review(session_id, generation, target, decision)
+                .await
+        });
+        spawn(async move {
+            failed.set(!matches!(request.await, Ok(Ok(()))));
             saving.set(false);
         });
     };

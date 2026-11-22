@@ -1625,6 +1625,28 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn review_waits_for_the_session_executor() {
+        let f = Fixture::new();
+        f.append("synthetic turn", false);
+        let (fake, _) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        let session = f.consumer.session(f.sid);
+        let execution = session.execution.lock().await;
+        let before = f.consumer.status(f.sid).rev;
+        let review =
+            f.consumer
+                .set_review(f.sid, 0, ReviewTarget::Node("n1"), ReviewDecision::Approve);
+        tokio::pin!(review);
+        assert!(tokio::time::timeout(Duration::ZERO, &mut review)
+            .await
+            .is_err());
+        assert_eq!(f.consumer.status(f.sid).rev, before);
+        drop(execution);
+        review.await.unwrap();
+        assert_eq!(f.consumer.status(f.sid).rev, before + 1);
+    }
+
+    #[tokio::test]
     async fn status_revision_tracks_each_saved_patch_and_survives_executor_release() {
         let mut f = Fixture::new();
         f.append("synthetic turn", true);
