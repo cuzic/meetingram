@@ -80,6 +80,14 @@ pub(super) fn kind_label(kind: NodeKind) -> &'static str {
     }
 }
 
+fn reference_label(is_reference: bool) -> &'static str {
+    if is_reference {
+        "↑ 上に出たもの · "
+    } else {
+        ""
+    }
+}
+
 fn status_label(status: Status) -> &'static str {
     match status {
         Status::Open => "未解決",
@@ -90,11 +98,11 @@ fn status_label(status: Status) -> &'static str {
     }
 }
 
-async fn load_changed_graph(
+async fn load_changed_graph<T>(
     loaded: &mut Option<(u64, u64)>,
     current: (u64, u64),
-    load: impl std::future::Future<Output = Result<Graph, &'static str>>,
-) -> Option<Result<Graph, &'static str>> {
+    load: impl std::future::Future<Output = Result<T, &'static str>>,
+) -> Option<Result<T, &'static str>> {
     if *loaded == Some(current) {
         return None;
     }
@@ -105,12 +113,29 @@ async fn load_changed_graph(
     Some(result)
 }
 
+fn next_retry_delay(delay: Duration) -> Duration {
+    (delay * 2).clamp(Duration::from_secs(1), Duration::from_secs(5))
+}
+
+fn reset_on_generation_change(
+    loaded: Option<(u64, u64)>,
+    generation: u64,
+    clear: impl FnOnce(),
+) -> bool {
+    if loaded.is_some_and(|(_, previous)| previous != generation) {
+        clear();
+        return true;
+    }
+    false
+}
+
 #[component]
 pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: bool) -> Element {
     let state = use_context::<Arc<AppState>>();
     let consumer = state.graph_consumer.clone();
     let mut snapshot = use_signal(|| None);
-    let mut review_ready = use_signal(|| false);
+    let mut review_enabled = use_signal(|| false);
+    let stale_review = use_signal(|| false);
     let mut load_failed = use_signal(|| false);
     let mut threshold = use_signal(|| consumer.review_threshold());
     let mut selected = use_signal(|| None::<String>);
@@ -120,28 +145,36 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
             let mut loaded = None;
             let mut retry_delay = Duration::ZERO;
             let mut retry_at = tokio::time::Instant::now();
-            let mut generation = None;
             loop {
                 let status = consumer.status(session_id);
                 let current = (status.rev, status.graph_generation);
-                if generation != Some(current.1) {
-                    generation = Some(current.1);
+                let enabled = status.review_allowed && !status.running;
+                if history && *review_enabled.peek() != enabled {
+                    review_enabled.set(enabled);
+                }
+                if reset_on_generation_change(loaded, current.1, || {
                     selected.set(None);
                     snapshot.set(None);
+                }) {
+                    loaded = None;
                     retry_at = tokio::time::Instant::now();
                     retry_delay = Duration::ZERO;
                 }
                 if tokio::time::Instant::now() >= retry_at {
-                    match load_changed_graph(&mut loaded, current, consumer.load_graph(session_id))
-                        .await
+                    match load_changed_graph(
+                        &mut loaded,
+                        current,
+                        consumer.load_outline(session_id, history),
+                    )
+                    .await
                     {
-                        Some(Ok(graph)) => {
+                        Some(Ok((graph, consolidated))) => {
                             let rows = if history {
                                 candidates(&graph)
                             } else {
                                 Vec::new()
                             };
-                            snapshot.set(Some((graph, rows, current.1)));
+                            snapshot.set(Some((graph, rows, current.1, consolidated)));
                             load_failed.set(false);
                             retry_delay = Duration::ZERO;
                         }
@@ -149,15 +182,11 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
                             if !*load_failed.peek() {
                                 load_failed.set(true);
                             }
-                            retry_delay = (retry_delay * 2)
-                                .clamp(Duration::from_secs(1), Duration::from_secs(5));
+                            retry_delay = next_retry_delay(retry_delay);
                             retry_at = tokio::time::Instant::now() + retry_delay;
                         }
                         None => {}
                     }
-                }
-                if history && *review_ready.peek() != status.review_ready {
-                    review_ready.set(status.review_ready);
                 }
                 let current_threshold = consumer.review_threshold();
                 if *threshold.peek() != current_threshold {
@@ -174,7 +203,7 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
             p { class: "hint", role: "status", "議論グラフを読み込めませんでした" }
         }
     });
-    let Some((graph, candidates, generation)) = snapshot.as_ref() else {
+    let Some((graph, candidates, generation, consolidated)) = snapshot.as_ref() else {
         return error
             .unwrap_or_else(|| rsx! { p { class: "hint", "議論グラフを読み込んでいます" } });
     };
@@ -203,7 +232,7 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
                         let indent = depth * 20;
                         let opacity = if dimmed { 0.6 } else { 1.0 };
                         let kind = kind_label(node.kind);
-                        let reference = if is_reference { "↑ 上に出たもの · " } else { "" };
+                        let reference = reference_label(is_reference);
                         let status = status_label(node.status);
                         let stance = match relation {
                             Some(EdgeKind::Supports) => " · ＋賛成",
@@ -226,8 +255,11 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
             if let Some(utterances) = utterances {
                 {evidence_view(utterances)}
             }
-            if history {
-                {review_view(session_id, *generation, graph, candidates, threshold(), review_ready() && !load_failed())}
+            if history && stale_review() {
+                p { class: "hint", role: "status", "一覧が更新されました" }
+            }
+            if history && *consolidated {
+                {review_view(session_id, *generation, graph, candidates, threshold(), review_enabled() && !load_failed(), stale_review)}
             }
         }
     }
@@ -409,9 +441,16 @@ mod tests {
             ("n4", NodeKind::Argument, Status::Open, Review::Auto, 0.9),
             ("n5", NodeKind::Decision, Status::Merged, Review::Auto, 0.9),
             ("n6", NodeKind::Action, Status::Open, Review::Rejected, 0.9),
-            ("n7", NodeKind::Action, Status::Open, Review::Auto, 0.9),
-            ("n8", NodeKind::Decision, Status::Decided, Review::Auto, 0.9),
+            ("n7", NodeKind::Action, Status::Open, Review::Approved, 0.5),
+            (
+                "n8",
+                NodeKind::Decision,
+                Status::Decided,
+                Review::Approved,
+                0.5,
+            ),
             ("n9", NodeKind::Action, Status::Open, Review::Auto, 0.9),
+            ("n10", NodeKind::Issue, Status::Open, Review::Auto, 0.9),
         ] {
             graph.nodes.insert(
                 id.into(),
@@ -435,6 +474,7 @@ mod tests {
             ("e4", "n5", "n1", EdgeKind::Resolves),
             ("e5", "n8", "n1", EdgeKind::Resolves),
             ("e6", "n9", "n1", EdgeKind::Assigns),
+            ("e7", "n2", "n10", EdgeKind::RespondsTo),
         ] {
             graph.edges.insert(
                 id.into(),
@@ -452,29 +492,72 @@ mod tests {
         let actual: Vec<_> = outline_rows(&build_outline(&graph), 0.6)
             .into_iter()
             .map(|row| match row {
-                OutlineRow::Unattached => ("未整理", 0, false, None),
+                OutlineRow::Unattached => ("未整理", 0, false, None, ""),
                 OutlineRow::Node {
                     node,
                     depth,
                     dimmed,
                     relation,
-                    ..
-                } => (node.nid.as_str(), depth, dimmed, relation),
+                    is_reference,
+                } => (
+                    node.nid.as_str(),
+                    depth,
+                    dimmed,
+                    relation,
+                    reference_label(is_reference),
+                ),
             })
             .collect();
         assert_eq!(
             actual,
             [
-                ("n1", 0, false, None),
-                ("n3", 1, false, Some(EdgeKind::SubIssueOf)),
-                ("n2", 1, true, Some(EdgeKind::RespondsTo)),
-                ("n4", 2, false, Some(EdgeKind::ObjectsTo)),
-                ("n8", 1, false, Some(EdgeKind::Resolves)),
-                ("n9", 1, false, Some(EdgeKind::Assigns)),
-                ("未整理", 0, false, None),
-                ("n7", 0, false, None),
+                ("n1", 0, false, None, ""),
+                ("n3", 1, false, Some(EdgeKind::SubIssueOf), ""),
+                ("n2", 1, true, Some(EdgeKind::RespondsTo), ""),
+                ("n4", 2, false, Some(EdgeKind::ObjectsTo), ""),
+                ("n8", 1, false, Some(EdgeKind::Resolves), ""),
+                ("n9", 1, false, Some(EdgeKind::Assigns), ""),
+                ("n10", 0, false, None, ""),
+                (
+                    "n2",
+                    1,
+                    true,
+                    Some(EdgeKind::RespondsTo),
+                    "↑ 上に出たもの · "
+                ),
+                ("未整理", 0, false, None, ""),
+                ("n7", 0, false, None, ""),
             ]
         );
+    }
+
+    #[test]
+    fn outline_read_failures_back_off_to_five_seconds() {
+        let mut delay = Duration::ZERO;
+        for seconds in [1, 2, 4, 5, 5] {
+            delay = next_retry_delay(delay);
+            assert_eq!(delay, Duration::from_secs(seconds));
+        }
+    }
+
+    #[tokio::test]
+    async fn failed_read_after_rebuild_clears_the_old_outline_and_selection() {
+        let mut loaded = Some((3, 0));
+        let mut snapshot = Some(Graph::default());
+        let mut selected = Some("n1");
+        assert!(!reset_on_generation_change(loaded, 0, || {
+            panic!("the current generation must retain its outline")
+        }));
+        if reset_on_generation_change(loaded, 1, || {
+            snapshot = None;
+            selected = None;
+        }) {
+            loaded = None;
+        }
+        let update = load_changed_graph::<Graph>(&mut loaded, (3, 1), async { Err("db") }).await;
+        assert_eq!(update, Some(Err("db")));
+        assert!(snapshot.is_none());
+        assert!(selected.is_none());
     }
 
     #[tokio::test]

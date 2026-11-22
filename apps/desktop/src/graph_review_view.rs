@@ -3,7 +3,7 @@ use std::sync::Arc;
 use dioxus::prelude::*;
 use discussion_graph::{
     store::{ReviewDecision, ReviewTarget},
-    Graph, Node, Review,
+    EdgeKind, Graph, Node, Review,
 };
 use recorder_domain::SessionId;
 
@@ -62,22 +62,35 @@ fn visible_candidates(
         .filter(move |row| ready && row.confidence < threshold)
 }
 
+fn edge_kind_label(kind: EdgeKind) -> &'static str {
+    match kind {
+        EdgeKind::RespondsTo => "問いへの案",
+        EdgeKind::Supports => "＋賛成",
+        EdgeKind::ObjectsTo => "−反対",
+        EdgeKind::Resolves => "決定",
+        EdgeKind::Assigns => "宿題",
+        EdgeKind::SubIssueOf => "細かな問い",
+        _ => "関連",
+    }
+}
+
 pub(super) fn review_view(
     session_id: SessionId,
     generation: u64,
     graph: &Graph,
     candidates: &[Candidate],
     threshold: f64,
-    ready: bool,
+    enabled: bool,
+    stale_review: Signal<bool>,
 ) -> Element {
-    if !ready {
-        return rsx! {};
-    }
     rsx! {
         ReviewPanel {
             session_id,
             generation,
-            rows: visible_candidates(candidates, threshold, ready).map(|row| {
+            rev: graph.rev,
+            enabled,
+            stale_review,
+            rows: visible_candidates(candidates, threshold, true).map(|row| {
                 let (key, label) = match row.target() {
                     ReviewTarget::Node(id) => {
                         let node = &graph.nodes[id];
@@ -86,7 +99,7 @@ pub(super) fn review_view(
                     ReviewTarget::Edge(id) => {
                         let edge = &graph.edges[id];
                         (format!("edge-{id}"), format!("{} → {} · {}", graph.nodes[&edge.src].text,
-                            graph.nodes[&edge.dst].text, edge.kind.as_str()))
+                            graph.nodes[&edge.dst].text, edge_kind_label(edge.kind)))
                     }
                 };
                 ReviewRow { key, label, id: row.id.clone(), is_node: row.is_node,
@@ -106,16 +119,32 @@ struct ReviewRow {
 }
 
 #[component]
-fn ReviewPanel(session_id: SessionId, generation: u64, rows: Vec<ReviewRow>) -> Element {
+fn ReviewPanel(
+    session_id: SessionId,
+    generation: u64,
+    rev: u64,
+    enabled: bool,
+    mut stale_review: Signal<bool>,
+    rows: Vec<ReviewRow>,
+) -> Element {
     let consumer = use_context::<Arc<AppState>>().graph_consumer.clone();
     let mut saving = use_signal(|| false);
     let mut failed = use_signal(|| false);
+    let mut submitted = use_signal(|| None);
+    let revision = (generation, rev);
     let save = move |(id, is_node, decision): (String, bool, ReviewDecision)| {
-        if *saving.peek() {
+        let status = consumer.status(session_id);
+        if !enabled
+            || !status.review_allowed
+            || status.running
+            || *saving.peek()
+            || *submitted.peek() == Some(revision)
+        {
             return;
         }
         saving.set(true);
         failed.set(false);
+        stale_review.set(false);
         let consumer = consumer.clone();
         let request = tokio::spawn(async move {
             let target = if is_node {
@@ -124,15 +153,23 @@ fn ReviewPanel(session_id: SessionId, generation: u64, rows: Vec<ReviewRow>) -> 
                 ReviewTarget::Edge(&id)
             };
             consumer
-                .set_review(session_id, generation, target, decision)
+                .set_review(session_id, generation, rev, target, decision)
                 .await
         });
         spawn(async move {
-            failed.set(!matches!(request.await, Ok(Ok(()))));
+            match request.await {
+                Ok(Ok(())) => submitted.set(Some(revision)),
+                Ok(Err("review_stale")) => {
+                    submitted.set(Some(revision));
+                    stale_review.set(true);
+                }
+                _ => failed.set(true),
+            }
             saving.set(false);
         });
     };
 
+    let disabled = !enabled || saving() || submitted() == Some(revision);
     rsx! {
         section { aria_label: "確認",
             h3 { "確認" }
@@ -154,8 +191,8 @@ fn ReviewPanel(session_id: SessionId, generation: u64, rows: Vec<ReviewRow>) -> 
                                 summary { "{row.label}" }
                                 {row.grounds}
                             }
-                            button { disabled: saving(), onclick: move |_| approve_save(approve.clone()), "承認" }
-                            button { disabled: saving(), onclick: move |_| reject_save(reject.clone()), "却下" }
+                            button { disabled, onclick: move |_| approve_save(approve.clone()), "承認" }
+                            button { disabled, onclick: move |_| reject_save(reject.clone()), "却下" }
                         }
                     }
                 }

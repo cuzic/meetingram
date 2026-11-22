@@ -63,7 +63,7 @@ pub struct GraphStatus {
     // A rebuild can reuse revision numbers from the deleted graph.
     pub graph_generation: u64,
     pub failure_count: u64,
-    pub review_ready: bool,
+    pub review_allowed: bool,
 }
 
 #[derive(Default)]
@@ -91,8 +91,8 @@ struct Sessions {
     // Preserve the reason and failure count when releasing the idle executor.
     failures: HashMap<SessionId, (Option<DisabledReason>, u64)>,
     revisions: HashMap<SessionId, (u64, u64)>,
-    // Keep completion across idle executor pruning. Unseen sessions need consolidation.
-    consolidated: BTreeSet<SessionId>,
+    // Continue retries interrupted work, even if an earlier stage saved a patch.
+    interrupted_flushes: BTreeSet<SessionId>,
 }
 
 impl Sessions {
@@ -244,11 +244,10 @@ impl GraphConsumer {
         );
         (status.rev, status.graph_generation) =
             sessions.revisions.get(&sid).copied().unwrap_or_default();
-        status.review_ready = sessions.consolidated.contains(&sid)
-            && sessions
-                .active
-                .get(&sid)
-                .is_none_or(|session| !session.state().recording)
+        status.review_allowed = sessions
+            .active
+            .get(&sid)
+            .is_none_or(|session| !session.state().recording)
             && !status.rebuilding;
         status
     }
@@ -258,14 +257,15 @@ impl GraphConsumer {
         self: &Arc<Self>,
         sid: SessionId,
         generation: u64,
+        listed_rev: u64,
         target: ReviewTarget<'_>,
         decision: ReviewDecision,
     ) -> Result<(), &'static str> {
         let session = self.session(sid);
         let execution = session.execution.clone().lock_owned().await;
         let status = self.status(sid);
-        if !status.review_ready || generation != status.graph_generation {
-            return Err("review_unavailable");
+        if generation != status.graph_generation {
+            return Err("review_stale");
         }
         let (id, is_node) = match target {
             ReviewTarget::Node(id) => (id.to_owned(), true),
@@ -274,13 +274,20 @@ impl GraphConsumer {
         let consumer = self.clone();
         self.db(move |store| {
             // Keep the executor reserved even if the UI's future is dropped.
-            let _session = session;
             let _execution = execution;
             let target = if is_node {
                 ReviewTarget::Node(&id)
             } else {
                 ReviewTarget::Edge(&id)
             };
+            let rev = store.revision(sid)?;
+            if rev != listed_rev {
+                consumer.sessions().revisions.entry(sid).or_default().0 = rev;
+                return Ok(Err("review_stale"));
+            }
+            if !store.is_consolidated(sid)? {
+                return Ok(Err("review_unavailable"));
+            }
             if let ReviewTarget::Edge(id) = target {
                 let graph = store.load_graph(sid)?;
                 let live = graph.edges.get(id).is_some_and(|edge| {
@@ -292,14 +299,32 @@ impl GraphConsumer {
                     return Err(discussion_graph::store::StoreError::UnreviewableTarget);
                 }
             }
+            let state = session.state();
+            if state.recording || state.status.rebuilding {
+                return Ok(Err("review_unavailable"));
+            }
+            drop(state);
             let rev = store.set_review(sid, target, decision)?;
             consumer.sessions().revisions.entry(sid).or_default().0 = rev;
-            Ok(())
+            Ok(Ok(()))
+        })
+        .await?
+    }
+
+    #[cfg(any(windows, test))]
+    pub async fn load_outline(
+        self: &Arc<Self>,
+        sid: SessionId,
+        history: bool,
+    ) -> Result<(Graph, bool), &'static str> {
+        self.db(move |store| {
+            let graph = store.load_graph(sid)?;
+            Ok((graph, history && store.is_consolidated(sid)?))
         })
         .await
     }
 
-    #[cfg(any(windows, test))]
+    #[cfg(test)]
     pub async fn load_graph(self: &Arc<Self>, sid: SessionId) -> Result<Graph, &'static str> {
         self.db(move |store| store.load_graph(sid)).await
     }
@@ -594,7 +619,6 @@ struct Run<'a> {
     session: &'a Session,
     backend: &'a Backend,
     cancel: watch::Receiver<u64>,
-    saved_flush_patch: bool,
 }
 
 impl<'a> Run<'a> {
@@ -611,7 +635,6 @@ impl<'a> Run<'a> {
             session,
             backend,
             cancel,
-            saved_flush_patch: false,
         }
     }
 
@@ -756,8 +779,11 @@ impl<'a> Run<'a> {
     }
 
     async fn flush(&mut self, consolidate_without_new_patch: bool) {
-        let was_consolidated = self.consumer.sessions().consolidated.remove(&self.sid);
-        self.saved_flush_patch = false;
+        let interrupted = !self
+            .consumer
+            .sessions()
+            .interrupted_flushes
+            .insert(self.sid);
         let mut failures = 0;
         loop {
             match self.increment(PatchSource::Flush, false).await {
@@ -774,13 +800,33 @@ impl<'a> Run<'a> {
             }
         }
 
-        if !consolidate_without_new_patch && !self.saved_flush_patch && was_consolidated {
-            self.consumer.sessions().consolidated.insert(self.sid);
-            return;
+        if !consolidate_without_new_patch && !interrupted {
+            let sid = self.sid;
+            match self
+                .consumer
+                .db(move |store| store.is_consolidated(sid))
+                .await
+            {
+                Ok(true) => {
+                    self.consumer
+                        .sessions()
+                        .interrupted_flushes
+                        .remove(&self.sid);
+                    return;
+                }
+                Ok(false) => {}
+                Err(kind) => {
+                    self.log_failure(PatchSource::Consolidate, kind);
+                    return;
+                }
+            }
         }
         match self.consolidate().await {
             Ok(()) => {
-                self.consumer.sessions().consolidated.insert(self.sid);
+                self.consumer
+                    .sessions()
+                    .interrupted_flushes
+                    .remove(&self.sid);
             }
             Err("cancelled" | "disabled") => {}
             Err(kind) => self.log_failure(PatchSource::Consolidate, kind),
@@ -888,7 +934,6 @@ impl<'a> Run<'a> {
                 Ok(result)
             })
             .await?;
-        self.saved_flush_patch |= source == PatchSource::Flush;
         let added = result
             .applied
             .iter()
@@ -1552,7 +1597,7 @@ mod tests {
             assert!(!f.consumer.sessions().active.contains_key(&f.sid));
             let status = f.consumer.status(f.sid);
             assert_eq!(status.failure_count, expected_count);
-            assert!(!status.review_ready);
+            assert!(!f.consumer.load_outline(f.sid, true).await.unwrap().1);
         }
     }
 
@@ -1563,23 +1608,35 @@ mod tests {
         let mut f = Fixture::new();
         f.append("synthetic turn with two issues", false);
         let (fake, _) = Fake::scripted(0..0, vec![TWO_ISSUES, ATTACH_ISSUE], false);
-        assert!(!f.consumer.status(f.sid).review_ready);
+        assert!(!f.consumer.load_outline(f.sid, true).await.unwrap().1);
         assert!(f
             .consumer
-            .set_review(f.sid, 0, ReviewTarget::Node("n1"), ReviewDecision::Approve)
+            .set_review(
+                f.sid,
+                0,
+                0,
+                ReviewTarget::Node("n1"),
+                ReviewDecision::Approve
+            )
             .await
             .is_err());
         f.post(PostMeeting::Continue, fake).await.unwrap();
-        assert!(f.consumer.status(f.sid).review_ready);
+        assert!(f.consumer.load_outline(f.sid, true).await.unwrap().1);
         let before = f.consumer.load_graph(f.sid).await.unwrap();
         let edge_id = before.edges.values().next().unwrap().eid.clone();
 
-        for (target, decision) in [
-            (ReviewTarget::Node("n1"), ReviewDecision::Approve),
-            (ReviewTarget::Edge(&edge_id), ReviewDecision::Reject),
-        ] {
+        for (offset, target) in [ReviewTarget::Node("n1"), ReviewTarget::Edge(&edge_id)]
+            .into_iter()
+            .enumerate()
+        {
             f.consumer
-                .set_review(f.sid, 0, target, decision)
+                .set_review(
+                    f.sid,
+                    0,
+                    before.rev + offset as u64,
+                    target,
+                    ReviewDecision::Approve,
+                )
                 .await
                 .unwrap();
         }
@@ -1587,7 +1644,7 @@ mod tests {
         let db = session_store::open_with_pragmas(&f.consumer.database).unwrap();
         for (rev, kind, review) in [
             (before.rev + 1, "node", "approved"),
-            (before.rev + 2, "edge", "rejected"),
+            (before.rev + 2, "edge", "approved"),
         ] {
             let (source, ops): (String, String) = db
                 .query_row(
@@ -1603,13 +1660,27 @@ mod tests {
         }
         let reviewed = f.consumer.load_graph(f.sid).await.unwrap();
         assert_eq!(reviewed.nodes["n1"].review, Review::Approved);
-        assert_eq!(reviewed.edges[&edge_id].review, Review::Rejected);
+        assert_eq!(reviewed.edges[&edge_id].review, Review::Approved);
         assert_eq!(f.consumer.status(f.sid).rev, reviewed.rev);
 
         const CHANGE_REVIEWED: &str = r#"{"ops":[
             {"op":"set_status","nid":"n1","status":"resolved","grounds":[{"uid":"u1"}]},
             {"op":"remove_edge","src":"n2","dst":"n1","kind":"sub_issue_of","grounds":[{"uid":"u1"}]}
         ]}"#;
+        let ops = parse_ops(CHANGE_REVIEWED).unwrap();
+        let result = discussion_graph::apply_patch_with_context(
+            &reviewed,
+            &ops,
+            &["u1"],
+            PatchContext::IssueConsolidation,
+        );
+        assert_eq!(
+            result
+                .rejected
+                .get(&discussion_graph::Rejection::RemoveEdgeReviewed),
+            Some(&1)
+        );
+
         f.events();
         f.append("synthetic turn to trigger another consolidation", false);
         let (fake, _) = Fake::scripted(0..0, vec![EMPTY_PATCH, CHANGE_REVIEWED], false);
@@ -1621,7 +1692,7 @@ mod tests {
         let graph = f.consumer.load_graph(f.sid).await.unwrap();
         assert_eq!(graph.nodes["n1"].status, Status::Open);
         assert_eq!(graph.nodes["n1"].review, Review::Approved);
-        assert_eq!(graph.edges[&edge_id].review, Review::Rejected);
+        assert_eq!(graph.edges[&edge_id].review, Review::Approved);
     }
 
     #[tokio::test]
@@ -1633,17 +1704,180 @@ mod tests {
         let session = f.consumer.session(f.sid);
         let execution = session.execution.lock().await;
         let before = f.consumer.status(f.sid).rev;
-        let review =
-            f.consumer
-                .set_review(f.sid, 0, ReviewTarget::Node("n1"), ReviewDecision::Approve);
+        let review = f.consumer.set_review(
+            f.sid,
+            0,
+            before,
+            ReviewTarget::Node("n1"),
+            ReviewDecision::Approve,
+        );
         tokio::pin!(review);
-        assert!(tokio::time::timeout(Duration::ZERO, &mut review)
-            .await
-            .is_err());
+        assert!(
+            tokio::time::timeout(Duration::from_millis(200), &mut review)
+                .await
+                .is_err()
+        );
         assert_eq!(f.consumer.status(f.sid).rev, before);
         drop(execution);
         review.await.unwrap();
         assert_eq!(f.consumer.status(f.sid).rev, before + 1);
+    }
+
+    async fn review_fixture() -> (Fixture, Graph) {
+        let f = Fixture::new();
+        f.append("synthetic turn with two issues", false);
+        let (fake, _) = Fake::scripted(0..0, vec![TWO_ISSUES, ATTACH_ISSUE], false);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        let graph = f.consumer.load_graph(f.sid).await.unwrap();
+        (f, graph)
+    }
+
+    #[tokio::test]
+    async fn review_rejects_a_rebuilt_graph_even_when_revision_and_node_id_match() {
+        let (f, listed) = review_fixture().await;
+        let (fake, _) = Fake::scripted(0..0, vec![TWO_ISSUES, ATTACH_ISSUE], false);
+        f.post(PostMeeting::Rebuild, fake).await.unwrap();
+        let (rebuilt, consolidated) = f.consumer.load_outline(f.sid, true).await.unwrap();
+        assert!(consolidated);
+        assert_eq!(rebuilt.rev, listed.rev);
+        assert_ne!(f.consumer.status(f.sid).graph_generation, 0);
+        assert_eq!(
+            f.consumer
+                .set_review(
+                    f.sid,
+                    0,
+                    listed.rev,
+                    ReviewTarget::Node("n1"),
+                    ReviewDecision::Approve
+                )
+                .await,
+            Err("review_stale")
+        );
+        assert_eq!(f.consumer.load_graph(f.sid).await.unwrap(), rebuilt);
+    }
+
+    #[tokio::test]
+    async fn review_rejects_recording_or_rebuilding_sessions() {
+        for (recording, rebuilding) in [(true, false), (false, true)] {
+            let (f, listed) = review_fixture().await;
+            let session = f.consumer.session(f.sid);
+            {
+                let mut state = session.state();
+                state.recording = recording;
+                state.status.rebuilding = rebuilding;
+            }
+            assert_eq!(
+                f.consumer
+                    .set_review(
+                        f.sid,
+                        0,
+                        listed.rev,
+                        ReviewTarget::Node("n1"),
+                        ReviewDecision::Approve
+                    )
+                    .await,
+                Err("review_unavailable")
+            );
+            assert_eq!(f.consumer.load_graph(f.sid).await.unwrap(), listed);
+        }
+    }
+
+    #[tokio::test]
+    async fn review_rejects_edges_with_a_merged_or_rejected_endpoint() {
+        for (status, review) in [("merged", "auto"), ("open", "rejected")] {
+            let (f, listed) = review_fixture().await;
+            let edge = listed.edges.values().next().unwrap();
+            // A merge normally redirects edges. Keep this edge attached to a
+            // dead endpoint to exercise the consumer's defensive check.
+            let db = session_store::open_with_pragmas(&f.consumer.database).unwrap();
+            db.execute(
+                "UPDATE graph_nodes SET status = ?1, review = ?2 WHERE nid = ?3",
+                (status, review, &edge.src),
+            )
+            .unwrap();
+            assert!(f
+                .consumer
+                .set_review(
+                    f.sid,
+                    0,
+                    listed.rev,
+                    ReviewTarget::Edge(&edge.eid),
+                    ReviewDecision::Approve
+                )
+                .await
+                .is_err());
+            let graph = f.consumer.load_graph(f.sid).await.unwrap();
+            assert_eq!(graph.rev, listed.rev);
+            assert_eq!(
+                graph.edges[&edge.eid].review,
+                discussion_graph::Review::Auto
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn queued_review_rejects_a_changed_revision() {
+        let (f, listed) = review_fixture().await;
+        let session = f.consumer.session(f.sid);
+        let execution = session.execution.lock().await;
+        let edge = listed.edges.values().next().unwrap();
+        let review = f.consumer.set_review(
+            f.sid,
+            0,
+            listed.rev,
+            ReviewTarget::Edge(&edge.eid),
+            ReviewDecision::Approve,
+        );
+        tokio::pin!(review);
+        std::future::poll_fn(|cx| {
+            assert!(std::future::Future::poll(review.as_mut(), cx).is_pending());
+            std::task::Poll::Ready(())
+        })
+        .await;
+
+        let sid = f.sid;
+        f.consumer
+            .db(move |store| {
+                store.set_review(sid, ReviewTarget::Node("n1"), ReviewDecision::Approve)
+            })
+            .await
+            .unwrap();
+        drop(execution);
+        assert_eq!(review.await, Err("review_stale"));
+        let graph = f.consumer.load_graph(f.sid).await.unwrap();
+        assert_eq!(graph.rev, listed.rev + 1);
+        assert_eq!(
+            graph.edges[&edge.eid].review,
+            discussion_graph::Review::Auto
+        );
+    }
+
+    #[tokio::test]
+    async fn review_list_uses_saved_consolidation_after_reopening() {
+        let (f, listed) = review_fixture().await;
+        let reopened = Arc::new(GraphConsumer::new(
+            LocalBroker::new(),
+            f.consumer.database.clone(),
+            f.consumer.credentials.clone(),
+            f.consumer.settings.clone(),
+            f.consumer.cli_temp_base.clone(),
+        ));
+        let (graph, consolidated) = reopened.load_outline(f.sid, true).await.unwrap();
+        assert!(consolidated);
+        assert_eq!(graph, listed);
+        reopened
+            .set_review(
+                f.sid,
+                0,
+                graph.rev,
+                ReviewTarget::Node("n1"),
+                ReviewDecision::Reject,
+            )
+            .await
+            .unwrap();
+        let (graph, consolidated) = reopened.load_outline(f.sid, true).await.unwrap();
+        assert!(consolidated);
+        assert!(!graph.nodes["n1"].is_live());
     }
 
     #[tokio::test]
