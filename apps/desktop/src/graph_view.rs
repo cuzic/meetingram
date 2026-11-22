@@ -30,13 +30,15 @@ pub(super) fn should_refresh_pending(
 
 pub(super) fn continue_is_pending(
     status: &GraphStatus,
-    previous_reason: Option<DisabledReason>,
+    previous: &GraphStatus,
     elapsed: Duration,
 ) -> bool {
     !status.running
-        && !status
-            .disabled_reason
-            .is_some_and(|reason| Some(reason) != previous_reason)
+        && status.pending == previous.pending
+        && status.disabled_reason == previous.disabled_reason
+        // An idle consumer can report zero pending before and after a successful run.
+        && status.rev == previous.rev
+        && status.failure_count == previous.failure_count
         && elapsed < Duration::from_secs(30)
 }
 
@@ -237,22 +239,76 @@ mod tests {
             pending: 5,
             ..GraphStatus::default()
         };
+        let previous = status.clone();
         let elapsed = Duration::from_secs(29);
-        let pending = continue_is_pending(&status, None, elapsed);
+        let pending = continue_is_pending(&status, &previous, elapsed);
         assert!(pending);
         let view = GraphView::new(&status, false, true, pending);
         assert!(!view.can_continue && !view.can_rebuild);
-        assert!(!continue_is_pending(&status, None, Duration::from_secs(30)));
+        assert!(!continue_is_pending(
+            &status,
+            &previous,
+            Duration::from_secs(30)
+        ));
         status.running = true;
-        assert!(!continue_is_pending(&status, None, elapsed));
+        assert!(!continue_is_pending(&status, &previous, elapsed));
         status.running = false;
         status.disabled_reason = Some(DisabledReason::Backend);
-        assert!(!continue_is_pending(&status, None, elapsed));
-        assert!(continue_is_pending(
-            &status,
-            status.disabled_reason,
-            elapsed
+        assert!(!continue_is_pending(&status, &previous, elapsed));
+        assert!(continue_is_pending(&status, &status, elapsed));
+    }
+
+    #[test]
+    fn continue_releases_when_the_previous_failure_reason_clears() {
+        let previous = GraphStatus {
+            disabled_reason: Some(DisabledReason::Backend),
+            ..GraphStatus::default()
+        };
+        assert!(!continue_is_pending(
+            &GraphStatus::default(),
+            &previous,
+            Duration::from_millis(250),
         ));
+    }
+
+    #[test]
+    fn continue_releases_after_a_new_failure_with_the_same_reason() {
+        let previous = GraphStatus {
+            disabled_reason: Some(DisabledReason::Backend),
+            failure_count: 1,
+            ..GraphStatus::default()
+        };
+        let status = GraphStatus {
+            failure_count: 2,
+            ..previous.clone()
+        };
+        let elapsed = Duration::from_millis(250);
+        assert!(continue_is_pending(&previous, &previous, elapsed));
+        assert!(!continue_is_pending(&status, &previous, elapsed));
+    }
+
+    #[test]
+    fn continue_releases_after_progress_between_polls() {
+        let elapsed = Duration::from_millis(250);
+        let previous = GraphStatus {
+            pending: 5,
+            ..GraphStatus::default()
+        };
+        let status = GraphStatus {
+            pending: 3,
+            ..previous.clone()
+        };
+        let pending = continue_is_pending(&status, &previous, elapsed);
+        assert!(!pending);
+        let view = GraphView::new(&status, false, true, pending);
+        assert!(view.can_continue && view.can_rebuild);
+
+        let previous = GraphStatus::default();
+        let status = GraphStatus {
+            rev: 1,
+            ..previous.clone()
+        };
+        assert!(!continue_is_pending(&status, &previous, elapsed));
     }
 
     #[test]

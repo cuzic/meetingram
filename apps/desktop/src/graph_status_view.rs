@@ -6,10 +6,7 @@ use std::{
 use dioxus::prelude::*;
 use recorder_domain::{CaptureState, SessionId};
 
-use crate::{
-    app_state::AppState,
-    graph_consumer::{DisabledReason, GraphStatus},
-};
+use crate::{app_state::AppState, graph_consumer::GraphStatus};
 
 use super::graph_view::{
     continue_is_pending, rebuild_confirmation, should_read_capture_state, should_refresh_pending,
@@ -40,7 +37,7 @@ pub(super) fn GraphStatusRow(session_id: SessionId, session_label: Option<String
     let history = session_label.is_some();
     let mut snapshot = use_signal(|| None::<(GraphStatus, bool, bool)>);
     let mut refresh_requested = use_signal(|| false);
-    let mut continue_request = use_signal(|| None::<(Instant, Option<DisabledReason>)>);
+    let mut continue_request = use_signal(|| None::<(Instant, GraphStatus)>);
     let mut confirming = use_signal(|| false);
 
     use_future({
@@ -72,12 +69,17 @@ pub(super) fn GraphStatusRow(session_id: SessionId, session_label: Option<String
                     }
 
                     let mut status = state.graph_consumer.status(session_id);
-                    let request = *continue_request.peek();
-                    if let Some((started, previous_reason)) = request {
-                        if !continue_is_pending(&status, previous_reason, started.elapsed()) {
-                            continue_request.set(None);
-                            refresh_requested.set(true);
-                        }
+                    // Compare consumer status before substituting the history count for display.
+                    let continue_finished =
+                        continue_request
+                            .peek()
+                            .as_ref()
+                            .is_some_and(|(started, previous)| {
+                                !continue_is_pending(&status, previous, started.elapsed())
+                            });
+                    if continue_finished {
+                        continue_request.set(None);
+                        refresh_requested.set(true);
                     }
 
                     let busy = current_recording || status.running || status.rebuilding;
@@ -150,7 +152,7 @@ pub(super) fn GraphStatusRow(session_id: SessionId, session_label: Option<String
                             && !status.rebuilding
                             && continue_state.graph_consumer.continue_extraction(session_id)
                         {
-                            continue_request.set(Some((Instant::now(), status.disabled_reason)));
+                            continue_request.set(Some((Instant::now(), status)));
                         }
                     },
                     "続きを抽出"
