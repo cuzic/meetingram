@@ -8,8 +8,8 @@ use std::time::Duration;
 use credential_store::{CredentialStore, FallbackCredentialStore};
 use discussion_graph::{
     build_consolidate_groups, build_consolidate_issues, build_incremental, graph_updated_subject,
-    parse_ops, store::GraphStore, AppliedOp, Graph, GraphUpdated, Op, ParseError, PatchSource,
-    Prompt, DEFAULT_INPUT_LIMIT,
+    parse_ops, store::GraphStore, AppliedOp, Graph, GraphUpdated, IssuePromptStage, Op, ParseError,
+    PatchContext, PatchSource, Prompt, DEFAULT_INPUT_LIMIT,
 };
 use local_broker::LocalBroker;
 use recorder_domain::SessionId;
@@ -652,7 +652,7 @@ impl<'a> Run<'a> {
             if prompt.new_uids.is_empty() {
                 return Err("input_limit");
             }
-            self.apply(source, prompt).await?;
+            self.apply(source, prompt, PatchContext::Other).await?;
             let count = self
                 .consumer
                 .db(move |store| store.pending_count(sid))
@@ -711,7 +711,12 @@ impl<'a> Run<'a> {
                     "issues omitted from consolidation"
                 );
             }
-            self.apply(PatchSource::Consolidate, prompt).await?;
+            self.apply(
+                PatchSource::Consolidate,
+                prompt,
+                PatchContext::IssueConsolidation,
+            )
+            .await?;
             self.consumer.db(move |store| store.load_graph(sid)).await?
         } else {
             graph
@@ -722,12 +727,18 @@ impl<'a> Run<'a> {
             tracing::debug!(omitted, "nodes omitted from consolidation");
         }
         for prompt in groups {
-            self.apply(PatchSource::Consolidate, prompt).await?;
+            self.apply(PatchSource::Consolidate, prompt, PatchContext::Other)
+                .await?;
         }
         Ok(())
     }
 
-    async fn apply(&mut self, source: PatchSource, prompt: Prompt) -> Result<(), &'static str> {
+    async fn apply(
+        &mut self,
+        source: PatchSource,
+        prompt: Prompt,
+        context: PatchContext,
+    ) -> Result<(), &'static str> {
         let started = Instant::now();
         let timeout = if source == PatchSource::Consolidate {
             120
@@ -740,14 +751,16 @@ impl<'a> Run<'a> {
             self.backend.model.clone(),
             Duration::from_secs(timeout),
         );
-        let ops = match self.complete(&req).await? {
+        let ops = match self.complete(&req, prompt.issue_stage).await? {
             Ok(ops) => ops,
             Err(error) => {
                 let kind = parse_kind(error);
                 self.log_failure(source, kind);
                 req.user.push_str(RETRY_NOTE);
                 req.user.push_str(kind);
-                self.complete(&req).await?.map_err(parse_kind)?
+                self.complete(&req, prompt.issue_stage)
+                    .await?
+                    .map_err(parse_kind)?
             }
         };
         if self.cancel.has_changed().unwrap_or(true) {
@@ -766,7 +779,19 @@ impl<'a> Run<'a> {
                     .map(String::as_str)
                     .filter(|uid| !input.contains(uid))
                     .collect();
-                store.apply_patch(sid, source, Some(&model), &ops, &input, &references)
+                if context == PatchContext::IssueConsolidation {
+                    store.apply_patch_with_context(
+                        sid,
+                        source,
+                        Some(&model),
+                        &ops,
+                        &input,
+                        &references,
+                        context,
+                    )
+                } else {
+                    store.apply_patch(sid, source, Some(&model), &ops, &input, &references)
+                }
             })
             .await?;
         self.saved_flush_patch |= source == PatchSource::Flush;
@@ -809,6 +834,7 @@ impl<'a> Run<'a> {
     async fn complete(
         &mut self,
         req: &CompletionRequest,
+        issue_stage: Option<IssuePromptStage>,
     ) -> Result<Result<Vec<Op>, ParseError>, &'static str> {
         let response = tokio::select! {
             biased;
@@ -821,6 +847,9 @@ impl<'a> Run<'a> {
                 if !enabled {
                     self.session.state().status.disabled_reason = Some(DisabledReason::DisabledDuringRun);
                     return Err("disabled");
+                }
+                if let Some(issue_stage) = issue_stage {
+                    tracing::debug!(session_id = %self.sid, ?issue_stage, "graph issue consolidation request");
                 }
                 tokio::time::timeout(req.timeout, self.backend.summarizer.complete(req))
                     .await
@@ -1408,6 +1437,48 @@ mod tests {
         assert_eq!(events[1].source, PatchSource::Consolidate);
         assert_eq!(events[1].added, 1);
         assert_eq!(events[2].source, PatchSource::Consolidate);
+    }
+
+    #[tokio::test]
+    async fn only_issue_consolidation_can_replace_a_saved_parent() {
+        let mut f = Fixture::new();
+        f.append("synthetic turn with three issues", false);
+        let extraction = r#"{"ops":[
+            {"op":"add_node","tmp":"old","kind":"issue","text":"Synthetic old parent","confidence":1,"grounds":[{"uid":"u1"}]},
+            {"op":"add_node","tmp":"new","kind":"issue","text":"Synthetic new parent","confidence":1,"grounds":[{"uid":"u1"}]},
+            {"op":"add_node","tmp":"child","kind":"issue","text":"Synthetic child","confidence":1,"grounds":[{"uid":"u1"}]},
+            {"op":"add_edge","src":"child","dst":"old","kind":"sub_issue_of","confidence":1,"grounds":[{"uid":"u1"}]}
+        ]}"#;
+        let issues = r#"{"ops":[
+            {"op":"remove_edge","src":"n3","dst":"n1","kind":"sub_issue_of","grounds":[{"uid":"u1"}]},
+            {"op":"add_edge","src":"n3","dst":"n2","kind":"sub_issue_of","confidence":1,"grounds":[{"uid":"u1"}]}
+        ]}"#;
+        let groups = r#"{"ops":[
+            {"op":"remove_edge","src":"n3","dst":"n2","kind":"sub_issue_of","grounds":[{"uid":"u1"}]}
+        ]}"#;
+        let (fake, _) = Fake::scripted(0..0, vec![extraction, issues, groups], false);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+
+        let sid = f.sid;
+        let graph = f
+            .consumer
+            .db(move |store| store.load_graph(sid))
+            .await
+            .unwrap();
+        let parents: Vec<_> = graph
+            .edges
+            .values()
+            .filter(|edge| edge.src == "n3" && edge.kind == discussion_graph::EdgeKind::SubIssueOf)
+            .map(|edge| edge.dst.as_str())
+            .collect();
+        assert_eq!(parents, ["n2"]);
+
+        let events = f.events();
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[1].source, PatchSource::Consolidate);
+        assert_eq!(events[1].rejected, 0);
+        assert_eq!(events[2].source, PatchSource::Consolidate);
+        assert_eq!(events[2].rejected, 1);
     }
 
     #[tokio::test]

@@ -140,7 +140,8 @@ pub fn start(state: &AppState) -> Result<SessionId, String> {
             Some(level_for_task),
             Some(credential_store_for_task),
             Some(transcription_status_for_task),
-            silence_gate_enabled_for_task,
+            app_service::LiveTranscriptionOptions::default()
+                .with_silence_gate(silence_gate_enabled_for_task),
             Some(&broker_for_task),
             mic_device_id,
             render_device_id,
