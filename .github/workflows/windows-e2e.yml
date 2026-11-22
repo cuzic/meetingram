@@ -86,13 +86,26 @@ jobs:
       - name: Ensure ffmpeg and ffprobe are available
         id: ffmpeg
         run: |
-          if (Get-Command ffmpeg -CommandType Application -ErrorAction SilentlyContinue) {
-            Write-Host 'Using ffmpeg from the runner image'
+          if ((Get-Command ffmpeg -CommandType Application -ErrorAction SilentlyContinue) -and
+              (Get-Command ffprobe -CommandType Application -ErrorAction SilentlyContinue)) {
+            Write-Host 'Using FFmpeg tools from the runner image'
           } else {
-            Write-Host 'Installing ffmpeg with Chocolatey'
-            choco install ffmpeg -y
-            if ($LASTEXITCODE -ne 0) { throw "Chocolatey failed with exit code $LASTEXITCODE" }
-            Add-Content -LiteralPath $env:GITHUB_PATH -Value (Join-Path $env:ChocolateyInstall 'bin')
+            $zip = Join-Path $env:RUNNER_TEMP 'ffmpeg.zip'
+            $destination = Join-Path $env:RUNNER_TEMP 'ffmpeg'
+            $url = 'https://github.com/GyanD/codexffmpeg/releases/download/9.1/ffmpeg-9.1-essentials_build.zip'
+            $sha256 = 'b9bbbb3acece000cbeec994f856649354e52c773807841e78908374b24d658fd'
+            Invoke-WebRequest -Uri $url -OutFile $zip
+            if ((Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash -ne $sha256) {
+              throw 'FFmpeg download checksum mismatch'
+            }
+            Expand-Archive -LiteralPath $zip -DestinationPath $destination
+            $bin = Join-Path $destination 'ffmpeg-9.1-essentials_build/bin'
+            foreach ($tool in 'ffmpeg.exe', 'ffprobe.exe') {
+              if (-not (Test-Path -LiteralPath (Join-Path $bin $tool) -PathType Leaf)) {
+                throw "FFmpeg archive did not contain $tool"
+              }
+            }
+            Add-Content -LiteralPath $env:GITHUB_PATH -Value $bin
           }
 
       - name: Record the meetingramctl E2E
