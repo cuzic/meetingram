@@ -2,11 +2,13 @@ use std::{sync::Arc, time::Duration};
 
 use dioxus::prelude::*;
 use discussion_graph::{
-    build_outline, EdgeKind, Graph, Node, NodeKind, Outline, OutlineNode, Status, Utterance,
+    build_outline, EdgeKind, Graph, Node, NodeKind, Outline, OutlineNode, Review, Status, Utterance,
 };
 use recorder_domain::SessionId;
 
 use crate::app_state::AppState;
+
+use super::graph_review_view::{candidates, review_view};
 
 enum OutlineRow<'a> {
     Unattached,
@@ -15,6 +17,7 @@ enum OutlineRow<'a> {
         depth: usize,
         dimmed: bool,
         relation: Option<EdgeKind>,
+        is_reference: bool,
     },
 }
 
@@ -28,8 +31,9 @@ fn outline_rows<'a>(outline: &Outline<'a>, threshold: f64) -> Vec<OutlineRow<'a>
         rows.push(OutlineRow::Node {
             node: branch.node,
             depth,
-            dimmed: branch.node.confidence < threshold,
+            dimmed: branch.node.review == Review::Auto && branch.node.confidence < threshold,
             relation: branch.relation,
+            is_reference: branch.is_reference,
         });
         for child in &branch.children {
             append(rows, child, depth + 1, threshold);
@@ -45,14 +49,15 @@ fn outline_rows<'a>(outline: &Outline<'a>, threshold: f64) -> Vec<OutlineRow<'a>
         rows.extend(outline.unattached.iter().map(|node| OutlineRow::Node {
             node,
             depth: 0,
-            dimmed: node.confidence < threshold,
+            dimmed: node.review == Review::Auto && node.confidence < threshold,
             relation: None,
+            is_reference: false,
         }));
     }
     rows
 }
 
-fn evidence<'a>(graph: &'a Graph, nid: &str) -> Vec<&'a Utterance> {
+pub(super) fn evidence<'a>(graph: &'a Graph, nid: &str) -> Vec<&'a Utterance> {
     let mut utterances: Vec<_> = graph
         .grounds
         .iter()
@@ -64,7 +69,7 @@ fn evidence<'a>(graph: &'a Graph, nid: &str) -> Vec<&'a Utterance> {
     utterances
 }
 
-fn kind_label(kind: NodeKind) -> &'static str {
+pub(super) fn kind_label(kind: NodeKind) -> &'static str {
     match kind {
         NodeKind::Issue => "問い",
         NodeKind::Position => "案",
@@ -72,6 +77,14 @@ fn kind_label(kind: NodeKind) -> &'static str {
         NodeKind::Decision => "決定",
         NodeKind::Action => "宿題",
         _ => kind.as_str(),
+    }
+}
+
+fn reference_label(is_reference: bool) -> &'static str {
+    if is_reference {
+        "↑ 上に出たもの · "
+    } else {
+        ""
     }
 }
 
@@ -85,11 +98,11 @@ fn status_label(status: Status) -> &'static str {
     }
 }
 
-async fn load_changed_graph(
-    loaded: &mut Option<(u64, u64)>,
-    current: (u64, u64),
-    load: impl std::future::Future<Output = Result<Graph, &'static str>>,
-) -> Option<Result<Graph, &'static str>> {
+async fn load_changed_graph<T>(
+    loaded: &mut Option<(u64, u64, bool)>,
+    current: (u64, u64, bool),
+    load: impl std::future::Future<Output = Result<T, &'static str>>,
+) -> Option<Result<T, &'static str>> {
     if *loaded == Some(current) {
         return None;
     }
@@ -100,11 +113,29 @@ async fn load_changed_graph(
     Some(result)
 }
 
+fn next_retry_delay(delay: Duration) -> Duration {
+    (delay * 2).clamp(Duration::from_secs(1), Duration::from_secs(5))
+}
+
+fn reset_on_generation_change(
+    loaded: Option<(u64, u64, bool)>,
+    generation: u64,
+    clear: impl FnOnce(),
+) -> bool {
+    if loaded.is_some_and(|(_, previous, _)| previous != generation) {
+        clear();
+        return true;
+    }
+    false
+}
+
 #[component]
-pub(super) fn GraphOutline(session_id: SessionId) -> Element {
+pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: bool) -> Element {
     let state = use_context::<Arc<AppState>>();
     let consumer = state.graph_consumer.clone();
-    let mut snapshot = use_signal(|| None::<Graph>);
+    let mut snapshot = use_signal(|| None);
+    let mut review_enabled = use_signal(|| false);
+    let stale_review = use_signal(|| false);
     let mut load_failed = use_signal(|| false);
     let mut threshold = use_signal(|| consumer.review_threshold());
     let mut selected = use_signal(|| None::<String>);
@@ -112,22 +143,51 @@ pub(super) fn GraphOutline(session_id: SessionId) -> Element {
         let consumer = consumer.clone();
         async move {
             let mut loaded = None;
+            let mut retry_delay = Duration::ZERO;
+            let mut retry_at = tokio::time::Instant::now();
             loop {
                 let status = consumer.status(session_id);
-                let current = (status.rev, status.graph_generation);
-                let reset_selection = loaded.is_none_or(|(_, generation)| generation != current.1);
-                match load_changed_graph(&mut loaded, current, consumer.load_graph(session_id))
+                let enabled = history && status.review_allowed;
+                // Review eligibility can change while the graph revision stays the same.
+                let current = (status.rev, status.graph_generation, enabled);
+                if reset_on_generation_change(loaded, current.1, || {
+                    selected.set(None);
+                    snapshot.set(None);
+                }) {
+                    loaded = None;
+                    retry_at = tokio::time::Instant::now();
+                    retry_delay = Duration::ZERO;
+                }
+                if *review_enabled.peek() != enabled {
+                    review_enabled.set(enabled);
+                }
+                if tokio::time::Instant::now() >= retry_at {
+                    match load_changed_graph(
+                        &mut loaded,
+                        current,
+                        consumer.load_outline(session_id, history),
+                    )
                     .await
-                {
-                    Some(Ok(graph)) => {
-                        if reset_selection {
-                            selected.set(None);
+                    {
+                        Some(Ok((graph, review_available))) => {
+                            let rows = if history {
+                                candidates(&graph)
+                            } else {
+                                Vec::new()
+                            };
+                            snapshot.set(Some((graph, rows, current.1, review_available)));
+                            load_failed.set(false);
+                            retry_delay = Duration::ZERO;
                         }
-                        snapshot.set(Some(graph));
-                        load_failed.set(false);
+                        Some(Err(_)) => {
+                            if !*load_failed.peek() {
+                                load_failed.set(true);
+                            }
+                            retry_delay = next_retry_delay(retry_delay);
+                            retry_at = tokio::time::Instant::now() + retry_delay;
+                        }
+                        None => {}
                     }
-                    Some(Err(_)) if !*load_failed.peek() => load_failed.set(true),
-                    _ => {}
                 }
                 let current_threshold = consumer.review_threshold();
                 if *threshold.peek() != current_threshold {
@@ -144,7 +204,7 @@ pub(super) fn GraphOutline(session_id: SessionId) -> Element {
             p { class: "hint", role: "status", "議論グラフを読み込めませんでした" }
         }
     });
-    let Some(graph) = snapshot.as_ref() else {
+    let Some((graph, candidates, generation, review_available)) = snapshot.as_ref() else {
         return error
             .unwrap_or_else(|| rsx! { p { class: "hint", "議論グラフを読み込んでいます" } });
     };
@@ -167,12 +227,13 @@ pub(super) fn GraphOutline(session_id: SessionId) -> Element {
             for (index, row) in rows.into_iter().enumerate() {
                 match row {
                     OutlineRow::Unattached => rsx! { h3 { key: "{index}", "未整理" } },
-                    OutlineRow::Node { node, depth, dimmed, relation } => {
+                    OutlineRow::Node { node, depth, dimmed, relation, is_reference } => {
                         let id = node.nid.clone();
                         let pressed = selected_id.as_ref() == Some(&id);
                         let indent = depth * 20;
                         let opacity = if dimmed { 0.6 } else { 1.0 };
                         let kind = kind_label(node.kind);
+                        let reference = reference_label(is_reference);
                         let status = status_label(node.status);
                         let stance = match relation {
                             Some(EdgeKind::Supports) => " · ＋賛成",
@@ -185,7 +246,7 @@ pub(super) fn GraphOutline(session_id: SessionId) -> Element {
                                     style: "opacity: {opacity}; text-align: start;",
                                     aria_pressed: pressed,
                                     onclick: move |_| selected.set(Some(id.clone())),
-                                    "{kind}{stance} · {status} · {node.text}"
+                                    "{reference}{kind}{stance} · {status} · {node.text}"
                                 }
                             }
                         }
@@ -193,22 +254,34 @@ pub(super) fn GraphOutline(session_id: SessionId) -> Element {
                 }
             }
             if let Some(utterances) = utterances {
-                section { aria_label: "根拠",
-                    h3 { "根拠" }
-                    if utterances.is_empty() {
-                        p { class: "hint", "表示できる発話はありません" }
-                    }
-                    for utterance in utterances {
-                        div { key: "{utterance.uid}",
-                            p { class: "hint",
-                                "{utterance.speaker_label}"
-                                if let Some(ms) = utterance.start_ms.or(utterance.end_ms) {
-                                    " · {super::format_elapsed(ms)}"
-                                }
-                            }
-                            p { "{utterance.text}" }
+                {evidence_view(utterances)}
+            }
+            if history && stale_review() {
+                p { class: "hint", role: "status", "一覧が更新されました" }
+            }
+            if history && *review_available && review_enabled() {
+                {review_view(session_id, *generation, graph, candidates, threshold(), !load_failed(), stale_review)}
+            }
+        }
+    }
+}
+
+pub(super) fn evidence_view(utterances: Vec<&Utterance>) -> Element {
+    rsx! {
+        section { aria_label: "根拠",
+            h3 { "根拠" }
+            if utterances.is_empty() {
+                p { class: "hint", "表示できる発話はありません" }
+            }
+            for utterance in utterances {
+                div { key: "{utterance.uid}",
+                    p { class: "hint",
+                        "{utterance.speaker_label}"
+                        if let Some(ms) = utterance.start_ms.or(utterance.end_ms) {
+                            " · {super::format_elapsed(ms)}"
                         }
                     }
+                    p { "{utterance.text}" }
                 }
             }
         }
@@ -262,7 +335,7 @@ pub(super) fn HistoryOutline(initial_session: Option<SessionId>) -> Element {
                     }
                 }
             }
-            { history_outline_contents(session_id, rsx! { GraphOutline { session_id } }) }
+            { history_outline_contents(session_id, rsx! { GraphOutline { session_id, history: true } }) }
         }
     }
 }
@@ -369,9 +442,16 @@ mod tests {
             ("n4", NodeKind::Argument, Status::Open, Review::Auto, 0.9),
             ("n5", NodeKind::Decision, Status::Merged, Review::Auto, 0.9),
             ("n6", NodeKind::Action, Status::Open, Review::Rejected, 0.9),
-            ("n7", NodeKind::Action, Status::Open, Review::Auto, 0.9),
-            ("n8", NodeKind::Decision, Status::Decided, Review::Auto, 0.9),
+            ("n7", NodeKind::Action, Status::Open, Review::Approved, 0.5),
+            (
+                "n8",
+                NodeKind::Decision,
+                Status::Decided,
+                Review::Approved,
+                0.5,
+            ),
             ("n9", NodeKind::Action, Status::Open, Review::Auto, 0.9),
+            ("n10", NodeKind::Issue, Status::Open, Review::Auto, 0.9),
         ] {
             graph.nodes.insert(
                 id.into(),
@@ -395,6 +475,7 @@ mod tests {
             ("e4", "n5", "n1", EdgeKind::Resolves),
             ("e5", "n8", "n1", EdgeKind::Resolves),
             ("e6", "n9", "n1", EdgeKind::Assigns),
+            ("e7", "n2", "n10", EdgeKind::RespondsTo),
         ] {
             graph.edges.insert(
                 id.into(),
@@ -412,32 +493,77 @@ mod tests {
         let actual: Vec<_> = outline_rows(&build_outline(&graph), 0.6)
             .into_iter()
             .map(|row| match row {
-                OutlineRow::Unattached => ("未整理", 0, false, None),
+                OutlineRow::Unattached => ("未整理", 0, false, None, ""),
                 OutlineRow::Node {
                     node,
                     depth,
                     dimmed,
                     relation,
-                } => (node.nid.as_str(), depth, dimmed, relation),
+                    is_reference,
+                } => (
+                    node.nid.as_str(),
+                    depth,
+                    dimmed,
+                    relation,
+                    reference_label(is_reference),
+                ),
             })
             .collect();
         assert_eq!(
             actual,
             [
-                ("n1", 0, false, None),
-                ("n3", 1, false, Some(EdgeKind::SubIssueOf)),
-                ("n2", 1, true, Some(EdgeKind::RespondsTo)),
-                ("n4", 2, false, Some(EdgeKind::ObjectsTo)),
-                ("n8", 1, false, Some(EdgeKind::Resolves)),
-                ("n9", 1, false, Some(EdgeKind::Assigns)),
-                ("未整理", 0, false, None),
-                ("n7", 0, false, None),
+                ("n1", 0, false, None, ""),
+                ("n3", 1, false, Some(EdgeKind::SubIssueOf), ""),
+                ("n2", 1, true, Some(EdgeKind::RespondsTo), ""),
+                ("n4", 2, false, Some(EdgeKind::ObjectsTo), ""),
+                ("n8", 1, false, Some(EdgeKind::Resolves), ""),
+                ("n9", 1, false, Some(EdgeKind::Assigns), ""),
+                ("n10", 0, false, None, ""),
+                (
+                    "n2",
+                    1,
+                    true,
+                    Some(EdgeKind::RespondsTo),
+                    "↑ 上に出たもの · "
+                ),
+                ("未整理", 0, false, None, ""),
+                ("n7", 0, false, None, ""),
             ]
         );
     }
 
+    #[test]
+    fn outline_read_failures_back_off_to_five_seconds() {
+        let mut delay = Duration::ZERO;
+        for seconds in [1, 2, 4, 5, 5] {
+            delay = next_retry_delay(delay);
+            assert_eq!(delay, Duration::from_secs(seconds));
+        }
+    }
+
     #[tokio::test]
-    async fn polls_reload_on_revision_or_generation_changes_and_retry_failed_reads() {
+    async fn failed_read_after_rebuild_clears_the_old_outline_and_selection() {
+        let mut loaded = Some((3, 0, true));
+        let mut snapshot = Some(Graph::default());
+        let mut selected = Some("n1");
+        assert!(!reset_on_generation_change(loaded, 0, || {
+            panic!("the current generation must retain its outline")
+        }));
+        if reset_on_generation_change(loaded, 1, || {
+            snapshot = None;
+            selected = None;
+        }) {
+            loaded = None;
+        }
+        let update =
+            load_changed_graph::<Graph>(&mut loaded, (3, 1, false), async { Err("db") }).await;
+        assert_eq!(update, Some(Err("db")));
+        assert!(snapshot.is_none());
+        assert!(selected.is_none());
+    }
+
+    #[tokio::test]
+    async fn polls_reload_on_revision_generation_or_review_changes_and_retry_failed_reads() {
         let mut loaded = None;
         let reads = Cell::new(0);
         let load = async |rev, success| {
@@ -453,12 +579,15 @@ mod tests {
         };
 
         for (current, success, expected_reads) in [
-            ((0, 0), true, 1),
-            ((0, 0), true, 1),
-            ((1, 0), false, 2),
-            ((1, 0), true, 3),
-            ((1, 0), true, 3),
-            ((1, 1), true, 4),
+            ((0, 0, true), true, 1),
+            ((0, 0, true), true, 1),
+            ((1, 0, true), false, 2),
+            ((1, 0, true), true, 3),
+            ((1, 0, true), true, 3),
+            ((1, 1, true), true, 4),
+            ((1, 1, false), true, 5),
+            ((1, 1, false), true, 5),
+            ((1, 1, true), true, 6),
         ] {
             let before = reads.get();
             let update = load_changed_graph(&mut loaded, current, load(current.0, success)).await;
@@ -470,7 +599,7 @@ mod tests {
                 assert_eq!(loaded, Some(current));
             } else {
                 assert_eq!(update.unwrap(), Err("db"));
-                assert_eq!(loaded, Some((0, 0)));
+                assert_eq!(loaded, Some((0, 0, true)));
             }
         }
     }

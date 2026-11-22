@@ -16,18 +16,18 @@ serde_json = "1"
 
 # meetingram-core (https://github.com/cuzic/meetingram-core). Bump the tag here
 # for every crate at once; crates from one tag are built and tested together.
-app-service = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-control-protocol = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-credential-store = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-discussion-graph = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-local-broker = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-recorder-domain = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-rhai-engine = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-session-store = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-stt-assemblyai = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-stt-deepgram = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-stt-google = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-stt-openai = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-summarize = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-transcript-event = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
-upload-client = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.7.0" }
+app-service = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+control-protocol = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+credential-store = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+discussion-graph = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+local-broker = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+recorder-domain = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+rhai-engine = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+session-store = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+stt-assemblyai = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+stt-deepgram = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+stt-google = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+stt-openai = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+summarize = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+transcript-event = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
+upload-client = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.11.0" }
