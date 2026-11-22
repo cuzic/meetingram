@@ -22,6 +22,19 @@ use crate::status::Status;
 use crate::transcript::{self, TimelineItem};
 use crate::transcription_status;
 
+#[cfg(windows)]
+#[path = "graph_history_view.rs"]
+mod graph_history_view;
+#[cfg(windows)]
+#[path = "graph_settings_view.rs"]
+mod graph_settings_view;
+#[cfg(windows)]
+#[path = "graph_status_view.rs"]
+mod graph_status_view;
+#[cfg(windows)]
+#[path = "graph_view.rs"]
+mod graph_view;
+
 const ICON_BYTES: &[u8] = include_bytes!("../assets/icon.png");
 
 const STYLE: &str = r#"
@@ -862,15 +875,55 @@ pub fn App() -> Element {
     let can_retranscribe =
         gap_retranscription::supports_batch_retranscription(selected_provider_kind);
 
+    #[cfg(windows)]
+    let live_graph = if recording_active {
+        current
+            .last_session_id
+            .as_deref()
+            .and_then(|id| id.parse::<SessionId>().ok())
+            .map(|session_id| {
+                rsx! {
+                    graph_status_view::GraphStatusRow { key: "{session_id}", session_id }
+                }
+            })
+    } else {
+        None
+    };
+    #[cfg(not(windows))]
+    let live_graph: Option<Element> = None;
+
     if screen() == Screen::Settings {
+        #[cfg(windows)]
+        let graph_settings = {
+            let disabled_reason = current
+                .last_session_id
+                .as_deref()
+                .and_then(|id| id.parse().ok())
+                .and_then(|id| state.graph_consumer.status(id).disabled_reason);
+            rsx! {
+                div { class: "settings-container",
+                    graph_settings_view::GraphSettings { disabled_reason }
+                }
+            }
+        };
+        #[cfg(not(windows))]
+        let graph_settings: Option<Element> = None;
         return rsx! {
             settings::Settings { screen }
+            {graph_settings}
         };
     }
 
     if screen() == Screen::History {
+        #[cfg(windows)]
+        let graph_history = rsx! {
+            graph_history_view::GraphHistory { initial_session: selected_session_id_value }
+        };
+        #[cfg(not(windows))]
+        let graph_history: Option<Element> = None;
         return rsx! {
             history::History { screen, selected_session_id }
+            {graph_history}
         };
     }
 
@@ -942,6 +995,8 @@ pub fn App() -> Element {
                     }
                 }
             }
+
+            {live_graph}
 
             // Live conversation hint from `plugins/default/hint.rhai` — only
             // ever present while `selected_session_id` is the actively
