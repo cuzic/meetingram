@@ -26,6 +26,9 @@ use crate::transcription_status;
 #[path = "graph_history_view.rs"]
 mod graph_history_view;
 #[cfg(windows)]
+#[path = "graph_outline_view.rs"]
+mod graph_outline_view;
+#[cfg(windows)]
 #[path = "graph_settings_view.rs"]
 mod graph_settings_view;
 #[cfg(windows)]
@@ -475,6 +478,10 @@ pub fn App() -> Element {
     // `AppState::last_summary`, in-memory only) since it's read from
     // `SessionStore::list_sessions`.
     let mut selected_session_id = use_signal(|| None::<SessionId>);
+    #[cfg(windows)]
+    let mut showing_outline = use_signal(|| false);
+    #[cfg(windows)]
+    let mut showing_history_outline = use_signal(|| false);
 
     // #33/#34's live transcript panel and #38's "load the last summary on screen
     // open" both key off which session is current, not off the 250ms tick itself —
@@ -892,6 +899,31 @@ pub fn App() -> Element {
     #[cfg(not(windows))]
     let live_graph: Option<Element> = None;
 
+    #[cfg(windows)]
+    let (live_tabs, live_outline, show_transcript) = match selected_session_id_value {
+        Some(session_id) => {
+            let outline = showing_outline();
+            (
+                rsx! {
+                    div { role: "tablist", aria_label: "セッションの表示",
+                        button { role: "tab", aria_selected: !outline, onclick: move |_| showing_outline.set(false), "文字起こし" }
+                        button { role: "tab", aria_selected: outline, onclick: move |_| showing_outline.set(true), "アウトライン" }
+                    }
+                },
+                outline.then(|| {
+                    rsx! {
+                        graph_outline_view::GraphOutline { key: "{session_id}", session_id }
+                    }
+                }),
+                !outline,
+            )
+        }
+        None => (rsx! {}, None, false),
+    };
+    #[cfg(not(windows))]
+    let (live_tabs, live_outline, show_transcript) =
+        (None::<Element>, None::<Element>, has_session);
+
     if screen() == Screen::Settings {
         #[cfg(windows)]
         let graph_settings = {
@@ -916,8 +948,21 @@ pub fn App() -> Element {
 
     if screen() == Screen::History {
         #[cfg(windows)]
-        let graph_history = rsx! {
-            graph_history_view::GraphHistory { initial_session: selected_session_id_value }
+        let graph_history = {
+            let outline = showing_history_outline();
+            rsx! {
+                section { class: "history-container",
+                    div { role: "tablist", aria_label: "履歴の議論グラフ",
+                        button { role: "tab", aria_selected: !outline, onclick: move |_| showing_history_outline.set(false), "グラフの操作" }
+                        button { role: "tab", aria_selected: outline, onclick: move |_| showing_history_outline.set(true), "アウトライン" }
+                    }
+                }
+                if outline {
+                    graph_outline_view::HistoryOutline { initial_session: selected_session_id_value }
+                } else {
+                    graph_history_view::GraphHistory { initial_session: selected_session_id_value }
+                }
+            }
         };
         #[cfg(not(windows))]
         let graph_history: Option<Element> = None;
@@ -1019,7 +1064,9 @@ pub fn App() -> Element {
             // scope): a gap is most often actionable right after the session
             // that had it stops (see `close_open_gap`), so restricting this to
             // `recording_active` would hide it right when it becomes useful.
-            if has_session {
+            {live_tabs}
+            {live_outline}
+            if show_transcript {
                 section { class: "panel transcript-section",
                     div {
                         class: "transcript-panel",

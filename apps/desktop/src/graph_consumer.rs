@@ -57,6 +57,9 @@ pub struct GraphStatus {
     pub pending: usize,
     pub disabled_reason: Option<DisabledReason>,
     pub rebuilding: bool,
+    pub rev: u64,
+    // A rebuild can reuse revision numbers from the deleted graph.
+    pub graph_generation: u64,
 }
 
 #[derive(Default)]
@@ -83,6 +86,7 @@ struct Sessions {
     active: HashMap<SessionId, Arc<Session>>,
     // A past backend failure cannot be recovered from the current settings.
     disabled: HashMap<SessionId, DisabledReason>,
+    revisions: HashMap<SessionId, (u64, u64)>,
     // Keep completion across idle executor pruning. Unseen sessions need consolidation.
     consolidated: BTreeSet<SessionId>,
 }
@@ -215,14 +219,21 @@ impl GraphConsumer {
     #[allow(dead_code)] // Read by the graph view in task 6.
     pub fn status(&self, sid: SessionId) -> GraphStatus {
         let sessions = self.sessions();
-        if let Some(session) = sessions.active.get(&sid) {
-            session.state().status.clone()
-        } else {
-            GraphStatus {
+        let mut status = sessions.active.get(&sid).map_or_else(
+            || GraphStatus {
                 disabled_reason: sessions.disabled.get(&sid).copied(),
                 ..GraphStatus::default()
-            }
-        }
+            },
+            |session| session.state().status.clone(),
+        );
+        (status.rev, status.graph_generation) =
+            sessions.revisions.get(&sid).copied().unwrap_or_default();
+        status
+    }
+
+    #[cfg(any(windows, test))]
+    pub async fn load_graph(self: &Arc<Self>, sid: SessionId) -> Result<Graph, &'static str> {
+        self.db(move |store| store.load_graph(sid)).await
     }
 
     /// Imports finalized rows in a write transaction before counting pending rows.
@@ -450,7 +461,18 @@ impl GraphConsumer {
                     }
                 }
                 PostMeeting::Rebuild => {
-                    match consumer.db(move |store| store.delete_session(sid)).await {
+                    let revisions = consumer.clone();
+                    match consumer
+                        .db(move |store| {
+                            store.delete_session(sid)?;
+                            let mut sessions = revisions.sessions();
+                            let (rev, generation) = sessions.revisions.entry(sid).or_default();
+                            *rev = 0;
+                            *generation += 1;
+                            Ok(())
+                        })
+                        .await
+                    {
                         Ok(()) => run.flush(true).await,
                         Err(kind) => run.log_failure(PatchSource::Flush, kind),
                     }
@@ -769,6 +791,7 @@ impl<'a> Run<'a> {
 
         let sid = self.sid;
         let model = self.backend.model.clone();
+        let consumer = self.consumer.clone();
         let result = self
             .consumer
             .db(move |store| {
@@ -779,7 +802,7 @@ impl<'a> Run<'a> {
                     .map(String::as_str)
                     .filter(|uid| !input.contains(uid))
                     .collect();
-                if context == PatchContext::IssueConsolidation {
+                let result = if context == PatchContext::IssueConsolidation {
                     store.apply_patch_with_context(
                         sid,
                         source,
@@ -791,7 +814,9 @@ impl<'a> Run<'a> {
                     )
                 } else {
                     store.apply_patch(sid, source, Some(&model), &ops, &input, &references)
-                }
+                }?;
+                consumer.sessions().revisions.entry(sid).or_default().0 = result.graph.rev;
+                Ok(result)
             })
             .await?;
         self.saved_flush_patch |= source == PatchSource::Flush;
@@ -1059,6 +1084,7 @@ mod tests {
         provider_failures: Range<usize>,
         responses: Vec<&'static str>,
         first_block: Option<Semaphore>,
+        disable_on_call: Option<(usize, Arc<Mutex<AppSettings>>)>,
         active: AtomicUsize,
         count: AtomicUsize,
         max_active: AtomicUsize,
@@ -1087,6 +1113,7 @@ mod tests {
                 provider_failures,
                 responses,
                 first_block: block_first.then(|| Semaphore::new(0)),
+                disable_on_call: None,
                 active: AtomicUsize::new(0),
                 count: AtomicUsize::new(0),
                 max_active: AtomicUsize::new(0),
@@ -1141,6 +1168,11 @@ mod tests {
             if count == 0 {
                 if let Some(block) = &fake.first_block {
                     block.acquire().await.unwrap().forget();
+                }
+            }
+            if let Some((call, settings)) = &fake.disable_on_call {
+                if count == *call {
+                    settings.lock().unwrap().graph_enabled = Some(false);
                 }
             }
             if fake.provider_failures.contains(&count) {
@@ -1440,14 +1472,67 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn status_revision_tracks_each_saved_patch_and_survives_executor_release() {
+        let mut f = Fixture::new();
+        f.append("synthetic turn", true);
+        assert_eq!(f.consumer.status(f.sid).rev, 0);
+        let graph = f.consumer.load_graph(f.sid).await.unwrap();
+        assert!(
+            graph.utterances.is_empty(),
+            "reading must not import finalized rows"
+        );
+
+        let (fake, _) = Fake::scripted(0..0, vec![ISSUE_PATCH], false);
+        f.post(PostMeeting::Retranscribed, fake).await.unwrap();
+        assert_eq!(f.consumer.status(f.sid).rev, 1);
+
+        let (fake, _) = Fake::new(false, false);
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        let revisions: Vec<_> = f.events().iter().map(|update| update.rev).collect();
+        assert_eq!(revisions, [1, 2]);
+        assert_eq!(f.consumer.status(f.sid).rev, 2);
+        let graph = f.consumer.load_graph(f.sid).await.unwrap();
+        assert_eq!(graph.rev, 2);
+    }
+
+    #[tokio::test]
+    async fn disabling_between_consolidation_stages_leaves_consolidation_pending() {
+        let mut f = Fixture::new();
+        f.append("synthetic turn", false);
+        let (fake, _) = Fake::scripted(0..0, vec![TWO_ISSUES, ATTACH_ISSUE], false);
+        let mut fake = Arc::try_unwrap(fake).ok().unwrap();
+        fake.disable_on_call = Some((1, f.consumer.settings.clone()));
+        let fake = Arc::new(fake);
+        f.post(PostMeeting::Continue, fake.clone()).await.unwrap();
+        assert_eq!(fake.count.load(Ordering::SeqCst), 2);
+        assert_eq!(
+            f.consumer.status(f.sid).disabled_reason,
+            Some(DisabledReason::DisabledDuringRun)
+        );
+        assert_eq!(f.events().len(), 2);
+
+        f.consumer.settings.lock().unwrap().graph_enabled = Some(true);
+        let (resume, _) = Fake::new(false, false);
+        f.post(PostMeeting::Continue, resume).await.unwrap();
+        let updates = f.events();
+        assert!(!updates.is_empty());
+        assert!(updates
+            .iter()
+            .all(|update| update.source == PatchSource::Consolidate));
+    }
+
+    #[tokio::test]
     async fn only_issue_consolidation_can_replace_a_saved_parent() {
         let mut f = Fixture::new();
-        f.append("synthetic turn with three issues", false);
+        f.append("synthetic turn with three issues", true);
         let extraction = r#"{"ops":[
             {"op":"add_node","tmp":"old","kind":"issue","text":"Synthetic old parent","confidence":1,"grounds":[{"uid":"u1"}]},
             {"op":"add_node","tmp":"new","kind":"issue","text":"Synthetic new parent","confidence":1,"grounds":[{"uid":"u1"}]},
             {"op":"add_node","tmp":"child","kind":"issue","text":"Synthetic child","confidence":1,"grounds":[{"uid":"u1"}]},
             {"op":"add_edge","src":"child","dst":"old","kind":"sub_issue_of","confidence":1,"grounds":[{"uid":"u1"}]}
+        ]}"#;
+        let remove_original = r#"{"ops":[
+            {"op":"remove_edge","src":"n3","dst":"n1","kind":"sub_issue_of","grounds":[{"uid":"u1"}]}
         ]}"#;
         let issues = r#"{"ops":[
             {"op":"remove_edge","src":"n3","dst":"n1","kind":"sub_issue_of","grounds":[{"uid":"u1"}]},
@@ -1456,7 +1541,13 @@ mod tests {
         let groups = r#"{"ops":[
             {"op":"remove_edge","src":"n3","dst":"n2","kind":"sub_issue_of","grounds":[{"uid":"u1"}]}
         ]}"#;
-        let (fake, _) = Fake::scripted(0..0, vec![extraction, issues, groups], false);
+        // A retranscription takes the incremental path without starting consolidation.
+        let (fake, _) = Fake::scripted(0..0, vec![extraction], false);
+        f.post(PostMeeting::Retranscribed, fake).await.unwrap();
+
+        f.append("synthetic follow-up", false);
+
+        let (fake, _) = Fake::scripted(0..0, vec![remove_original, issues, groups], false);
         f.post(PostMeeting::Continue, fake).await.unwrap();
 
         let sid = f.sid;
@@ -1474,11 +1565,13 @@ mod tests {
         assert_eq!(parents, ["n2"]);
 
         let events = f.events();
-        assert_eq!(events.len(), 3);
-        assert_eq!(events[1].source, PatchSource::Consolidate);
-        assert_eq!(events[1].rejected, 0);
+        assert_eq!(events.len(), 4);
+        assert_eq!(events[1].source, PatchSource::Flush);
+        assert_eq!(events[1].rejected, 1);
         assert_eq!(events[2].source, PatchSource::Consolidate);
-        assert_eq!(events[2].rejected, 1);
+        assert_eq!(events[2].rejected, 0);
+        assert_eq!(events[3].source, PatchSource::Consolidate);
+        assert_eq!(events[3].rejected, 1);
     }
 
     #[tokio::test]
