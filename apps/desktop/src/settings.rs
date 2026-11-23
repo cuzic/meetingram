@@ -18,6 +18,7 @@ use credential_store::CredentialStore;
 use dioxus::prelude::*;
 use summarize::SummaryProvider;
 
+use crate::app_settings::HerdrBillingVerification;
 use crate::app_state::AppState;
 use crate::summary_template::{self, SummaryTemplatePreset};
 
@@ -153,7 +154,7 @@ fn stt_provider_is_configured(state: &AppState, provider: SttProvider) -> bool {
     }
 }
 
-trait SummaryProviderDisplay {
+pub(crate) trait SummaryProviderDisplay {
     fn label(self) -> &'static str;
     fn known_models(self) -> &'static [&'static str];
 }
@@ -173,6 +174,8 @@ impl SummaryProviderDisplay for SummaryProvider {
             SummaryProvider::ClaudeCli => "Claude (Claude Code CLI)",
             SummaryProvider::ClaudeOAuth => "Claude (ant CLIでOAuthログイン)",
             SummaryProvider::Codex => "Codex (Codex CLI)",
+            SummaryProvider::ClaudeHerdr => "Claude Code（Herdr）",
+            SummaryProvider::CodexHerdr => "Codex（Herdr）",
             SummaryProvider::Ollama => "Ollama (ローカル)",
         }
     }
@@ -219,14 +222,16 @@ impl SummaryProviderDisplay for SummaryProvider {
             ],
             // `claude --model` aliases (see `claude --help`), not `genai` model
             // spec strings.
-            SummaryProvider::ClaudeCli => &["sonnet", "opus", "haiku"],
+            SummaryProvider::ClaudeCli | SummaryProvider::ClaudeHerdr => {
+                &["sonnet", "opus", "haiku"]
+            }
             // Same bare `genai` model spec strings as `SummaryProvider::Claude` —
             // rather than the CLI aliases used by `ClaudeCli`.
             SummaryProvider::ClaudeOAuth => {
                 &["claude-sonnet-4-5", "claude-opus-4-5", "claude-haiku-4-5"]
             }
             // Model slugs from this sandbox's `~/.codex/models_cache.json`.
-            SummaryProvider::Codex => &["gpt-5.5", "gpt-5.5-codex"],
+            SummaryProvider::Codex | SummaryProvider::CodexHerdr => &["gpt-5.5", "gpt-5.5-codex"],
             // Deliberately empty: unlike the hosted providers above, there's no
             // fixed catalog to offer — the available models are whatever the user
             // has locally `ollama pull`ed, which this app has no way to enumerate
@@ -257,6 +262,8 @@ mod summary_provider_tests {
             (SummaryProvider::ClaudeCli, "claude-cli"),
             (SummaryProvider::ClaudeOAuth, "claude-oauth"),
             (SummaryProvider::Codex, "codex"),
+            (SummaryProvider::ClaudeHerdr, "claude-herdr"),
+            (SummaryProvider::CodexHerdr, "codex-herdr"),
             (SummaryProvider::Ollama, "ollama"),
         ];
 
@@ -299,6 +306,10 @@ fn load_active_summary_provider(state: &AppState) -> SummaryProvider {
 /// usable here; whether the underlying CLI is actually installed is checked
 /// separately (async, since it spawns a subprocess) in the credential section.
 fn summary_provider_is_configured(state: &AppState, provider: SummaryProvider) -> bool {
+    if provider.herdr_backend().is_some() {
+        let settings = state.app_settings.lock().unwrap();
+        return state.llm.herdr_is_registered(provider, &settings);
+    }
     match provider.api_key_account() {
         Some(account) => state
             .credential_store
@@ -582,6 +593,77 @@ const STYLE: &str = r#"
   border-radius: 6px;
 }
 "#;
+
+#[component]
+fn HerdrBillingSettings() -> Element {
+    let state = use_context::<Arc<AppState>>();
+    let claude = use_signal(|| {
+        state
+            .app_settings
+            .lock()
+            .unwrap()
+            .herdr_claude_billing_verification
+    });
+    let codex = use_signal(|| {
+        state
+            .app_settings
+            .lock()
+            .unwrap()
+            .herdr_codex_billing_verification
+    });
+    let mut message = use_signal(|| None::<&'static str>);
+    rsx! {
+        section { class: "settings-section",
+            h2 { "Herdr の追加課金の確認方法" }
+            p { class: "hint", "専用アカウントを使う場合は、管理者が追加課金を無効に固定できることを確認してください。" }
+            for (label, selected) in [("Claude Code（Herdr）", claude), ("Codex（Herdr）", codex)] {
+                label {
+                    "{label}"
+                    select {
+                        onchange: move |event| {
+                            let mut selected = selected;
+                            selected.set(if event.value() == "administrator_verified" {
+                                HerdrBillingVerification::AdministratorVerified
+                            } else {
+                                HerdrBillingVerification::Automatic
+                            });
+                            message.set(None);
+                        },
+                        option {
+                            value: "automatic",
+                            selected: selected() == HerdrBillingVerification::Automatic,
+                            "アプリが自動確認"
+                        }
+                        option {
+                            value: "administrator_verified",
+                            selected: selected() == HerdrBillingVerification::AdministratorVerified,
+                            "管理者が確認済みの専用アカウントを使う"
+                        }
+                    }
+                }
+            }
+            button {
+                class: "primary",
+                onclick: move |_| {
+                    let mut settings = state.app_settings.lock().unwrap();
+                    let mut updated = settings.clone();
+                    updated.herdr_claude_billing_verification = claude();
+                    updated.herdr_codex_billing_verification = codex();
+                    message.set(Some(if updated.save(&state.app_data_dir).is_ok() {
+                        *settings = updated;
+                        "確認方法を保存しました"
+                    } else {
+                        "確認方法を保存できませんでした"
+                    }));
+                },
+                "この設定を保存"
+            }
+            if let Some(text) = message() {
+                p { class: "status-badge", "{text}" }
+            }
+        }
+    }
+}
 
 #[component]
 pub fn Settings(mut screen: Signal<Screen>) -> Element {
@@ -1570,7 +1652,13 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                         }
                     }
                 }
-                if summary_edit_provider().cli_backend().is_some() {
+                if summary_edit_provider().herdr_backend().is_some() {
+                    if summary_provider_is_configured(&state, summary_edit_provider()) {
+                        p { class: "hint", "専用 Herdr 接続を登録済みです。送信前に登録内容と認証を確認します。" }
+                    } else {
+                        p { class: "hint", "選んだ確認方法で使える専用 Herdr 接続が登録されていません。" }
+                    }
+                } else if summary_edit_provider().cli_backend().is_some() {
                     // CLI-based providers (#59) authenticate as the `claude`/
                     // `codex` CLI's own OAuth/subscription login — nothing for
                     // this app to save, so show detection status instead of a
@@ -1640,6 +1728,8 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                     }
                 }
             }
+
+            HerdrBillingSettings {}
 
             section { class: "settings-section",
                 h2 { "使用する要約プロバイダ・モデル" }

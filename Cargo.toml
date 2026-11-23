@@ -17,19 +17,19 @@ serde_json = "1"
 
 # meetingram-core (https://github.com/cuzic/meetingram-core). Bump the tag here
 # for every crate at once; crates from one tag are built and tested together.
-app-service = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-control-protocol = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-credential-store = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-discussion-graph = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-local-broker = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-recorder-domain = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-rhai-engine = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-session-store = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-stt-api = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-stt-assemblyai = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-stt-deepgram = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-stt-google = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-stt-openai = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-summarize = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-transcript-event = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
-upload-client = { git = "https://github.com/cuzic/meetingram-core", tag = "v0.13.0" }
+app-service = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+control-protocol = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+credential-store = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+discussion-graph = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+local-broker = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+recorder-domain = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+rhai-engine = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+session-store = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+stt-api = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+stt-assemblyai = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+stt-deepgram = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+stt-google = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+stt-openai = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+summarize = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+transcript-event = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }
+upload-client = { git = "https://github.com/cuzic/meetingram-core", branch = "feat/herdr-transport" }

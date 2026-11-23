@@ -30,6 +30,15 @@ use serde::{Deserialize, Serialize};
 /// `main.rs`/`config::Config` already put there.
 const SETTINGS_FILE_NAME: &str = "settings.json";
 
+/// How Meetingram must verify that a Herdr connection cannot incur extra charges.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum HerdrBillingVerification {
+    #[default]
+    Automatic,
+    AdministratorVerified,
+}
+
 /// Non-secret, app-scoped settings. Every field is `Option` and the whole
 /// struct derives `Default` plus `#[serde(default)]`, so:
 /// - a freshly created store (no file yet) is just `AppSettings::default()`;
@@ -112,8 +121,12 @@ pub struct AppSettings {
     pub graph_batch_seconds: Option<u64>,
     /// Confidence threshold for graph review. Defaults to 0.6.
     pub graph_review_threshold: Option<f64>,
-    /// Model override within the summary provider. Defaults to an empty string.
+    /// Graph provider key. When absent, inherits the summary provider.
+    pub graph_provider: Option<String>,
+    /// Model override within the selected graph provider.
     pub graph_model: Option<String>,
+    pub(crate) herdr_claude_billing_verification: HerdrBillingVerification,
+    pub(crate) herdr_codex_billing_verification: HerdrBillingVerification,
 }
 
 impl AppSettings {
@@ -192,7 +205,10 @@ mod tests {
             graph_batch_utterances: Some(12),
             graph_batch_seconds: Some(90),
             graph_review_threshold: Some(0.8),
+            graph_provider: Some("claude-cli".to_string()),
             graph_model: Some("sonnet".to_string()),
+            herdr_claude_billing_verification: HerdrBillingVerification::AdministratorVerified,
+            herdr_codex_billing_verification: HerdrBillingVerification::Automatic,
         };
 
         settings.save(dir.path()).expect("save");
@@ -250,7 +266,16 @@ mod tests {
         assert_eq!(loaded.graph_batch_utterances, None);
         assert_eq!(loaded.graph_batch_seconds, None);
         assert_eq!(loaded.graph_review_threshold, None);
+        assert_eq!(loaded.graph_provider, None);
         assert_eq!(loaded.graph_model, None);
+        assert_eq!(
+            loaded.herdr_claude_billing_verification,
+            HerdrBillingVerification::Automatic
+        );
+        assert_eq!(
+            loaded.herdr_codex_billing_verification,
+            HerdrBillingVerification::Automatic
+        );
     }
 
     #[test]

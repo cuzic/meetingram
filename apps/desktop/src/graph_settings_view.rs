@@ -2,11 +2,15 @@ use std::{path::Path, sync::Arc};
 
 use crate::{app_settings::AppSettings, app_state::AppState, graph_consumer::DisabledReason};
 use dioxus::prelude::*;
+use summarize::SummaryProvider;
+
+use crate::settings::SummaryProviderDisplay;
 
 use super::graph_view::disabled_message;
 
 struct GraphSettingsDraft {
     enabled: bool,
+    provider: String,
     model: String,
     utterances: String,
     seconds: String,
@@ -17,6 +21,7 @@ impl From<&AppSettings> for GraphSettingsDraft {
     fn from(settings: &AppSettings) -> Self {
         Self {
             enabled: settings.graph_enabled.unwrap_or(true),
+            provider: settings.graph_provider.clone().unwrap_or_default(),
             model: settings.graph_model.clone().unwrap_or_default(),
             utterances: settings.graph_batch_utterances.unwrap_or(6).to_string(),
             seconds: settings.graph_batch_seconds.unwrap_or(45).to_string(),
@@ -48,6 +53,7 @@ impl GraphSettingsDraft {
 
         let mut updated = settings.clone();
         updated.graph_enabled = Some(self.enabled);
+        updated.graph_provider = (!self.provider.is_empty()).then(|| self.provider.clone());
         updated.graph_model = Some(self.model.trim().to_string());
         updated.graph_batch_utterances = Some(utterances);
         updated.graph_batch_seconds = Some(seconds);
@@ -61,7 +67,7 @@ impl GraphSettingsDraft {
 }
 
 fn settings_timing_message() -> &'static str {
-    "無効にすると、録音中の会議でもそれ以降は送信しません。有効に戻しても録音中の会議の抽出は再開しません。会議後に「続きを抽出」で再開できます。モデルと窓の変更は、録音中の抽出には次の録音から適用されます。「続きを抽出」と「グラフを作り直す」は操作時点の設定を使います。"
+    "無効にすると、録音中の会議でもそれ以降は送信しません。有効に戻しても録音中の会議の抽出は再開しません。会議後に「続きを抽出」で再開できます。プロバイダ、モデル、窓の変更は、録音中の抽出には次の録音から適用されます。「続きを抽出」と「グラフを作り直す」は操作時点の設定を使います。"
 }
 
 #[component]
@@ -87,7 +93,25 @@ pub(crate) fn GraphSettings(disabled_reason: Option<DisabledReason>) -> Element 
                 "議論グラフを有効にする"
             }
             label {
-                "グラフ用のモデル（空欄なら要約と同じ）"
+                "グラフ用のプロバイダ"
+                select {
+                    onchange: move |event| draft.write().provider = event.value(),
+                    option { value: "", selected: draft.read().provider.is_empty(), "要約の設定を引き継ぐ" }
+                    for provider in SummaryProvider::ALL.into_iter().filter(|provider| provider.supports_graph()) {
+                        option {
+                            value: "{provider.key()}",
+                            selected: draft.read().provider == provider.key(),
+                            "{provider.label()}"
+                        }
+                    }
+                }
+            }
+            label {
+                if draft.read().provider.is_empty() {
+                    "グラフ用のモデル（空欄なら要約と同じ）"
+                } else {
+                    "グラフ用のモデル（空欄なら選んだプロバイダの既定値）"
+                }
                 input {
                     r#type: "text",
                     value: "{draft.read().model}",
@@ -165,6 +189,7 @@ mod tests {
         };
         let defaults = GraphSettingsDraft::from(&settings);
         assert!(defaults.enabled);
+        assert!(defaults.provider.is_empty());
         assert!(defaults.model.is_empty());
         assert_eq!(defaults.utterances, "6");
         assert_eq!(defaults.seconds, "45");
@@ -172,6 +197,7 @@ mod tests {
 
         let draft = GraphSettingsDraft {
             enabled: false,
+            provider: "claude-cli".into(),
             model: " sonnet ".into(),
             utterances: "12".into(),
             seconds: "90".into(),
@@ -180,6 +206,7 @@ mod tests {
         draft.save(&mut settings, directory.path()).unwrap();
         let loaded = AppSettings::load(directory.path());
         assert_eq!(loaded.graph_enabled, Some(false));
+        assert_eq!(loaded.graph_provider.as_deref(), Some("claude-cli"));
         assert_eq!(loaded.graph_model.as_deref(), Some("sonnet"));
         assert_eq!(loaded.graph_batch_utterances, Some(12));
         assert_eq!(loaded.graph_batch_seconds, Some(90));

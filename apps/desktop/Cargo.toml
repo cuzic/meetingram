@@ -12,6 +12,7 @@ description = "meetingram desktop app (dioxus-desktop shell)"
 e2e-scripted = ["dep:e2e-scripted"]
 
 [dependencies]
+async-trait = "0.1"
 dioxus = { version = "0.7", features = ["desktop"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros", "sync"] }
 dirs = "7"
@@ -75,5 +76,4 @@ app-service = { workspace = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["test-util"] }
-async-trait = "0.1"
 tempfile = "3"

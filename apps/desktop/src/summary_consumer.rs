@@ -322,6 +322,7 @@ fn summary_build_error_message(error: BuildSummarizerError) -> &'static str {
         }
         BuildSummarizerError::MissingApiKey => "設定画面でAPIキーを設定してください",
         BuildSummarizerError::InvalidVertexCredentials => "認証情報の読み込みに失敗しました",
+        BuildSummarizerError::HerdrNotConfigured => "専用 Herdr 接続を確認できませんでした",
         BuildSummarizerError::Client => "AIクライアントの作成に失敗しました",
     }
 }
