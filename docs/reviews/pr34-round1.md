@@ -2,11 +2,13 @@
 
 対象: cuzic/meetingram feat/e2e-scripted-llm @ 35ccca036b48ade21db5b7b4b9bdd1a96f6943d5
 
+<!-- 同じ head を独立にレビューした d664834 の指摘（承認の段の選び方）をこの版に統合した。 -->
+
 ## 結論（先に）
 converged: **yes**。Blocker と Major はありません。
 本番の要約とグラフの経路は、工場に移しただけで挙動は変わっていません。Q6・Q7・CLI の `is_available`、会議の後の操作も同じです。巡回と偽の LLM は `cfg(all(windows, feature = "e2e-scripted"))` の中にあり、環境変数があるときだけ動きます。
 E2E は録音中の rev、停止後の整理、作り直しでの rev の低下と回復、承認・却下の保存、`failed to persist` 0 件、`SegmentFinalized` の発行失敗 0 件を確かめています。変異の run は job が `failure` になりました。
-指摘は、ADR §3 の照合の規則をテストが固定していないこと、作り直しの回復の確認が弱いことなどです（Minor 5、nit 2）。follow-up に回してかまいません。
+指摘は、ADR §3 の照合の規則をテストが固定していないこと、作り直しの回復の確認が弱いことなどです（Minor 5、nit 3）。follow-up に回してかまいません。
 
 ## 前ラウンドの解消状況（pr32-round1）
 - m1: 解消。`start_session` のたびに時計を作り直す変異（`lib.rs:269`）と、`worker.abort()` を消す変異（`:305`）は、どちらも `reconnect_resumes_and_finalize_closes_without_flushing` で落ちます（手元で確認）。
@@ -91,13 +93,16 @@ E2E は録音中の rev、停止後の整理、作り直しでの rev の低下�
   ランナーが遅く、ウィンドウの表示から `start` までが 17 秒を超えると、段 1 が `timed_out` で落ちます。
 - 修正案: 段 1 は、まず `status.recording` を長めの上限（例: 120 秒）で待ちます。そのあとで、`elapsed_ms` と `rev` を 30 秒で待ちます。
 
-### n1（nit）: 増分でない `complete` を、すべて `kind="consolidation"` とログに出す
-- `scripted_llm.rs:79`。今は整理しか来ませんが、増分以外のすべてを含むので `kind="non_incremental"` などのほうが正確です。
+### n1（nit）: 承認の段が「先頭の項目」ではなく「アウトラインで薄い最初のノード」を選ぶ
+- `e2e_tour.rs:185-204` は、Issue の「先頭の項目を承認、次を却下」と少し違います。DOM で opacity を確かめるための変更なので妥当です。PR 本文にそう書いておくとよいです。
 
 ### n2（nit）: 成果物の画面には、読み手が取り違えやすい点が 2 つある
 - `step-7-graph-settings.png` の確認のしきい値は、保存済みの値（0.6）です。実際に効いているのは、シナリオの上書き（0.9）です。ADR §4 どおり `AppSettings` に保存していないためで、挙動は正しいです。
 - 履歴の画面には「状態: failed (recoverable)」が出ます。api-token が無いため、リモート登録が失敗しているもので、PR #32 からの既存の挙動です。
 - PR 本文の成果物の説明に、この 2 点を一言ずつ書いておくとよいです。
 
+### n3（nit）: 増分でない `complete` を、すべて `kind="consolidation"` とログに出す
+- `scripted_llm.rs:79`。今は整理しか来ませんが、増分以外のすべてを含むので `kind="non_incremental"` などのほうが正確です。
+
 ## 判定
-converged: yes（Blocker 0 / Major 0 / Minor 5 / nit 2）
+converged: yes（Blocker 0 / Major 0 / Minor 5 / nit 3）
