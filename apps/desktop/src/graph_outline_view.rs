@@ -325,7 +325,7 @@ pub(super) fn HistoryOutline(initial_session: Option<SessionId>) -> Element {
     };
 
     rsx! {
-        section { class: "history-container", "data-outline-session": session_id.to_string(),
+        section { class: "history-container",
             label {
                 "アウトラインを表示するセッション"
                 select {

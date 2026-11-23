@@ -161,23 +161,10 @@ async fn select_session(selector: &str, id: &str) -> TourResult {
 const HISTORY_SELECTOR: &str = "#history-outline-session";
 const OPERATIONS_SELECTOR: &str = "#history-graph-session";
 
-async fn select_outline_session(id: &str) -> TourResult {
-    select_session(HISTORY_SELECTOR, id).await?;
-    let id = serde_json::json!(id);
-    let body = format!(
-        "return visible('[data-outline-session]').some(panel => panel.dataset.outlineSession === {id});"
-    );
-    wait(STEP_TIMEOUT, || async {
-        dom::<bool>(&body).await.filter(|done| *done)
-    })
-    .await?;
-    Ok(())
-}
-
 async fn history_outline(id: &str) -> TourResult {
     click(HISTORY, "").await?;
     click(TABS, "アウトライン").await?;
-    select_outline_session(id).await?;
+    select_session(HISTORY_SELECTOR, id).await?;
     reveal(OUTLINE).await
 }
 
@@ -294,7 +281,11 @@ async fn execute(
             })
             .await?;
             click(TABS, "アウトライン").await?;
-            select_outline_session(first.as_deref().ok_or("first_session_missing")?).await?;
+            select_session(
+                HISTORY_SELECTOR,
+                first.as_deref().ok_or("first_session_missing")?,
+            )
+            .await?;
             reveal(NODES).await?;
         }
         TourAction::FirstSession => {
@@ -316,22 +307,27 @@ async fn execute(
             click(TABS, "グラフの操作").await?;
             reveal(OPERATIONS_SELECTOR).await?;
             click(TABS, "アウトライン").await?;
-            select_outline_session(first).await?;
+            select_session(HISTORY_SELECTOR, first).await?;
             reveal(NODES).await?;
             click(NODES, "").await?;
             reveal(EVIDENCE).await?;
         }
         TourAction::SecondSession => {
-            select_outline_session(second.as_deref().ok_or("second_session_missing")?).await?;
-            reveal(NODES).await?;
-            let stale = dom::<bool>(&format!(
-                "return visible({}).length > 0;",
+            select_session(
+                HISTORY_SELECTOR,
+                second.as_deref().ok_or("second_session_missing")?,
+            )
+            .await?;
+            let body = format!(
+                "return visible({}).length > 0 && visible({}).length === 0;",
+                serde_json::json!(NODES),
                 serde_json::json!(EVIDENCE)
-            ))
-            .await;
-            if stale != Some(false) {
-                return Err("previous_evidence_visible");
-            }
+            );
+            wait(STEP_TIMEOUT, || async {
+                dom::<bool>(&body).await.filter(|ready| *ready)
+            })
+            .await
+            .map_err(|_| "previous_evidence_visible")?;
             click(NODES, "").await?;
             reveal(EVIDENCE).await?;
         }
