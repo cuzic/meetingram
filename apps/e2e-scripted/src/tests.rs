@@ -11,8 +11,36 @@ fn design() -> Scenario {
 }
 
 #[test]
-fn absent_environment_disables_override() {
-    assert!(Scenario::load_optional(None).unwrap().is_none());
+fn environment_controls_scenario_activation() {
+    const PROBE: &str = "MEETINGRAM_TEST_SCENARIO_ACTIVATION";
+    const VARIABLE: &str = "MEETINGRAM_E2E_SCENARIO";
+    if let Some(expected) = std::env::var_os(PROBE) {
+        let scenario = Scenario::from_environment().unwrap();
+        assert_eq!(
+            scenario.as_ref().map(Scenario::name),
+            (expected == "present").then_some("design")
+        );
+        return;
+    }
+
+    // Isolate the environment from other tests running in parallel.
+    for expected in ["absent", "present"] {
+        let mut child = std::process::Command::new(std::env::current_exe().unwrap());
+        child
+            .args(["--exact", "tests::environment_controls_scenario_activation"])
+            .env(PROBE, expected)
+            .env_remove(VARIABLE);
+        if expected == "present" {
+            child.env(
+                VARIABLE,
+                Path::new(env!("CARGO_MANIFEST_DIR")).join("scenarios/design"),
+            );
+        }
+        assert!(
+            child.status().unwrap().success(),
+            "scenario activation with variable {expected}"
+        );
+    }
 }
 
 fn script() -> Scenario {
@@ -24,6 +52,7 @@ fn script() -> Scenario {
     ]
     .into_iter()
     .map(|(track, end_ms)| Utterance {
+        row_id: end_ms as i64,
         track,
         start_ms: end_ms - 10,
         end_ms,
@@ -31,6 +60,7 @@ fn script() -> Scenario {
     })
     .collect::<Vec<_>>();
     Scenario {
+        llm: design().llm,
         name: "test".into(),
         settings: Settings::default(),
         rows: rows.into(),
@@ -60,6 +90,7 @@ async fn tracks_share_a_clock_and_preserve_script_order() {
 
 #[tokio::test(start_paused = true)]
 async fn reconnect_resumes_and_finalize_closes_without_flushing() {
+    let started = Instant::now();
     let (self_track, remote_track) = script().providers();
     let (own_session, mut own) = self_track
         .start_session(SttSessionConfig::new(48_000))
@@ -77,11 +108,32 @@ async fn reconnect_resumes_and_finalize_closes_without_flushing() {
         .start_session(SttSessionConfig::new(48_000))
         .await
         .unwrap();
-    assert_final(remote.recv().await, 11, 12);
+    let event = tokio::time::timeout_at(started + Duration::from_millis(20), remote.recv())
+        .await
+        .expect("reconnected track missed the original playback deadline");
+    assert_final(event, 11, 12);
+    assert!(started.elapsed() >= Duration::from_millis(12));
+
+    let worker = self_track
+        .playback
+        .state
+        .lock()
+        .unwrap()
+        .worker
+        .as_ref()
+        .unwrap()
+        .abort_handle();
     remote_session.finalize().await.unwrap();
     own_session.finalize().await.unwrap();
-    assert!(remote.recv().await.is_none());
-    assert!(own.recv().await.is_none());
+    tokio::time::timeout(Duration::from_secs(1), async {
+        assert!(remote.recv().await.is_none());
+        assert!(own.recv().await.is_none());
+        while !worker.is_finished() {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+    })
+    .await
+    .expect("finalize left a sender or playback worker running");
 }
 
 #[test]
@@ -100,4 +152,54 @@ fn assert_final(event: Option<SttEvent>, start: u64, end: u64) {
         audio_end_ms: Some(actual_end),
         ..
     }) if actual_start == start && actual_end == end));
+}
+
+#[tokio::test(start_paused = true)]
+async fn incremental_replay_applies_the_gold_graph() {
+    use discussion_graph::{apply_patch, build_incremental, parse_ops, Graph, DEFAULT_INPUT_LIMIT};
+    use summarize::{CompletionRequest, Summarizer};
+
+    let scenario =
+        Scenario::load(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scenarios/design"))
+            .unwrap();
+    let summarizer = scenario.summarizer();
+    let mut graph = Graph::default();
+    let mut history = Vec::new();
+    for batch in scenario.rows.chunks(6) {
+        let ids: Vec<_> = batch.iter().map(|row| format!("u{}", row.row_id)).collect();
+        for (row, uid) in batch.iter().zip(&ids) {
+            graph.utterances.insert(
+                uid.clone(),
+                discussion_graph::Utterance {
+                    uid: uid.clone(),
+                    row_id: row.row_id,
+                    track: None,
+                    speaker_label: row.track.label().into(),
+                    start_ms: Some(row.start_ms),
+                    end_ms: Some(row.end_ms),
+                    text: row.text.clone(),
+                    is_retranscribed: false,
+                },
+            );
+        }
+        let pending: Vec<_> = ids.iter().map(String::as_str).collect();
+        let prompt =
+            build_incremental(&graph, &pending, &history, false, DEFAULT_INPUT_LIMIT).unwrap();
+        let request = CompletionRequest::new(
+            prompt.system,
+            prompt.user,
+            "scripted",
+            Duration::from_secs(30),
+        );
+        let response = summarizer.complete(&request).await.unwrap();
+        let allowed: Vec<_> = prompt.allowed_uids.iter().map(String::as_str).collect();
+        let result = apply_patch(&graph, &parse_ops(&response).unwrap(), &allowed);
+        assert!(result.rejected.is_empty(), "{:?}", result.rejected);
+        if !result.applied.is_empty() {
+            history.push(result.touched);
+        }
+        graph = result.graph;
+    }
+    assert_eq!(graph.nodes.len(), 39);
+    assert_eq!(graph.edges.len(), 32);
 }

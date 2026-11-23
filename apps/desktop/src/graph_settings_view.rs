@@ -72,7 +72,7 @@ pub(crate) fn GraphSettings(disabled_reason: Option<DisabledReason>) -> Element 
     let disabled = disabled_reason.map(disabled_message);
 
     rsx! {
-        section { class: "settings-section",
+        section { id: "graph-settings", class: "settings-section",
             h2 { "議論グラフ" }
             p { class: "hint", "{settings_timing_message()}" }
             if let Some(reason) = disabled {

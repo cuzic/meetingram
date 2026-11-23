@@ -245,6 +245,8 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
                                 button {
                                     style: "opacity: {opacity}; text-align: start;",
                                     aria_pressed: pressed,
+                                    "data-node-id": node.nid.clone(),
+                                    "data-node-kind": if node.kind == discussion_graph::NodeKind::Issue { "issue" } else { "other" },
                                     onclick: move |_| selected.set(Some(id.clone())),
                                     "{reference}{kind}{stance} · {status} · {node.text}"
                                 }
@@ -328,6 +330,7 @@ pub(super) fn HistoryOutline(initial_session: Option<SessionId>) -> Element {
             label {
                 "アウトラインを表示するセッション"
                 select {
+                    id: "history-outline-session",
                     value: "{session_id}",
                     onchange: move |event| selected_session.set(event.value().parse().ok()),
                     for (id, started) in sessions {

@@ -7,14 +7,12 @@
 //!
 //! See `docs/decouple-summary-transcription.md` §6.2.
 
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use credential_store::CredentialStore;
 use local_broker::{session_stopped_subject, LocalBroker, RecvOutcome, Subscription};
 use recorder_domain::SessionId;
 use session_store::{SessionStore, Summary};
-use summarize::{BuildSummarizerError, SummaryProvider, TranscriptTurn};
+use summarize::{BuildSummarizerError, TranscriptTurn};
 use transcript_event::{
     EventEnvelope, FinalizedTurns, ProtocolValidator, SummaryEvent, TranscriptEvent,
     UtteranceEndReason,
@@ -28,25 +26,22 @@ use crate::transcript;
 pub struct SummaryConsumer {
     broker: LocalBroker,
     store: Arc<SessionStore>,
-    credential_store: Arc<credential_store::FallbackCredentialStore>,
+    llm: Arc<dyn crate::llm_factory::LlmFactory>,
     app_settings: Arc<Mutex<AppSettings>>,
-    cli_temp_base: PathBuf,
 }
 
 impl SummaryConsumer {
     pub fn new(
         broker: LocalBroker,
         store: Arc<SessionStore>,
-        credential_store: Arc<credential_store::FallbackCredentialStore>,
+        llm: Arc<dyn crate::llm_factory::LlmFactory>,
         app_settings: Arc<Mutex<AppSettings>>,
-        cli_temp_base: PathBuf,
     ) -> Self {
         Self {
             broker,
             store,
-            credential_store,
+            llm,
             app_settings,
-            cli_temp_base,
         }
     }
 
@@ -178,7 +173,7 @@ impl SummaryConsumer {
             .ok();
 
         match self.summarize(&turns).await {
-            Ok(text) => Ok(text),
+            Ok((text, _)) => Ok(text),
             Err(e) => {
                 self.broker
                     .publish(
@@ -215,8 +210,7 @@ impl SummaryConsumer {
             .ok();
 
         match self.summarize(turns).await {
-            Ok(text) => {
-                let provider_model = self.provider_model_string();
+            Ok((text, provider_model)) => {
                 self.store
                     .insert_summary(&Summary {
                         session_id,
@@ -270,68 +264,22 @@ impl SummaryConsumer {
         }
     }
 
-    async fn summarize(&self, turns: &[TranscriptTurn]) -> Result<String, String> {
-        let (summary_template, ollama_base_url) = {
-            let settings = self.app_settings.lock().unwrap();
-            (
-                settings.summary_template.clone(),
-                settings.ollama_base_url.clone(),
-            )
-        };
-        let credential_store = self.credential_store.clone();
-        let cli_temp_base = self.cli_temp_base.clone();
-        let (summarizer, model) = tokio::task::spawn_blocking(move || {
-            let provider = credential_store
-                .load(
-                    summarize::CREDENTIAL_SERVICE,
-                    summarize::SELECTED_PROVIDER_ACCOUNT,
-                )
-                .ok()
-                .map(|key| SummaryProvider::from_key(&key))
-                .unwrap_or(SummaryProvider::Claude);
-            let model = credential_store
-                .load(
-                    summarize::CREDENTIAL_SERVICE,
-                    summarize::SELECTED_MODEL_ACCOUNT,
-                )
-                .unwrap_or_else(|_| provider.default_model().to_string());
-            summarize::build_summarizer(
-                provider.key(),
-                credential_store,
-                ollama_base_url,
-                Some(cli_temp_base),
-            )
-            .map(|summarizer| (summarizer, model))
-        })
-        .await
-        .map_err(|_| summary_build_error_message(BuildSummarizerError::Client).to_string())?
-        .map_err(|error| summary_build_error_message(error).to_string())?;
-
-        let options = crate::summary_template::summarize_options_for(model, summary_template);
-        summarizer
+    async fn summarize(&self, turns: &[TranscriptTurn]) -> Result<(String, String), String> {
+        let settings = self.app_settings.lock().unwrap().clone();
+        let summary_template = settings.summary_template.clone();
+        let backend = self
+            .llm
+            .summary(settings)
+            .await
+            .map_err(|error| summary_build_error_message(error).to_string())?;
+        let options =
+            crate::summary_template::summarize_options_for(backend.model, summary_template);
+        let text = backend
+            .summarizer
             .summarize(turns, &options)
             .await
-            .map_err(|error| error.to_string())
-    }
-
-    fn provider_model_string(&self) -> String {
-        let provider = self
-            .credential_store
-            .load(
-                summarize::CREDENTIAL_SERVICE,
-                summarize::SELECTED_PROVIDER_ACCOUNT,
-            )
-            .ok()
-            .map(|key| SummaryProvider::from_key(&key))
-            .unwrap_or(SummaryProvider::Claude);
-        let model = self
-            .credential_store
-            .load(
-                summarize::CREDENTIAL_SERVICE,
-                summarize::SELECTED_MODEL_ACCOUNT,
-            )
-            .unwrap_or_else(|_| provider.default_model().to_string());
-        format!("{}/{}", provider.key(), model)
+            .map_err(|error| error.to_string())?;
+        Ok((text, backend.provider_model))
     }
 }
 

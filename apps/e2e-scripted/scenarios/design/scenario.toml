@@ -1,4 +1,49 @@
 speed = 10
 latency_ms = 300
+graph_batch_utterances = 6
+graph_batch_seconds = 45
+graph_review_threshold = 0.9
 
-# Graph settings overrides are reserved for the scripted LLM.
+[[tour]]
+name = "live-outline"
+action = "live_outline"
+
+[[tour]]
+name = "live-evidence"
+action = "live_evidence"
+
+[[tour]]
+name = "consolidated"
+action = "consolidated"
+
+[[tour]]
+name = "history-evidence"
+action = "history_evidence"
+
+[[tour]]
+name = "approved"
+action = "approve"
+
+[[tour]]
+name = "rejected"
+action = "reject"
+
+[[tour]]
+name = "graph-settings"
+action = "graph_settings"
+
+[[tour]]
+name = "rebuild-started"
+action = "rebuild_started"
+
+[[tour]]
+name = "rebuild-complete"
+action = "rebuild_complete"
+
+[[tour]]
+name = "first-session"
+action = "first_session"
+
+[[tour]]
+name = "second-session"
+action = "second_session"

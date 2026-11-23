@@ -48,6 +48,7 @@ pub(super) fn GraphHistory(initial_session: Option<SessionId>) -> Element {
                 label {
                     "グラフを操作するセッション"
                     select {
+                        id: "history-graph-session",
                         value: "{selected_value}",
                         onchange: move |event| selected.set(event.value().parse().ok()),
                         for (id, date) in sessions {

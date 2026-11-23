@@ -2011,11 +2011,14 @@ name = "e2e-scripted"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "discussion-graph",
  "serde",
  "serde_json",
  "stt-api",
+ "summarize",
  "tokio",
  "toml",
+ "tracing",
 ]
 
 [[package]]

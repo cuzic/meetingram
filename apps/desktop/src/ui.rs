@@ -445,6 +445,8 @@ fn GapMarker(
             p { class: "gap-label", "{label}" }
             if !gap_closed {
                 p { class: "gap-hint", "(まだ接続が回復していません)" }
+            } else if crate::scripted_stt_active() {
+                p { class: "gap-hint", "E2E シナリオでは再文字起こしをしません" }
             } else if can_retranscribe {
                 button {
                     class: "gap-retranscribe",
@@ -467,6 +469,8 @@ pub fn App() -> Element {
     setup_tray();
 
     let state = use_context::<Arc<AppState>>();
+    #[cfg(all(windows, feature = "e2e-scripted"))]
+    crate::e2e_tour::use_tour(state.clone());
     let mut status = use_signal(Status::default);
     let mut busy = use_signal(|| false);
     let mut action_error = use_signal(|| None::<String>);
@@ -1120,7 +1124,7 @@ pub fn App() -> Element {
                 }
                 button {
                     class: "primary",
-                    disabled: !has_session || is_summary_busy || crate::scripted_stt_active(),
+                    disabled: !has_session || is_summary_busy,
                     onclick: on_generate_summary,
                     if is_summary_busy { "要約を生成中..." } else { "要約を生成" }
                 }

@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 $env:MEETINGRAM_E2E_SCENARIO = (Resolve-Path 'apps/e2e-scripted/scenarios/design').Path
 $ctl = (Resolve-Path 'target/x86_64-pc-windows-msvc/debug/meetingramctl.exe').Path
 $output = Join-Path $env:RUNNER_TEMP 'e2e-windows-recording'
+$env:MEETINGRAM_E2E_TOUR_DIR = $output
 $progress = Join-Path $output 'capture-progress.txt'
 $tone = Join-Path $env:RUNNER_TEMP 'meetingram-tone.wav'
 $sessions = Join-Path $env:APPDATA 'meetingram/sessions'

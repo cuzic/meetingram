@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use credential_store::{CredentialStore, FallbackCredentialStore};
+use credential_store::CredentialStore;
 #[cfg(any(windows, test))]
 use discussion_graph::store::{ReviewDecision, ReviewTarget};
 use discussion_graph::{
@@ -162,15 +162,14 @@ pub struct GraphConsumer {
     broker: LocalBroker,
     database: PathBuf,
     store: Mutex<Option<GraphStore>>,
-    credentials: Arc<FallbackCredentialStore>,
+    llm: Arc<dyn crate::llm_factory::LlmFactory>,
     settings: Arc<Mutex<AppSettings>>,
-    cli_temp_base: PathBuf,
     sessions: Mutex<Sessions>,
 }
 
-struct Backend {
-    model: String,
-    summarizer: Box<dyn Summarizer>,
+pub(crate) struct Backend {
+    pub(crate) model: String,
+    pub(crate) summarizer: Box<dyn Summarizer>,
 }
 
 #[derive(Clone, Copy)]
@@ -189,17 +188,15 @@ impl GraphConsumer {
     pub fn new(
         broker: LocalBroker,
         database: PathBuf,
-        credentials: Arc<FallbackCredentialStore>,
+        llm: Arc<dyn crate::llm_factory::LlmFactory>,
         settings: Arc<Mutex<AppSettings>>,
-        cli_temp_base: PathBuf,
     ) -> Self {
         Self {
             broker,
             database,
             store: Mutex::new(None),
-            credentials,
+            llm,
             settings,
-            cli_temp_base,
             sessions: Mutex::default(),
         }
     }
@@ -252,6 +249,38 @@ impl GraphConsumer {
             && !status.running
             && !sessions.interrupted_flushes.contains(&sid);
         status
+    }
+
+    pub(crate) async fn control_status(
+        self: &Arc<Self>,
+        sid: SessionId,
+        recording: bool,
+        configured: bool,
+    ) -> control_protocol::GraphStatusDto {
+        let status = self.status(sid);
+        let enabled = configured && status.disabled_reason.is_none();
+        let persisted = if cfg!(windows) {
+            self.db(move |store| {
+                Ok((
+                    store.revision(sid)?,
+                    store.pending_count(sid)?,
+                    store.consolidation_completed(sid)?.is_some(),
+                ))
+            })
+            .await
+            .ok()
+        } else {
+            None
+        };
+        let (rev, pending, consolidated) = persisted.unwrap_or((status.rev, status.pending, false));
+        control_protocol::GraphStatusDto {
+            session_id: sid.to_string(),
+            rev,
+            enabled,
+            running: status.running || status.rebuilding,
+            pending: if recording { status.pending } else { pending },
+            consolidated,
+        }
     }
 
     #[cfg(any(windows, test))]
@@ -307,6 +336,14 @@ impl GraphConsumer {
             }
             let rev = store.set_review(sid, target, decision)?;
             consumer.sessions().revisions.entry(sid).or_default().0 = rev;
+            #[cfg(all(windows, feature = "e2e-scripted"))]
+            if crate::scripted_stt_active() {
+                let decision = match decision {
+                    ReviewDecision::Approve => "approve",
+                    ReviewDecision::Reject => "reject",
+                };
+                tracing::info!(decision, "scripted graph review saved");
+            }
             Ok(Ok(()))
         })
         .await?
@@ -346,11 +383,19 @@ impl GraphConsumer {
 
     #[allow(dead_code)] // Read by the graph view in task 6.
     pub fn review_threshold(&self) -> f64 {
-        self.settings
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
+        self.effective_settings()
             .graph_review_threshold
             .unwrap_or(0.6)
+    }
+
+    fn effective_settings(&self) -> AppSettings {
+        let mut settings = self
+            .settings
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .clone();
+        self.llm.graph_settings(&mut settings);
+        settings
     }
 
     fn enabled(windows: bool, settings: &AppSettings) -> Result<(), DisabledReason> {
@@ -369,19 +414,7 @@ impl GraphConsumer {
         settings: AppSettings,
     ) -> Result<Backend, DisabledReason> {
         Self::enabled(windows, &settings)?;
-        let credentials = self.credentials.clone();
-        let cli_temp_base = self.cli_temp_base.clone();
-        let (provider, backend) = tokio::task::spawn_blocking(move || {
-            build_backend(credentials, settings, cli_temp_base)
-        })
-        .await
-        .map_err(|_| DisabledReason::Backend)??;
-        if let Some(cli) = provider.cli_backend() {
-            if !cli.is_available().await {
-                return Err(DisabledReason::Backend);
-            }
-        }
-        Ok(backend)
+        self.llm.graph(settings).await
     }
 
     async fn db<T: Send + 'static>(
@@ -421,11 +454,7 @@ impl GraphConsumer {
     ) -> Option<tokio::task::JoinHandle<()>> {
         let session = self.session(sid);
         session.state().recording = true;
-        let settings = self
-            .settings
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .clone();
+        let settings = self.effective_settings();
         if let Err(reason) = Self::enabled(windows, &settings) {
             session.state().status.disabled_reason = Some(reason);
             return None;
@@ -500,11 +529,7 @@ impl GraphConsumer {
         load_backend: impl FnOnce(AppSettings) -> F + Send + 'static,
     ) -> Option<tokio::task::JoinHandle<()>> {
         let session = self.session(sid);
-        let settings = self
-            .settings
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .clone();
+        let settings = self.effective_settings();
         let rebuild = matches!(action, PostMeeting::Rebuild);
         let generation = {
             let mut state = session.state();
@@ -581,7 +606,7 @@ impl GraphConsumer {
     }
 }
 
-fn build_backend(
+pub(crate) fn build_backend(
     credentials: Arc<impl CredentialStore + Send + Sync + 'static>,
     settings: AppSettings,
     cli_temp_base: PathBuf,
@@ -1110,14 +1135,18 @@ mod tests {
                 .unwrap();
             let broker = LocalBroker::new();
             let updates = broker.subscribe(&graph_updated_subject(sid));
-            let credentials =
-                Arc::new(FallbackCredentialStore::new(dir.path().join("credentials")).unwrap());
+            let credentials = Arc::new(
+                credential_store::FallbackCredentialStore::new(dir.path().join("credentials"))
+                    .unwrap(),
+            );
             let consumer = Arc::new(GraphConsumer::new(
                 broker,
                 path,
-                credentials,
+                Arc::new(crate::llm_factory::ProductionLlm {
+                    credentials,
+                    cli_temp_base: dir.path().join("cli"),
+                }),
                 Arc::new(Mutex::new(AppSettings::default())),
-                dir.path().join("cli"),
             ));
             Self {
                 _dir: dir,
@@ -1132,9 +1161,8 @@ mod tests {
             Arc::new(GraphConsumer::new(
                 LocalBroker::new(),
                 self.consumer.database.clone(),
-                self.consumer.credentials.clone(),
+                self.consumer.llm.clone(),
                 self.consumer.settings.clone(),
-                self.consumer.cli_temp_base.clone(),
             ))
         }
 
