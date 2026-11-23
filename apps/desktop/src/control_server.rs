@@ -183,6 +183,7 @@ impl From<crate::status::Status> for StatusDto {
             last_error: s.last_error,
             last_session_id: s.last_session_id,
             last_total_duration_ms: s.last_total_duration_ms,
+            graph: None,
             transcription_status: TranscriptionStatusDto {
                 self_status: s.transcription_status.self_status.into(),
                 remote_status: s.transcription_status.remote_status.into(),
