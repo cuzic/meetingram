@@ -12,6 +12,7 @@ mod e2e_tour;
 mod export;
 mod gap_retranscription;
 mod graph_consumer;
+mod herdr_admin;
 mod hint_consumer;
 mod history;
 mod level;
@@ -175,7 +176,7 @@ fn main() {
     let llm: Arc<dyn llm_factory::LlmFactory> = Arc::new(llm_factory::ProductionLlm {
         credentials: credential_store.clone(),
         cli_temp_base: cli_temp_base.clone(),
-        herdr: Default::default(),
+        herdr: herdr_admin::load_connections(&app_data_dir, &cli_temp_base),
     });
     #[cfg(all(windows, feature = "e2e-scripted"))]
     let llm = match E2E_SCENARIO.get().and_then(Option::as_ref) {
