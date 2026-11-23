@@ -246,7 +246,7 @@ async fn execute(
         TourAction::GraphSettings => {
             click("button", "← 戻る").await?;
             click(SETTINGS, "").await?;
-            reveal("#graph-settings").await?;
+            reveal("#graph-settings h2").await?;
         }
         TourAction::RebuildStarted => {
             click("button", "← 戻る").await?;
@@ -303,6 +303,10 @@ async fn execute(
             })
             .await?;
             *second = status.last_session_id;
+            // Reopen the outline so its session picker reloads the completed recordings.
+            click(TABS, "グラフの操作").await?;
+            reveal(OPERATIONS_SELECTOR).await?;
+            click(TABS, "アウトライン").await?;
             select_session(HISTORY_SELECTOR, first).await?;
             reveal(NODES).await?;
             click(NODES, "").await?;
