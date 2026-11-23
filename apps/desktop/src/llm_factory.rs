@@ -24,6 +24,13 @@ pub(crate) trait LlmFactory: Send + Sync {
         settings: AppSettings,
     ) -> BackendFuture<'_, SummaryBackend, BuildSummarizerError>;
 
+    fn inherited_provider_matches(
+        &self,
+        _provider: SummaryProvider,
+    ) -> Pin<Box<dyn Future<Output = bool> + Send + '_>> {
+        Box::pin(async { false })
+    }
+
     fn graph_settings(&self, _settings: &mut AppSettings) {}
 
     fn herdr_is_registered(&self, _provider: SummaryProvider, _settings: &AppSettings) -> bool {
@@ -100,9 +107,34 @@ pub(crate) fn build_selected(
     .map(Arc::from)
 }
 
+pub(crate) fn selected_summary_provider(credentials: &impl CredentialStore) -> SummaryProvider {
+    credentials
+        .load(
+            summarize::CREDENTIAL_SERVICE,
+            summarize::SELECTED_PROVIDER_ACCOUNT,
+        )
+        .ok()
+        .map(|key| SummaryProvider::from_key(&key))
+        .unwrap_or(SummaryProvider::Claude)
+}
+
 impl LlmFactory for ProductionLlm {
     fn herdr_is_registered(&self, provider: SummaryProvider, settings: &AppSettings) -> bool {
         self.herdr.selected(provider, settings).is_some()
+    }
+
+    fn inherited_provider_matches(
+        &self,
+        provider: SummaryProvider,
+    ) -> Pin<Box<dyn Future<Output = bool> + Send + '_>> {
+        let credentials = self.credentials.clone();
+        Box::pin(async move {
+            tokio::task::spawn_blocking(move || {
+                selected_summary_provider(credentials.as_ref()) == provider
+            })
+            .await
+            .unwrap_or(false)
+        })
     }
 
     fn graph(&self, settings: AppSettings) -> BackendFuture<'_, Backend, DisabledReason> {
@@ -133,14 +165,7 @@ impl LlmFactory for ProductionLlm {
             let cli_temp_base = self.cli_temp_base.clone();
             let herdr = self.herdr.clone();
             tokio::task::spawn_blocking(move || {
-                let provider = credentials
-                    .load(
-                        summarize::CREDENTIAL_SERVICE,
-                        summarize::SELECTED_PROVIDER_ACCOUNT,
-                    )
-                    .ok()
-                    .map(|key| SummaryProvider::from_key(&key))
-                    .unwrap_or(SummaryProvider::Claude);
+                let provider = selected_summary_provider(credentials.as_ref());
                 let model = credentials
                     .load(
                         summarize::CREDENTIAL_SERVICE,

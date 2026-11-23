@@ -641,14 +641,7 @@ pub(crate) fn build_backend(
             .ok_or(DisabledReason::Provider)?;
         (provider, None)
     } else {
-        let provider = credentials
-            .load(
-                summarize::CREDENTIAL_SERVICE,
-                summarize::SELECTED_PROVIDER_ACCOUNT,
-            )
-            .ok()
-            .map(|key| SummaryProvider::from_key(&key))
-            .unwrap_or(SummaryProvider::Claude);
+        let provider = crate::llm_factory::selected_summary_provider(credentials.as_ref());
         let model = credentials
             .load(
                 summarize::CREDENTIAL_SERVICE,
@@ -1060,6 +1053,11 @@ impl<'a> Run<'a> {
             biased;
             _ = self.cancel.changed() => return Err("cancelled"),
             result = async {
+                let inherited_provider_changed = match self.backend.herdr {
+                    Some(selection) if !selection.explicit_provider => !self
+                        .consumer.llm.inherited_provider_matches(selection.provider).await,
+                    _ => false,
+                };
                 let (enabled, selection_changed) = {
                     let settings = self.consumer.settings.lock()
                         .unwrap_or_else(|error| error.into_inner());
@@ -1070,7 +1068,7 @@ impl<'a> Run<'a> {
                     self.session.state().status.disabled_reason = Some(DisabledReason::DisabledDuringRun);
                     return Err("disabled");
                 }
-                if selection_changed {
+                if selection_changed || inherited_provider_changed {
                     self.session.state().status.disabled_reason = Some(DisabledReason::HerdrStopped);
                     return Err("herdr_stopped");
                 }
@@ -2422,8 +2420,10 @@ mod tests {
         Arc::get_mut(&mut fake).unwrap().herdr = Some(HerdrGraphSelection {
             provider: SummaryProvider::ClaudeHerdr,
             verification: HerdrBillingVerification::Automatic,
-            explicit_provider: false,
+            explicit_provider: true,
         });
+        f.consumer.settings.lock().unwrap().graph_provider =
+            Some(SummaryProvider::ClaudeHerdr.key().into());
         f.post(PostMeeting::Continue, fake).await.unwrap();
         assert!(calls.try_recv().is_ok());
         assert!(calls.try_recv().is_err());
@@ -2443,8 +2443,10 @@ mod tests {
         Arc::get_mut(&mut fake).unwrap().herdr = Some(HerdrGraphSelection {
             provider: SummaryProvider::ClaudeHerdr,
             verification: HerdrBillingVerification::AdministratorVerified,
-            explicit_provider: false,
+            explicit_provider: true,
         });
+        f.consumer.settings.lock().unwrap().graph_provider =
+            Some(SummaryProvider::ClaudeHerdr.key().into());
         f.post(PostMeeting::Continue, fake).await.unwrap();
         assert!(calls.try_recv().is_err());
         assert_eq!(
@@ -2474,6 +2476,35 @@ mod tests {
             );
             assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
         }
+    }
+
+    #[tokio::test]
+    async fn changing_inherited_provider_rejects_an_existing_herdr_backend() {
+        let f = Fixture::new();
+        f.append("synthetic unextracted turn", false);
+        let (mut fake, mut calls) = Fake::new(false, false);
+        let provider = if f
+            .consumer
+            .llm
+            .inherited_provider_matches(SummaryProvider::ClaudeHerdr)
+            .await
+        {
+            SummaryProvider::CodexHerdr
+        } else {
+            SummaryProvider::ClaudeHerdr
+        };
+        Arc::get_mut(&mut fake).unwrap().herdr = Some(HerdrGraphSelection {
+            provider,
+            verification: HerdrBillingVerification::Automatic,
+            explicit_provider: false,
+        });
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        assert!(calls.try_recv().is_err());
+        assert_eq!(
+            f.consumer.status(f.sid).disabled_reason,
+            Some(DisabledReason::HerdrStopped)
+        );
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
     }
 
     #[tokio::test]
