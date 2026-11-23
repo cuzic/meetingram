@@ -182,7 +182,30 @@ async fn review(state: &AppState, label: &str) -> TourResult {
         .graph
         .ok_or("graph_missing")?
         .rev;
-    click(&buttons, label).await?;
+    let approved_node = if label == "承認" {
+        let body = format!(
+            r#"
+            const outline = visible({nodes});
+            for (const row of visible({candidates})) {{
+                const button = Array.from(row.querySelectorAll('button'))
+                    .find(button => !button.disabled && button.textContent.trim() === '承認');
+                const id = row.dataset.nodeId;
+                const node = outline.find(node => node.dataset.nodeId === id);
+                if (!button || !node || Number(getComputedStyle(node).opacity) >= 1) continue;
+                button.scrollIntoView({{block: 'center'}});
+                button.click();
+                return id;
+            }}
+            return null;
+            "#,
+            nodes = serde_json::json!(NODES),
+            candidates = serde_json::json!(format!("{REVIEW} > div[data-node-id]")),
+        );
+        Some(wait(STEP_TIMEOUT, || async { dom::<String>(&body).await }).await?)
+    } else {
+        click(&buttons, label).await?;
+        None
+    };
     wait_status(state, STEP_TIMEOUT, |status| {
         status.graph.as_ref().is_some_and(|graph| graph.rev > rev)
     })
@@ -193,7 +216,26 @@ async fn review(state: &AppState, label: &str) -> TourResult {
             .filter(|new_count| *new_count > 0 && *new_count < count)
     })
     .await?;
-    reveal(&format!("{REVIEW} > h3")).await
+    if let Some(id) = approved_node {
+        let body = format!(
+            r#"
+            const node = visible({}).find(node => node.dataset.nodeId === {});
+            if (!node || Number(getComputedStyle(node).opacity) !== 1) return false;
+            node.scrollIntoView({{block: 'center'}});
+            return true;
+            "#,
+            serde_json::json!(NODES),
+            serde_json::json!(id),
+        );
+        wait(STEP_TIMEOUT, || async {
+            dom::<bool>(&body).await.filter(|ready| *ready)
+        })
+        .await
+        .map_err(|_| "approved_node_still_dimmed")?;
+        Ok(())
+    } else {
+        reveal(&format!("{REVIEW} > h3")).await
+    }
 }
 
 async fn execute(
@@ -246,7 +288,18 @@ async fn execute(
         TourAction::GraphSettings => {
             click("button", "← 戻る").await?;
             click(SETTINGS, "").await?;
-            reveal("#graph-settings h2").await?;
+            let body = r#"
+                const section = visible('#graph-settings')[0];
+                if (!section) return false;
+                section.scrollIntoView({block: 'center'});
+                const bounds = section.getBoundingClientRect();
+                return bounds.top >= 0 && bounds.bottom <= window.innerHeight;
+            "#;
+            wait(STEP_TIMEOUT, || async {
+                dom::<bool>(body).await.filter(|ready| *ready)
+            })
+            .await
+            .map_err(|_| "graph_settings_outside_viewport")?;
         }
         TourAction::RebuildStarted => {
             click("button", "← 戻る").await?;

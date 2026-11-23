@@ -180,12 +180,13 @@ fn ReviewPanel(
             }
             for row in rows {
                 {
+                    let node_id = row.is_node.then(|| row.id.clone());
                     let approve = (row.id.clone(), row.is_node, ReviewDecision::Approve);
                     let reject = (row.id, row.is_node, ReviewDecision::Reject);
                     let mut approve_save = save.clone();
                     let mut reject_save = save.clone();
                     rsx! {
-                        div { key: "{row.key}",
+                        div { key: "{row.key}", "data-node-id": node_id,
                             details {
                                 summary { "{row.label}" }
                                 {row.grounds}

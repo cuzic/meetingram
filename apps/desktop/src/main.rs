@@ -102,18 +102,17 @@ fn main() {
     init_logging(&app_data_dir);
 
     #[cfg(all(windows, feature = "e2e-scripted"))]
-    E2E_SCENARIO.get_or_init(|| {
-        match e2e_scripted::Scenario::load_optional(std::env::var_os("MEETINGRAM_E2E_SCENARIO")) {
-            Ok(scenario) => {
-                if let Some(scenario) = &scenario {
-                    tracing::info!(scenario = scenario.name(), "e2e scenario active");
-                }
-                scenario
+    E2E_SCENARIO.get_or_init(|| match e2e_scripted::Scenario::from_environment() {
+        Ok(scenario) => {
+            if let Some(scenario) = &scenario {
+                tracing::info!(scenario = scenario.name(), "e2e scenario active");
+                tracing::info!("gap retranscription disabled under e2e scenario");
             }
-            Err(error) => {
-                tracing::error!(error, "could not load E2E scenario");
-                std::process::exit(1);
-            }
+            scenario
+        }
+        Err(error) => {
+            tracing::error!(error, "could not load E2E scenario");
+            std::process::exit(1);
         }
     });
 

@@ -74,10 +74,12 @@ if recording_seconds == 0:
 scenario = Path(sys.argv[4])
 speed = tomllib.loads((scenario / "scenario.toml").read_text(encoding="utf-8"))["speed"]
 with (scenario / "utterances.jsonl").open(encoding="utf-8") as utterances:
-    expected = sum(
-        json.loads(row)["end_ms"] // speed <= recording_seconds * 1000
-        for row in utterances if row.strip()
-    )
+    end_times = [json.loads(row)["end_ms"] // speed for row in utterances if row.strip()]
+expected = len(end_times)
+# The playback clock starts after the recording stopwatch. Count the full
+# script and require spare time for the scripted providers to connect.
+if not end_times or max(end_times) + 5_000 > recording_seconds * 1000:
+    sys.exit("Scripted playback must finish at least five seconds before stop")
 print(f"Expected final transcript rows: {expected}")
 sys.exit(0 if expected > 0 and transcripts == expected and gaps == 0 else 1)
 '@ | python - $database $SessionId $RecordingSeconds $env:MEETINGRAM_E2E_SCENARIO
@@ -199,7 +201,7 @@ function Invoke-MeetingramScenario {
         Capture-TourSteps $tour
         Start-Sleep -Milliseconds 250
     }
-    $active = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-recording.json') $true
+    $active = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-recording-mid.json') $true
     Assert-SessionTranscript $active.last_session_id
     $appliedRevision = Get-LiveAppliedRevision $active.last_session_id
     Write-Host "Latest applied live graph revision: $appliedRevision"
@@ -243,6 +245,12 @@ function Invoke-MeetingramScenario {
         throw 'Second session did not report a distinct consolidated graph'
     }
 
+    $gapNotices = @(Select-String -LiteralPath $log -SimpleMatch 'gap retranscription disabled under e2e scenario')
+    if ($gapNotices.Count -ne 1) { throw 'Expected one startup notice that gap retranscription is disabled' }
+
+    $publishFailures = @(Select-String -LiteralPath $log -SimpleMatch 'failed to publish SegmentFinalized')
+    Write-Host "SegmentFinalized publish failures: $($publishFailures.Count)"
+    if ($publishFailures.Count -ne 0) { throw 'Recording reported a SegmentFinalized publish failure' }
     if (Select-String -LiteralPath $log -SimpleMatch 'failed to persist' -Quiet) {
         throw 'Recording reported a persistence failure'
     }

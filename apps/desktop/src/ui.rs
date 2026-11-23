@@ -445,6 +445,8 @@ fn GapMarker(
             p { class: "gap-label", "{label}" }
             if !gap_closed {
                 p { class: "gap-hint", "(まだ接続が回復していません)" }
+            } else if crate::scripted_stt_active() {
+                p { class: "gap-hint", "E2E シナリオでは再文字起こしをしません" }
             } else if can_retranscribe {
                 button {
                     class: "gap-retranscribe",

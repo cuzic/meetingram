@@ -1,6 +1,5 @@
 //! Replays synthetic transcript rows on a shared recording clock.
 
-use std::ffi::OsString;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -103,9 +102,9 @@ pub struct Scenario {
 }
 
 impl Scenario {
-    /// Accepts the value of MEETINGRAM_E2E_SCENARIO. With no value, no scenario is loaded.
-    pub fn load_optional(directory: Option<OsString>) -> Result<Option<Self>, &'static str> {
-        directory
+    /// Loads a scenario only when MEETINGRAM_E2E_SCENARIO is set.
+    pub fn from_environment() -> Result<Option<Self>, &'static str> {
+        std::env::var_os("MEETINGRAM_E2E_SCENARIO")
             .as_deref()
             .map(|path| Self::load(Path::new(path)))
             .transpose()
