@@ -611,23 +611,32 @@ pub(crate) fn build_backend(
     settings: AppSettings,
     cli_temp_base: PathBuf,
 ) -> Result<(SummaryProvider, Backend), DisabledReason> {
-    let provider = credentials
-        .load(
-            summarize::CREDENTIAL_SERVICE,
-            summarize::SELECTED_PROVIDER_ACCOUNT,
-        )
-        .ok()
-        .map(|key| SummaryProvider::from_key(&key))
-        .unwrap_or(SummaryProvider::Claude);
+    let (provider, summary_model) = if let Some(key) = settings.graph_provider.as_deref() {
+        let provider = SummaryProvider::ALL
+            .into_iter()
+            .find(|provider| provider.key() == key)
+            .ok_or(DisabledReason::Provider)?;
+        (provider, None)
+    } else {
+        let provider = credentials
+            .load(
+                summarize::CREDENTIAL_SERVICE,
+                summarize::SELECTED_PROVIDER_ACCOUNT,
+            )
+            .ok()
+            .map(|key| SummaryProvider::from_key(&key))
+            .unwrap_or(SummaryProvider::Claude);
+        let model = credentials
+            .load(
+                summarize::CREDENTIAL_SERVICE,
+                summarize::SELECTED_MODEL_ACCOUNT,
+            )
+            .ok();
+        (provider, model)
+    };
     if !provider.supports_graph() {
         return Err(DisabledReason::Provider);
     }
-    let summary_model = credentials
-        .load(
-            summarize::CREDENTIAL_SERVICE,
-            summarize::SELECTED_MODEL_ACCOUNT,
-        )
-        .ok();
     let model = summarize::resolve_model(
         provider,
         summary_model.as_deref(),
@@ -2608,6 +2617,24 @@ mod tests {
         )
         .unwrap();
         assert_eq!(backend.model, "graph-model");
+    }
+
+    #[test]
+    fn explicit_graph_provider_uses_its_default_model() {
+        let dir = tempfile::tempdir().unwrap();
+        let settings = AppSettings {
+            graph_provider: Some("claude-cli".into()),
+            graph_model: Some(String::new()),
+            ..Default::default()
+        };
+        let (provider, backend) = build_backend(
+            Arc::new(SelectedProvider("codex")),
+            settings,
+            dir.path().into(),
+        )
+        .unwrap();
+        assert_eq!(provider, SummaryProvider::ClaudeCli);
+        assert_eq!(backend.model, provider.default_model());
     }
 
     #[derive(Clone, Default)]

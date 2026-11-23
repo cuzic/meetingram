@@ -112,7 +112,9 @@ pub struct AppSettings {
     pub graph_batch_seconds: Option<u64>,
     /// Confidence threshold for graph review. Defaults to 0.6.
     pub graph_review_threshold: Option<f64>,
-    /// Model override within the summary provider. Defaults to an empty string.
+    /// Graph provider key. When absent, inherits the summary provider.
+    pub graph_provider: Option<String>,
+    /// Model override within the selected graph provider.
     pub graph_model: Option<String>,
 }
 
@@ -192,6 +194,7 @@ mod tests {
             graph_batch_utterances: Some(12),
             graph_batch_seconds: Some(90),
             graph_review_threshold: Some(0.8),
+            graph_provider: Some("claude-cli".to_string()),
             graph_model: Some("sonnet".to_string()),
         };
 
@@ -250,6 +253,7 @@ mod tests {
         assert_eq!(loaded.graph_batch_utterances, None);
         assert_eq!(loaded.graph_batch_seconds, None);
         assert_eq!(loaded.graph_review_threshold, None);
+        assert_eq!(loaded.graph_provider, None);
         assert_eq!(loaded.graph_model, None);
     }
 

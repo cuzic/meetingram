@@ -153,7 +153,7 @@ fn stt_provider_is_configured(state: &AppState, provider: SttProvider) -> bool {
     }
 }
 
-trait SummaryProviderDisplay {
+pub(crate) trait SummaryProviderDisplay {
     fn label(self) -> &'static str;
     fn known_models(self) -> &'static [&'static str];
 }
