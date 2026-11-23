@@ -38,26 +38,98 @@ function Save-MeetingramStatus {
     if (($status.recording -isnot [bool]) -or ($status.recording -ne $Recording)) {
         throw "Expected meetingramctl status to report recording:$($Recording.ToString().ToLowerInvariant())"
     }
+    return $status
+}
+
+function Assert-SessionTranscript {
+    param([string]$SessionId, [int]$RecordingSeconds = 0)
+
+    if ([string]::IsNullOrEmpty($SessionId)) { throw 'Status did not report a session ID' }
+    $database = Join-Path $env:APPDATA 'meetingram/session-store.sqlite3'
+    @'
+import json
+import sqlite3
+import sys
+import tomllib
+from pathlib import Path
+
+uri = Path(sys.argv[1]).resolve().as_uri() + "?mode=ro"
+try:
+    with sqlite3.connect(uri, uri=True) as connection:
+        transcripts = connection.execute(
+            "SELECT count(*) FROM transcript_segments WHERE session_id = ? AND is_final = 1",
+            (sys.argv[2],),
+        ).fetchone()[0]
+        gaps = connection.execute(
+            "SELECT count(*) FROM transcription_gaps WHERE session_id = ?", (sys.argv[2],)
+        ).fetchone()[0]
+except sqlite3.Error:
+    sys.exit("Could not query the session database")
+
+print(f"Final transcript rows: {transcripts}, transcription gaps: {gaps}")
+recording_seconds = int(sys.argv[3])
+if recording_seconds == 0:
+    sys.exit(0 if transcripts > 0 else "No final transcript rows during recording")
+
+scenario = Path(sys.argv[4])
+speed = tomllib.loads((scenario / "scenario.toml").read_text(encoding="utf-8"))["speed"]
+with (scenario / "utterances.jsonl").open(encoding="utf-8") as utterances:
+    expected = sum(
+        json.loads(row)["end_ms"] // speed <= recording_seconds * 1000
+        for row in utterances if row.strip()
+    )
+print(f"Expected final transcript rows: {expected}")
+sys.exit(0 if expected > 0 and transcripts == expected and gaps == 0 else 1)
+'@ | python - $database $SessionId $RecordingSeconds $env:MEETINGRAM_E2E_SCENARIO
+    if ($LASTEXITCODE -ne 0) { throw 'Session failed the transcript or gap assertion' }
 }
 
 function Invoke-MeetingramScenario {
     param([string]$Ctl, [string]$Output, [scriptblock]$PlayTone)
 
-    Save-MeetingramStatus $Ctl (Join-Path $Output 'status-startup.json') $false
+    Save-MeetingramStatus $Ctl (Join-Path $Output 'status-startup.json') $false | Out-Null
     Show-MeetingramWindow
     Start-Sleep -Seconds 2
     Save-Screenshot 'startup.png'
 
     Invoke-MeetingramCtl $Ctl start | Out-Null
-    Start-Sleep -Seconds 2
-    Save-MeetingramStatus $Ctl (Join-Path $Output 'status-recording.json') $true
+    $recordingTime = [System.Diagnostics.Stopwatch]::StartNew()
     & $PlayTone
-    Start-Sleep -Seconds 5
+    do {
+        Start-Sleep -Seconds 1
+        $status = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-recording.json') $true
+        $connected = ($status.transcription_status.self_status -ceq 'Connected' -and
+                      $status.transcription_status.remote_status -ceq 'Connected')
+    } until ($connected -or $recordingTime.Elapsed.TotalSeconds -ge 20)
+    if (-not $connected) { throw 'Both scripted STT tracks must report Connected during recording' }
+    Write-Host 'Both scripted STT tracks connected'
+    Start-Sleep -Seconds 12
     Save-Screenshot 'recording.png'
-    Start-Sleep -Seconds 17
+    while ($recordingTime.Elapsed.TotalSeconds -lt 50) {
+        Start-Sleep -Seconds 1
+    }
+    $active = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-recording.json') $true
+    Assert-SessionTranscript $active.last_session_id
+
+    $recordingSeconds = 100
+    while ($recordingTime.Elapsed.TotalSeconds -lt $recordingSeconds) {
+        Start-Sleep -Seconds 1
+    }
 
     Invoke-MeetingramCtl $Ctl stop | Out-Null
-    Save-MeetingramStatus $Ctl (Join-Path $Output 'status-stopped.json') $false
+    $stopped = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-stopped.json') $false
     Start-Sleep -Seconds 4
     Save-Screenshot 'stopped.png'
+    if ($stopped.last_session_id -ne $active.last_session_id) {
+        throw 'Stopped status reported a different session ID'
+    }
+    Assert-SessionTranscript $stopped.last_session_id $recordingSeconds
+
+    $log = Join-Path $env:APPDATA 'meetingram/app.log'
+    if (Select-String -LiteralPath $log -SimpleMatch 'failed to persist' -Quiet) {
+        throw 'Recording reported a persistence failure'
+    }
+    if (Select-String -LiteralPath $log -SimpleMatch 'live transcription: failed to record gap start' -Quiet) {
+        throw 'Live transcription reported a gap that could not be recorded'
+    }
 }

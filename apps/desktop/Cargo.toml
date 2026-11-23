@@ -8,6 +8,9 @@ description = "meetingram desktop app (dioxus-desktop shell)"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+e2e-scripted = ["dep:e2e-scripted"]
+
 [dependencies]
 dioxus = { version = "0.7", features = ["desktop"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "macros", "sync"] }
@@ -56,6 +59,7 @@ genai = "0.7.5"
 # entries) so there's exactly one `app-service` dependency edge per platform, with
 # no ambiguity about how Cargo merges them.
 [target.'cfg(windows)'.dependencies]
+e2e-scripted = { path = "../e2e-scripted", optional = true }
 # "live-transcription" wires real-time Deepgram transcription into the Windows
 # capture session (see crates/app-service/src/live_transcription.rs) — real
 # capture only exists on Windows today, so this is only added on this branch.
