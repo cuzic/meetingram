@@ -215,31 +215,6 @@ pub async fn stop(state: &AppState) -> Result<SessionSummary, String> {
     }
     .await;
 
-    #[cfg(feature = "e2e-scripted")]
-    if crate::scripted_stt_active() && result.is_ok() {
-        let store = state.store.clone();
-        let transcript = active.transcript_buffer;
-        let persisted = tokio::task::spawn_blocking(move || {
-            // Core v0.11 creates the parent session in run_pipeline, after
-            // live transcription finishes. Recover the same broker events
-            // the UI received during recording once the FK can be satisfied.
-            let existing = store.list_transcript_segments(session_id)?;
-            for segment in transcript.take() {
-                if segment.is_final && !existing.contains(&segment) {
-                    store.insert_transcript_segment(&segment)?;
-                }
-            }
-            if !store.gaps_for_session(session_id)?.is_empty() {
-                tracing::warn!("E2E scenario skipped gap retranscription");
-            }
-            Ok::<_, session_store::StoreError>(())
-        })
-        .await;
-        if !matches!(persisted, Ok(Ok(()))) {
-            tracing::warn!("could not persist E2E scenario transcript after capture");
-        }
-    }
-
     // Published *after* the capture task (and with it,
     // `app_service::live_transcription`'s own `UtteranceEnded(SessionEnd)`
     // publish) has fully resolved, whether or not that resolved

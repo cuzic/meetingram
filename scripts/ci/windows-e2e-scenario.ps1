@@ -42,13 +42,15 @@ function Save-MeetingramStatus {
 }
 
 function Assert-SessionTranscript {
-    param([string]$SessionId)
+    param([string]$SessionId, [int]$RecordingSeconds = 0)
 
-    if ([string]::IsNullOrEmpty($SessionId)) { throw 'Stopped status did not report a session ID' }
+    if ([string]::IsNullOrEmpty($SessionId)) { throw 'Status did not report a session ID' }
     $database = Join-Path $env:APPDATA 'meetingram/session-store.sqlite3'
     @'
+import json
 import sqlite3
 import sys
+import tomllib
 from pathlib import Path
 
 uri = Path(sys.argv[1]).resolve().as_uri() + "?mode=ro"
@@ -65,9 +67,21 @@ except sqlite3.Error:
     sys.exit("Could not query the session database")
 
 print(f"Final transcript rows: {transcripts}, transcription gaps: {gaps}")
-sys.exit(0 if transcripts > 0 and gaps == 0 else 1)
-'@ | python - $database $SessionId
-    if ($LASTEXITCODE -ne 0) { throw 'Stopped session failed the transcript or gap assertion' }
+recording_seconds = int(sys.argv[3])
+if recording_seconds == 0:
+    sys.exit(0 if transcripts > 0 else "No final transcript rows during recording")
+
+scenario = Path(sys.argv[4])
+speed = tomllib.loads((scenario / "scenario.toml").read_text(encoding="utf-8"))["speed"]
+with (scenario / "utterances.jsonl").open(encoding="utf-8") as utterances:
+    expected = sum(
+        json.loads(row)["end_ms"] // speed <= recording_seconds * 1000
+        for row in utterances if row.strip()
+    )
+print(f"Expected final transcript rows: {expected}")
+sys.exit(0 if expected > 0 and transcripts == expected and gaps == 0 else 1)
+'@ | python - $database $SessionId $RecordingSeconds $env:MEETINGRAM_E2E_SCENARIO
+    if ($LASTEXITCODE -ne 0) { throw 'Session failed the transcript or gap assertion' }
 }
 
 function Invoke-MeetingramScenario {
@@ -91,7 +105,14 @@ function Invoke-MeetingramScenario {
     Write-Host 'Both scripted STT tracks connected'
     Start-Sleep -Seconds 12
     Save-Screenshot 'recording.png'
-    while ($recordingTime.Elapsed.TotalSeconds -lt 100) {
+    while ($recordingTime.Elapsed.TotalSeconds -lt 50) {
+        Start-Sleep -Seconds 1
+    }
+    $active = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-recording.json') $true
+    Assert-SessionTranscript $active.last_session_id
+
+    $recordingSeconds = 100
+    while ($recordingTime.Elapsed.TotalSeconds -lt $recordingSeconds) {
         Start-Sleep -Seconds 1
     }
 
@@ -99,11 +120,15 @@ function Invoke-MeetingramScenario {
     $stopped = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-stopped.json') $false
     Start-Sleep -Seconds 4
     Save-Screenshot 'stopped.png'
-    Assert-SessionTranscript $stopped.last_session_id
+    if ($stopped.last_session_id -ne $active.last_session_id) {
+        throw 'Stopped status reported a different session ID'
+    }
+    Assert-SessionTranscript $stopped.last_session_id $recordingSeconds
 
-    # Core v0.11 creates the session row after live transcription ends, so a
-    # gap insert could fail before it becomes visible to the database check.
     $log = Join-Path $env:APPDATA 'meetingram/app.log'
+    if (Select-String -LiteralPath $log -SimpleMatch 'failed to persist' -Quiet) {
+        throw 'Recording reported a persistence failure'
+    }
     if (Select-String -LiteralPath $log -SimpleMatch 'live transcription: failed to record gap start' -Quiet) {
         throw 'Live transcription reported a gap that could not be recorded'
     }
