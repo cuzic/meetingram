@@ -169,10 +169,29 @@ pub struct GraphConsumer {
     sessions: Mutex<Sessions>,
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct HerdrGraphSelection {
+    provider: SummaryProvider,
+    verification: HerdrBillingVerification,
+    explicit_provider: bool,
+}
+
+impl HerdrGraphSelection {
+    fn matches(self, settings: &AppSettings) -> bool {
+        let expected = self.explicit_provider.then_some(self.provider);
+        settings
+            .graph_provider
+            .as_deref()
+            .map(SummaryProvider::from_key)
+            == expected
+            && herdr_verification(self.provider, settings) == Some(self.verification)
+    }
+}
+
 pub(crate) struct Backend {
     pub(crate) model: String,
     pub(crate) summarizer: Arc<dyn Summarizer>,
-    pub(crate) herdr: Option<(SummaryProvider, HerdrBillingVerification)>,
+    pub(crate) herdr: Option<HerdrGraphSelection>,
 }
 
 #[derive(Clone, Copy)]
@@ -646,7 +665,12 @@ pub(crate) fn build_backend(
         summary_model.as_deref(),
         settings.graph_model.as_deref(),
     );
-    let verification = herdr_verification(provider, &settings).map(|mode| (provider, mode));
+    let verification =
+        herdr_verification(provider, &settings).map(|verification| HerdrGraphSelection {
+            provider,
+            verification,
+            explicit_provider: settings.graph_provider.is_some(),
+        });
     let summarizer =
         crate::llm_factory::build_selected(provider, credentials, settings, cli_temp_base, herdr)
             .map_err(|_| DisabledReason::Backend)?;
@@ -1036,19 +1060,17 @@ impl<'a> Run<'a> {
             biased;
             _ = self.cancel.changed() => return Err("cancelled"),
             result = async {
-                let (enabled, verification_changed) = {
+                let (enabled, selection_changed) = {
                     let settings = self.consumer.settings.lock()
                         .unwrap_or_else(|error| error.into_inner());
-                    let changed = self.backend.herdr.is_some_and(|(provider, mode)| {
-                        herdr_verification(provider, &settings) != Some(mode)
-                    });
+                    let changed = self.backend.herdr.is_some_and(|selection| !selection.matches(&settings));
                     (settings.graph_enabled.unwrap_or(true), changed)
                 };
                 if !enabled {
                     self.session.state().status.disabled_reason = Some(DisabledReason::DisabledDuringRun);
                     return Err("disabled");
                 }
-                if verification_changed {
+                if selection_changed {
                     self.session.state().status.disabled_reason = Some(DisabledReason::HerdrStopped);
                     return Err("herdr_stopped");
                 }
@@ -1287,7 +1309,7 @@ mod tests {
         active: AtomicUsize,
         count: AtomicUsize,
         max_active: AtomicUsize,
-        herdr: Option<(SummaryProvider, HerdrBillingVerification)>,
+        herdr: Option<HerdrGraphSelection>,
     }
 
     impl Fake {
@@ -2397,10 +2419,11 @@ mod tests {
         let mut f = Fixture::new();
         f.append("synthetic unextracted turn", false);
         let (mut fake, mut calls) = Fake::new(true, false);
-        Arc::get_mut(&mut fake).unwrap().herdr = Some((
-            SummaryProvider::ClaudeHerdr,
-            HerdrBillingVerification::Automatic,
-        ));
+        Arc::get_mut(&mut fake).unwrap().herdr = Some(HerdrGraphSelection {
+            provider: SummaryProvider::ClaudeHerdr,
+            verification: HerdrBillingVerification::Automatic,
+            explicit_provider: false,
+        });
         f.post(PostMeeting::Continue, fake).await.unwrap();
         assert!(calls.try_recv().is_ok());
         assert!(calls.try_recv().is_err());
@@ -2417,10 +2440,11 @@ mod tests {
         let f = Fixture::new();
         f.append("synthetic unextracted turn", false);
         let (mut fake, mut calls) = Fake::new(false, false);
-        Arc::get_mut(&mut fake).unwrap().herdr = Some((
-            SummaryProvider::ClaudeHerdr,
-            HerdrBillingVerification::AdministratorVerified,
-        ));
+        Arc::get_mut(&mut fake).unwrap().herdr = Some(HerdrGraphSelection {
+            provider: SummaryProvider::ClaudeHerdr,
+            verification: HerdrBillingVerification::AdministratorVerified,
+            explicit_provider: false,
+        });
         f.post(PostMeeting::Continue, fake).await.unwrap();
         assert!(calls.try_recv().is_err());
         assert_eq!(
@@ -2428,6 +2452,28 @@ mod tests {
             Some(DisabledReason::HerdrStopped)
         );
         assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn changing_graph_provider_rejects_an_existing_herdr_backend() {
+        for new_provider in [None, Some(SummaryProvider::CodexHerdr.key().into())] {
+            let f = Fixture::new();
+            f.append("synthetic unextracted turn", false);
+            let (mut fake, mut calls) = Fake::new(false, false);
+            Arc::get_mut(&mut fake).unwrap().herdr = Some(HerdrGraphSelection {
+                provider: SummaryProvider::ClaudeHerdr,
+                verification: HerdrBillingVerification::Automatic,
+                explicit_provider: true,
+            });
+            f.consumer.settings.lock().unwrap().graph_provider = new_provider;
+            f.post(PostMeeting::Continue, fake).await.unwrap();
+            assert!(calls.try_recv().is_err());
+            assert_eq!(
+                f.consumer.status(f.sid).disabled_reason,
+                Some(DisabledReason::HerdrStopped)
+            );
+            assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
+        }
     }
 
     #[tokio::test]
