@@ -174,6 +174,8 @@ impl SummaryProviderDisplay for SummaryProvider {
             SummaryProvider::ClaudeCli => "Claude (Claude Code CLI)",
             SummaryProvider::ClaudeOAuth => "Claude (ant CLIでOAuthログイン)",
             SummaryProvider::Codex => "Codex (Codex CLI)",
+            SummaryProvider::ClaudeHerdr => "Claude Code（Herdr）",
+            SummaryProvider::CodexHerdr => "Codex（Herdr）",
             SummaryProvider::Ollama => "Ollama (ローカル)",
         }
     }
@@ -220,14 +222,16 @@ impl SummaryProviderDisplay for SummaryProvider {
             ],
             // `claude --model` aliases (see `claude --help`), not `genai` model
             // spec strings.
-            SummaryProvider::ClaudeCli => &["sonnet", "opus", "haiku"],
+            SummaryProvider::ClaudeCli | SummaryProvider::ClaudeHerdr => {
+                &["sonnet", "opus", "haiku"]
+            }
             // Same bare `genai` model spec strings as `SummaryProvider::Claude` —
             // rather than the CLI aliases used by `ClaudeCli`.
             SummaryProvider::ClaudeOAuth => {
                 &["claude-sonnet-4-5", "claude-opus-4-5", "claude-haiku-4-5"]
             }
             // Model slugs from this sandbox's `~/.codex/models_cache.json`.
-            SummaryProvider::Codex => &["gpt-5.5", "gpt-5.5-codex"],
+            SummaryProvider::Codex | SummaryProvider::CodexHerdr => &["gpt-5.5", "gpt-5.5-codex"],
             // Deliberately empty: unlike the hosted providers above, there's no
             // fixed catalog to offer — the available models are whatever the user
             // has locally `ollama pull`ed, which this app has no way to enumerate
@@ -258,6 +262,8 @@ mod summary_provider_tests {
             (SummaryProvider::ClaudeCli, "claude-cli"),
             (SummaryProvider::ClaudeOAuth, "claude-oauth"),
             (SummaryProvider::Codex, "codex"),
+            (SummaryProvider::ClaudeHerdr, "claude-herdr"),
+            (SummaryProvider::CodexHerdr, "codex-herdr"),
             (SummaryProvider::Ollama, "ollama"),
         ];
 
@@ -300,6 +306,9 @@ fn load_active_summary_provider(state: &AppState) -> SummaryProvider {
 /// usable here; whether the underlying CLI is actually installed is checked
 /// separately (async, since it spawns a subprocess) in the credential section.
 fn summary_provider_is_configured(state: &AppState, provider: SummaryProvider) -> bool {
+    if provider.herdr_backend().is_some() {
+        return false;
+    }
     match provider.api_key_account() {
         Some(account) => state
             .credential_store
@@ -1642,7 +1651,9 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                         }
                     }
                 }
-                if summary_edit_provider().cli_backend().is_some() {
+                if summary_edit_provider().herdr_backend().is_some() {
+                    p { class: "hint", "専用 Herdr 接続の確認が必要です。" }
+                } else if summary_edit_provider().cli_backend().is_some() {
                     // CLI-based providers (#59) authenticate as the `claude`/
                     // `codex` CLI's own OAuth/subscription login — nothing for
                     // this app to save, so show detection status instead of a

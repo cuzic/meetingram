@@ -169,7 +169,7 @@ pub struct GraphConsumer {
 
 pub(crate) struct Backend {
     pub(crate) model: String,
-    pub(crate) summarizer: Box<dyn Summarizer>,
+    pub(crate) summarizer: Arc<dyn Summarizer>,
 }
 
 #[derive(Clone, Copy)]
@@ -610,6 +610,7 @@ pub(crate) fn build_backend(
     credentials: Arc<impl CredentialStore + Send + Sync + 'static>,
     settings: AppSettings,
     cli_temp_base: PathBuf,
+    herdr: &crate::llm_factory::HerdrConnections,
 ) -> Result<(SummaryProvider, Backend), DisabledReason> {
     let (provider, summary_model) = if let Some(key) = settings.graph_provider.as_deref() {
         let provider = SummaryProvider::ALL
@@ -642,13 +643,9 @@ pub(crate) fn build_backend(
         summary_model.as_deref(),
         settings.graph_model.as_deref(),
     );
-    let summarizer = summarize::build_summarizer(
-        provider.key(),
-        credentials,
-        settings.ollama_base_url,
-        Some(cli_temp_base),
-    )
-    .map_err(|_| DisabledReason::Backend)?;
+    let summarizer =
+        crate::llm_factory::build_selected(provider, credentials, settings, cli_temp_base, herdr)
+            .map_err(|_| DisabledReason::Backend)?;
     Ok((provider, Backend { model, summarizer }))
 }
 
@@ -1154,6 +1151,7 @@ mod tests {
                 Arc::new(crate::llm_factory::ProductionLlm {
                     credentials,
                     cli_temp_base: dir.path().join("cli"),
+                    herdr: Default::default(),
                 }),
                 Arc::new(Mutex::new(AppSettings::default())),
             ));
@@ -1300,7 +1298,7 @@ mod tests {
                     Some("summary-model"),
                     settings.graph_model.as_deref(),
                 ),
-                summarizer: Box::new(FakeSummarizer(self)),
+                summarizer: Arc::new(FakeSummarizer(self)),
             }
         }
     }
@@ -2603,6 +2601,7 @@ mod tests {
                 Arc::new(SelectedProvider(provider)),
                 AppSettings::default(),
                 dir.path().into(),
+                &Default::default(),
             );
             assert_eq!(result.err(), Some(reason));
         }
@@ -2614,6 +2613,7 @@ mod tests {
             Arc::new(SelectedProvider("claude-cli")),
             settings,
             dir.path().into(),
+            &Default::default(),
         )
         .unwrap();
         assert_eq!(backend.model, "graph-model");
@@ -2631,6 +2631,7 @@ mod tests {
             Arc::new(SelectedProvider("codex")),
             settings,
             dir.path().into(),
+            &Default::default(),
         )
         .unwrap();
         assert_eq!(provider, SummaryProvider::ClaudeCli);

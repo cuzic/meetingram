@@ -281,6 +281,7 @@ mod tests {
         let llm = Arc::new(crate::llm_factory::ProductionLlm {
             credentials: credential_store.clone(),
             cli_temp_base: crate::cli_temp_base(dir),
+            herdr: Default::default(),
         });
         let summary_consumer = SummaryConsumer::new(
             broker.clone(),

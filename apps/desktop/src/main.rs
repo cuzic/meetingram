@@ -175,6 +175,7 @@ fn main() {
     let llm: Arc<dyn llm_factory::LlmFactory> = Arc::new(llm_factory::ProductionLlm {
         credentials: credential_store.clone(),
         cli_temp_base: cli_temp_base.clone(),
+        herdr: Default::default(),
     });
     #[cfg(all(windows, feature = "e2e-scripted"))]
     let llm = match E2E_SCENARIO.get().and_then(Option::as_ref) {
