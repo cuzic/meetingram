@@ -10,6 +10,9 @@ async-trait = "0.1"
 serde.workspace = true
 serde_json.workspace = true
 stt-api.workspace = true
+discussion-graph.workspace = true
+summarize.workspace = true
+tracing = "0.1"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time"] }
 toml = "0.8"
 

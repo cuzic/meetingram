@@ -24,6 +24,7 @@ fn script() -> Scenario {
     ]
     .into_iter()
     .map(|(track, end_ms)| Utterance {
+        row_id: end_ms as i64,
         track,
         start_ms: end_ms - 10,
         end_ms,
@@ -31,6 +32,7 @@ fn script() -> Scenario {
     })
     .collect::<Vec<_>>();
     Scenario {
+        llm: design().llm,
         name: "test".into(),
         settings: Settings::default(),
         rows: rows.into(),
@@ -100,4 +102,54 @@ fn assert_final(event: Option<SttEvent>, start: u64, end: u64) {
         audio_end_ms: Some(actual_end),
         ..
     }) if actual_start == start && actual_end == end));
+}
+
+#[tokio::test(start_paused = true)]
+async fn incremental_replay_applies_the_gold_graph() {
+    use discussion_graph::{apply_patch, build_incremental, parse_ops, Graph, DEFAULT_INPUT_LIMIT};
+    use summarize::{CompletionRequest, Summarizer};
+
+    let scenario =
+        Scenario::load(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scenarios/design"))
+            .unwrap();
+    let summarizer = scenario.summarizer();
+    let mut graph = Graph::default();
+    let mut history = Vec::new();
+    for batch in scenario.rows.chunks(6) {
+        let ids: Vec<_> = batch.iter().map(|row| format!("u{}", row.row_id)).collect();
+        for (row, uid) in batch.iter().zip(&ids) {
+            graph.utterances.insert(
+                uid.clone(),
+                discussion_graph::Utterance {
+                    uid: uid.clone(),
+                    row_id: row.row_id,
+                    track: None,
+                    speaker_label: row.track.label().into(),
+                    start_ms: Some(row.start_ms),
+                    end_ms: Some(row.end_ms),
+                    text: row.text.clone(),
+                    is_retranscribed: false,
+                },
+            );
+        }
+        let pending: Vec<_> = ids.iter().map(String::as_str).collect();
+        let prompt =
+            build_incremental(&graph, &pending, &history, false, DEFAULT_INPUT_LIMIT).unwrap();
+        let request = CompletionRequest::new(
+            prompt.system,
+            prompt.user,
+            "scripted",
+            Duration::from_secs(30),
+        );
+        let response = summarizer.complete(&request).await.unwrap();
+        let allowed: Vec<_> = prompt.allowed_uids.iter().map(String::as_str).collect();
+        let result = apply_patch(&graph, &parse_ops(&response).unwrap(), &allowed);
+        assert!(result.rejected.is_empty(), "{:?}", result.rejected);
+        if !result.applied.is_empty() {
+            history.push(result.touched);
+        }
+        graph = result.graph;
+    }
+    assert_eq!(graph.nodes.len(), 39);
+    assert_eq!(graph.edges.len(), 32);
 }

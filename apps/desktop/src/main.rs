@@ -7,12 +7,15 @@ mod app_state;
 mod capture_health;
 mod config;
 mod control_server;
+#[cfg(all(windows, feature = "e2e-scripted"))]
+mod e2e_tour;
 mod export;
 mod gap_retranscription;
 mod graph_consumer;
 mod hint_consumer;
 mod history;
 mod level;
+mod llm_factory;
 mod recording;
 mod settings;
 mod status;
@@ -170,12 +173,22 @@ fn main() {
     let app_settings = std::sync::Arc::new(std::sync::Mutex::new(app_settings));
 
     let broker = local_broker::LocalBroker::new();
+    let llm: Arc<dyn llm_factory::LlmFactory> = Arc::new(llm_factory::ProductionLlm {
+        credentials: credential_store.clone(),
+        cli_temp_base: cli_temp_base.clone(),
+    });
+    #[cfg(all(windows, feature = "e2e-scripted"))]
+    let llm = match E2E_SCENARIO.get().and_then(Option::as_ref) {
+        Some(scenario) => {
+            Arc::new(llm_factory::ScriptedLlm(scenario)) as Arc<dyn llm_factory::LlmFactory>
+        }
+        None => llm,
+    };
     let summary_consumer = summary_consumer::SummaryConsumer::new(
         broker.clone(),
         store.clone(),
-        credential_store.clone(),
+        llm.clone(),
         app_settings.clone(),
-        cli_temp_base.clone(),
     );
 
     // Settings provider for Rhai plugins
@@ -200,22 +213,14 @@ fn main() {
         }
     }
 
-    let graph_settings = if scripted_stt_active() {
-        let mut settings = app_settings.lock().unwrap().clone();
-        settings.graph_enabled = Some(false);
-        Arc::new(Mutex::new(settings))
-    } else {
-        app_settings.clone()
-    };
-
     let graph_consumer = Arc::new(graph_consumer::GraphConsumer::new(
         broker.clone(),
         config.session_db_path.clone(),
-        credential_store.clone(),
-        graph_settings,
-        cli_temp_base,
+        llm.clone(),
+        app_settings.clone(),
     ));
     let state = Arc::new(AppState {
+        llm,
         graph_consumer,
         store,
         adapter,

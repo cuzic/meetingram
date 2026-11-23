@@ -23,12 +23,7 @@ fn is_current_recording(state: &AppState, session_id: SessionId) -> bool {
 }
 
 fn graph_enabled(state: &AppState) -> bool {
-    state
-        .app_settings
-        .lock()
-        .unwrap()
-        .graph_enabled
-        .unwrap_or(true)
+    state.graph_configured()
 }
 
 #[component]

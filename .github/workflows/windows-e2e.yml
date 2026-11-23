@@ -20,7 +20,6 @@ permissions:
 jobs:
   e2e-windows:
     runs-on: windows-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         id: checkout
@@ -110,7 +109,7 @@ jobs:
 
       - name: Record the meetingramctl E2E
         id: scenario
-        timeout-minutes: 7
+        timeout-minutes: 9
         run: ./scripts/ci/run-windows-e2e.ps1
 
       - name: Verify video and screenshots
@@ -137,6 +136,7 @@ jobs:
           path: |
             ${{ runner.temp }}/e2e-windows-recording/*.mp4
             ${{ runner.temp }}/e2e-windows-recording/*.png
+            ${{ runner.temp }}/e2e-windows-recording/*.ready
             ${{ runner.temp }}/e2e-windows-recording/status-*.json
             ${{ runner.temp }}/e2e-windows-recording/app.log
           if-no-files-found: error

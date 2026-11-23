@@ -84,9 +84,67 @@ sys.exit(0 if expected > 0 and transcripts == expected and gaps == 0 else 1)
     if ($LASTEXITCODE -ne 0) { throw 'Session failed the transcript or gap assertion' }
 }
 
+function Read-TourSteps {
+    @'
+import sys
+import tomllib
+from pathlib import Path
+
+scenario = Path(sys.argv[1]) / "scenario.toml"
+for index, step in enumerate(tomllib.loads(scenario.read_text(encoding="utf-8"))["tour"], 1):
+    print(f"{index} {step['name']} {step['action']}")
+'@ | python - $env:MEETINGRAM_E2E_SCENARIO
+    if ($LASTEXITCODE -ne 0) { throw 'Could not read tour steps' }
+}
+
+function Capture-TourSteps {
+    param([hashtable]$Tour)
+
+    while ($Tour.Next -lt $Tour.Steps.Count) {
+        $number, $name, $action = $Tour.Steps[$Tour.Next] -split ' '
+        $stem = "step-$number-$name"
+        if (-not (Test-Path -LiteralPath (Join-Path $Tour.Output "$stem.ready") -PathType Leaf)) {
+            break
+        }
+        Start-Sleep -Milliseconds 250
+        Save-Screenshot "$stem.png"
+        New-Item -ItemType File -Path (Join-Path $Tour.Output "step-$number.shot") | Out-Null
+        $Tour.Next++
+        $Tour.Completed[$action] = $true
+        Write-Host "Tour screenshot: $stem.png"
+    }
+}
+
+function Wait-TourAction {
+    param([hashtable]$Tour, [string]$Action, [int]$TimeoutSeconds)
+
+    $clock = [System.Diagnostics.Stopwatch]::StartNew()
+    do {
+        Capture-TourSteps $Tour
+        if ($Tour.Completed.ContainsKey($Action)) { return }
+        Start-Sleep -Milliseconds 250
+    } while ($clock.Elapsed.TotalSeconds -lt $TimeoutSeconds)
+    throw "Tour did not reach $Action"
+}
+
+function Assert-LiveGraph {
+    param($Status, [string]$Log)
+
+    $failures = @()
+    if (-not $Status.graph.enabled -or $Status.graph.rev -lt 1) {
+        $failures += 'Recording graph.rev did not advance'
+    }
+    if (-not (Select-String -LiteralPath $Log -Pattern 'scripted LLM.*kind="incremental".*matched=[1-9][0-9]*' -Quiet)) {
+        $failures += 'Scripted LLM did not match any new utterances'
+    }
+    if ($failures.Count) { throw ($failures -join '. ') }
+}
+
 function Invoke-MeetingramScenario {
     param([string]$Ctl, [string]$Output, [scriptblock]$PlayTone)
 
+    $tour = @{ Steps = @(Read-TourSteps); Next = 0; Output = $Output; Completed = @{} }
+    $log = Join-Path $env:APPDATA 'meetingram/app.log'
     Save-MeetingramStatus $Ctl (Join-Path $Output 'status-startup.json') $false | Out-Null
     Show-MeetingramWindow
     Start-Sleep -Seconds 2
@@ -96,6 +154,7 @@ function Invoke-MeetingramScenario {
     $recordingTime = [System.Diagnostics.Stopwatch]::StartNew()
     & $PlayTone
     do {
+        Capture-TourSteps $tour
         Start-Sleep -Seconds 1
         $status = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-recording.json') $true
         $connected = ($status.transcription_status.self_status -ceq 'Connected' -and
@@ -103,33 +162,73 @@ function Invoke-MeetingramScenario {
     } until ($connected -or $recordingTime.Elapsed.TotalSeconds -ge 20)
     if (-not $connected) { throw 'Both scripted STT tracks must report Connected during recording' }
     Write-Host 'Both scripted STT tracks connected'
-    Start-Sleep -Seconds 12
+
+    while ($recordingTime.Elapsed.TotalSeconds -lt 12) {
+        Capture-TourSteps $tour
+        Start-Sleep -Milliseconds 250
+    }
     Save-Screenshot 'recording.png'
     while ($recordingTime.Elapsed.TotalSeconds -lt 50) {
-        Start-Sleep -Seconds 1
+        Capture-TourSteps $tour
+        Start-Sleep -Milliseconds 250
     }
     $active = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-recording.json') $true
     Assert-SessionTranscript $active.last_session_id
+    Assert-LiveGraph $active $log
 
     $recordingSeconds = 100
     while ($recordingTime.Elapsed.TotalSeconds -lt $recordingSeconds) {
-        Start-Sleep -Seconds 1
+        Capture-TourSteps $tour
+        Start-Sleep -Milliseconds 250
     }
+    if (-not $tour.Completed.ContainsKey('live_evidence')) { throw 'Live evidence tour step was missing' }
 
     Invoke-MeetingramCtl $Ctl stop | Out-Null
+    Wait-TourAction $tour 'consolidated' 75
     $stopped = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-stopped.json') $false
-    Start-Sleep -Seconds 4
     Save-Screenshot 'stopped.png'
     if ($stopped.last_session_id -ne $active.last_session_id) {
         throw 'Stopped status reported a different session ID'
     }
+    if (-not $stopped.graph.consolidated -or $stopped.graph.rev -lt 1) {
+        throw 'Stopped graph did not reach consolidation'
+    }
     Assert-SessionTranscript $stopped.last_session_id $recordingSeconds
 
-    $log = Join-Path $env:APPDATA 'meetingram/app.log'
+    # The app acknowledges rebuild_started only after observing the revision drop
+    # and rebuild_complete only after observing a new consolidated revision.
+    Wait-TourAction $tour 'rebuild_complete' 120
+    $rebuilt = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-rebuilt.json') $false
+    if (-not $rebuilt.graph.consolidated -or $rebuilt.graph.rev -lt 1) {
+        throw 'Rebuilt graph did not reach consolidation'
+    }
+
+    Invoke-MeetingramCtl $Ctl start | Out-Null
+    & $PlayTone
+    Start-Sleep -Seconds 30
+    Invoke-MeetingramCtl $Ctl stop | Out-Null
+    Wait-TourAction $tour 'second_session' 75
+    if ($tour.Next -ne $tour.Steps.Count) { throw 'Tour did not capture every step' }
+    $second = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-second.json') $false
+    if ($second.last_session_id -eq $stopped.last_session_id -or -not $second.graph.consolidated) {
+        throw 'Second session did not report a distinct consolidated graph'
+    }
+
     if (Select-String -LiteralPath $log -SimpleMatch 'failed to persist' -Quiet) {
         throw 'Recording reported a persistence failure'
     }
     if (Select-String -LiteralPath $log -SimpleMatch 'live transcription: failed to record gap start' -Quiet) {
         throw 'Live transcription reported a gap that could not be recorded'
     }
+    foreach ($decision in 'approve', 'reject') {
+        $saved = @(Select-String -LiteralPath $log -Pattern ('scripted graph review saved.*decision="' + $decision + '"'))
+        if ($saved.Count -ne 1) { throw "Expected exactly one saved $decision review" }
+    }
+    $clock = [System.Diagnostics.Stopwatch]::StartNew()
+    do {
+        $completed = @(Select-String -LiteralPath $log -Pattern 'scripted tour.*result="ok"')
+        if ($completed.Count -eq $tour.Steps.Count) { return }
+        Start-Sleep -Milliseconds 100
+    } while ($clock.Elapsed.TotalSeconds -lt 5)
+    throw 'Expected one successful log entry per tour step'
 }

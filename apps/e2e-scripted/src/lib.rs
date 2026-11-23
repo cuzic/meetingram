@@ -12,6 +12,9 @@ use tokio::sync::{mpsc, Notify};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
+mod scripted_llm;
+pub use scripted_llm::ScriptedSummarizer;
+
 #[derive(Clone, Copy, Deserialize)]
 enum Track {
     #[serde(rename = "自分")]
@@ -21,6 +24,13 @@ enum Track {
 }
 
 impl Track {
+    fn label(self) -> &'static str {
+        match self {
+            Self::SelfMic => "自分",
+            Self::Remote => "相手",
+        }
+    }
+
     fn index(self) -> usize {
         match self {
             Self::SelfMic => 0,
@@ -31,6 +41,7 @@ impl Track {
 
 #[derive(Deserialize)]
 struct Utterance {
+    row_id: i64,
     #[serde(rename = "speaker_label")]
     track: Track,
     start_ms: u64,
@@ -38,11 +49,37 @@ struct Utterance {
     text: String,
 }
 
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TourAction {
+    LiveOutline,
+    LiveEvidence,
+    Consolidated,
+    HistoryEvidence,
+    Approve,
+    Reject,
+    GraphSettings,
+    RebuildStarted,
+    RebuildComplete,
+    FirstSession,
+    SecondSession,
+}
+
+#[derive(Deserialize)]
+pub struct TourStep {
+    pub name: String,
+    pub action: TourAction,
+}
+
 #[derive(Deserialize)]
 #[serde(default)]
 pub struct Settings {
     pub speed: u64,
     pub latency_ms: u64,
+    pub graph_batch_utterances: Option<usize>,
+    pub graph_batch_seconds: Option<u64>,
+    pub graph_review_threshold: Option<f64>,
+    pub tour: Vec<TourStep>,
 }
 
 impl Default for Settings {
@@ -50,11 +87,16 @@ impl Default for Settings {
         Self {
             speed: 10,
             latency_ms: 300,
+            graph_batch_utterances: None,
+            graph_batch_seconds: None,
+            graph_review_threshold: None,
+            tour: Vec::new(),
         }
     }
 }
 
 pub struct Scenario {
+    llm: Arc<scripted_llm::Script>,
     name: String,
     settings: Settings,
     rows: Arc<[Utterance]>,
@@ -77,6 +119,15 @@ impl Scenario {
         let config = std::fs::read_to_string(directory.join("scenario.toml"))
             .map_err(|_| "cannot read scenario.toml")?;
         let settings: Settings = toml::from_str(&config).map_err(|_| "invalid scenario.toml")?;
+        if settings.tour.iter().any(|step| {
+            step.name.is_empty()
+                || !step
+                    .name
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+        }) {
+            return Err("invalid tour step name");
+        }
         if settings.speed == 0 {
             return Err("scenario speed must be positive");
         }
@@ -93,9 +144,18 @@ impl Scenario {
         rows.sort_by_key(|row| row.end_ms);
         Ok(Self {
             name: name.to_string_lossy().into_owned(),
+            llm: Arc::new(scripted_llm::Script::load(directory)?),
             settings,
             rows: rows.into(),
         })
+    }
+
+    pub fn summarizer(&self) -> ScriptedSummarizer {
+        ScriptedSummarizer::new(
+            self.llm.clone(),
+            self.rows.clone(),
+            self.settings.latency_ms,
+        )
     }
 
     pub fn name(&self) -> &str {

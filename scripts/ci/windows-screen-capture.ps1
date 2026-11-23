@@ -9,7 +9,7 @@ function Start-ScreenRecording {
     $settings.CreateNoWindow = $true
     foreach ($argument in @(
         '-hide_banner', '-loglevel', 'error', '-nostats', '-progress', 'capture-progress.txt',
-        '-f', 'gdigrab', '-framerate', '10', '-i', 'desktop', '-t', '180',
+        '-f', 'gdigrab', '-framerate', '10', '-i', 'desktop', '-t', '600',
         '-vf', 'pad=ceil(iw/2)*2:ceil(ih/2)*2', '-c:v', 'libx264', '-preset', 'ultrafast',
         '-pix_fmt', 'yuv420p', '-y', 'desktop.mp4'
     )) {

@@ -116,7 +116,7 @@ async fn handle_conn(conn: Stream, state: Arc<AppState>) {
         Ok(cmd) => dispatch(cmd, &state).await,
         Err(err) => Response::Err {
             message: format!("invalid request: {err}"),
-            status: status_dto(&state),
+            status: status_dto(&state).await,
         },
     };
 
@@ -137,7 +137,7 @@ async fn handle_conn(conn: Stream, state: Arc<AppState>) {
 
 async fn dispatch(cmd: Command, state: &AppState) -> Response {
     match cmd {
-        Command::Status => Response::Ok(status_dto(state)),
+        Command::Status => Response::Ok(status_dto(state).await),
         Command::Start => {
             // Product decision: a CLI-triggered start bypasses the GUI's
             // one-time "I consent to this meeting being recorded and
@@ -147,25 +147,42 @@ async fn dispatch(cmd: Command, state: &AppState) -> Response {
             // also stop showing its consent prompt from this point on.
             actions::confirm_consent(state);
             match actions::start_recording(state) {
-                Ok(status) => Response::Ok(status.into()),
+                Ok(status) => Response::Ok(with_graph(state, status).await),
                 Err(message) => Response::Err {
                     message,
-                    status: status_dto(state),
+                    status: status_dto(state).await,
                 },
             }
         }
         Command::Stop => match actions::stop_recording(state).await {
-            Ok(status) => Response::Ok(status.into()),
+            Ok(status) => Response::Ok(with_graph(state, status).await),
             Err(message) => Response::Err {
                 message,
-                status: status_dto(state),
+                status: status_dto(state).await,
             },
         },
     }
 }
 
-fn status_dto(state: &AppState) -> StatusDto {
-    actions::get_status(state).into()
+pub(crate) async fn status_dto(state: &AppState) -> StatusDto {
+    with_graph(state, actions::get_status(state)).await
+}
+
+async fn with_graph(state: &AppState, status: crate::status::Status) -> StatusDto {
+    let mut dto = StatusDto::from(status);
+    if let Some(sid) = dto
+        .last_session_id
+        .as_deref()
+        .and_then(|id| id.parse().ok())
+    {
+        dto.graph = Some(
+            state
+                .graph_consumer
+                .control_status(sid, dto.recording, state.graph_configured())
+                .await,
+        );
+    }
+    dto
 }
 
 impl From<crate::status::Status> for StatusDto {
@@ -261,12 +278,15 @@ mod tests {
         ));
         let app_settings = Arc::new(Mutex::new(AppSettings::load(dir)));
         let broker = local_broker::LocalBroker::new();
+        let llm = Arc::new(crate::llm_factory::ProductionLlm {
+            credentials: credential_store.clone(),
+            cli_temp_base: crate::cli_temp_base(dir),
+        });
         let summary_consumer = SummaryConsumer::new(
             broker.clone(),
             store.clone(),
-            credential_store.clone(),
+            llm.clone(),
             app_settings.clone(),
-            crate::cli_temp_base(dir),
         );
         let settings_provider = Arc::new(crate::AppSettingsProvider {
             app_settings: app_settings.clone(),
@@ -283,11 +303,11 @@ mod tests {
         let graph_consumer = Arc::new(crate::graph_consumer::GraphConsumer::new(
             broker.clone(),
             dir.join("sessions.db"),
-            credential_store.clone(),
+            llm.clone(),
             app_settings.clone(),
-            crate::cli_temp_base(dir),
         ));
         Arc::new(AppState {
+            llm,
             graph_consumer,
             store,
             adapter,

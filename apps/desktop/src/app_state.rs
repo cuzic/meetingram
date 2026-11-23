@@ -16,6 +16,7 @@ use crate::summary_consumer::SummaryConsumer;
 use crate::ui_consumer::TranscriptBuffer;
 
 pub struct AppState {
+    pub(crate) llm: Arc<dyn crate::llm_factory::LlmFactory>,
     pub store: Arc<SessionStore>,
     pub adapter: Arc<HttpUploadClient>,
     pub config: Config,
@@ -44,6 +45,14 @@ pub struct AppState {
     pub current: Mutex<Option<ActiveRecording>>,
     pub last_error: Mutex<Option<String>>,
     pub last_summary: Mutex<Option<SessionSummary>>,
+}
+
+impl AppState {
+    pub(crate) fn graph_configured(&self) -> bool {
+        let mut settings = self.app_settings.lock().unwrap().clone();
+        self.llm.graph_settings(&mut settings);
+        cfg!(windows) && settings.graph_enabled.unwrap_or(true)
+    }
 }
 
 pub struct ActiveRecording {

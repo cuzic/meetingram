@@ -76,8 +76,8 @@ pub fn start_recording(state: &AppState) -> Result<Status, String> {
                     );
                 }
             }
+            state.summary_consumer.spawn_auto_summary(session_id);
             if !crate::scripted_stt_active() {
-                state.summary_consumer.spawn_auto_summary(session_id);
                 state.rhai_engine.spawn_session(&state.broker, session_id);
             }
             Ok(status::current(state))
