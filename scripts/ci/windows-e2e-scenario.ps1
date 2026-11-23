@@ -127,13 +127,40 @@ function Wait-TourAction {
     throw "Tour did not reach $Action"
 }
 
+function Get-LiveAppliedRevision {
+    param([string]$SessionId)
+
+    $database = Join-Path $env:APPDATA 'meetingram/session-store.sqlite3'
+    $revision = @'
+import sqlite3
+import sys
+from pathlib import Path
+
+uri = Path(sys.argv[1]).resolve().as_uri() + "?mode=ro"
+try:
+    with sqlite3.connect(uri, uri=True) as connection:
+        result = connection.execute(
+            "SELECT COALESCE(MAX(rev), 0) FROM graph_patches "
+            "WHERE session_id = ? AND source = 'live' AND json_array_length(ops_json) > 0",
+            (sys.argv[2],),
+        ).fetchone()[0]
+except sqlite3.Error:
+    sys.exit("Could not read the applied live graph revision")
+print(result)
+'@ | python - $database $SessionId
+    if ($LASTEXITCODE -ne 0) { throw 'Could not check the applied live graph revision' }
+    return [long]$revision
+}
+
 function Assert-LiveGraph {
-    param($Status, [string]$Log)
+    param($Status, [string]$Log, [long]$AppliedRevision)
 
     $failures = @()
     if (-not $Status.graph.enabled -or $Status.graph.rev -lt 1) {
         $failures += 'Recording graph.rev did not advance'
     }
+    # The core also assigns revisions to empty patches that mark utterances extracted.
+    if ($AppliedRevision -lt 1) { $failures += 'Recording graph.rev advanced without any applied live graph changes' }
     if (-not (Select-String -LiteralPath $Log -Pattern 'scripted LLM.*kind="incremental".*matched=[1-9][0-9]*' -Quiet)) {
         $failures += 'Scripted LLM did not match any new utterances'
     }
@@ -174,7 +201,9 @@ function Invoke-MeetingramScenario {
     }
     $active = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-recording.json') $true
     Assert-SessionTranscript $active.last_session_id
-    Assert-LiveGraph $active $log
+    $appliedRevision = Get-LiveAppliedRevision $active.last_session_id
+    Write-Host "Latest applied live graph revision: $appliedRevision"
+    Assert-LiveGraph $active $log $appliedRevision
 
     $recordingSeconds = 100
     while ($recordingTime.Elapsed.TotalSeconds -lt $recordingSeconds) {
