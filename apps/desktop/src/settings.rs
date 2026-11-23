@@ -307,7 +307,8 @@ fn load_active_summary_provider(state: &AppState) -> SummaryProvider {
 /// separately (async, since it spawns a subprocess) in the credential section.
 fn summary_provider_is_configured(state: &AppState, provider: SummaryProvider) -> bool {
     if provider.herdr_backend().is_some() {
-        return false;
+        let settings = state.app_settings.lock().unwrap();
+        return state.llm.herdr_is_registered(provider, &settings);
     }
     match provider.api_key_account() {
         Some(account) => state
@@ -1652,7 +1653,11 @@ pub fn Settings(mut screen: Signal<Screen>) -> Element {
                     }
                 }
                 if summary_edit_provider().herdr_backend().is_some() {
-                    p { class: "hint", "専用 Herdr 接続の確認が必要です。" }
+                    if summary_provider_is_configured(&state, summary_edit_provider()) {
+                        p { class: "hint", "専用 Herdr 接続を登録済みです。送信前に登録内容と認証を確認します。" }
+                    } else {
+                        p { class: "hint", "選んだ確認方法で使える専用 Herdr 接続が登録されていません。" }
+                    }
                 } else if summary_edit_provider().cli_backend().is_some() {
                     // CLI-based providers (#59) authenticate as the `claude`/
                     // `codex` CLI's own OAuth/subscription login — nothing for

@@ -25,6 +25,10 @@ pub(crate) trait LlmFactory: Send + Sync {
     ) -> BackendFuture<'_, SummaryBackend, BuildSummarizerError>;
 
     fn graph_settings(&self, _settings: &mut AppSettings) {}
+
+    fn herdr_is_registered(&self, _provider: SummaryProvider, _settings: &AppSettings) -> bool {
+        false
+    }
 }
 
 pub(crate) struct ProductionLlm {
@@ -45,6 +49,25 @@ pub(crate) struct HerdrConnections {
     pub codex: Option<HerdrConnection>,
 }
 
+impl HerdrConnections {
+    fn selected(
+        &self,
+        provider: SummaryProvider,
+        settings: &AppSettings,
+    ) -> Option<&HerdrConnection> {
+        let (connection, mode) = match provider {
+            SummaryProvider::ClaudeHerdr => {
+                (&self.claude, settings.herdr_claude_billing_verification)
+            }
+            SummaryProvider::CodexHerdr => (&self.codex, settings.herdr_codex_billing_verification),
+            _ => return None,
+        };
+        connection
+            .as_ref()
+            .filter(|connection| connection.mode == mode)
+    }
+}
+
 pub(crate) fn build_selected(
     provider: SummaryProvider,
     credentials: Arc<impl CredentialStore + Send + Sync + 'static>,
@@ -52,31 +75,26 @@ pub(crate) fn build_selected(
     cli_temp_base: PathBuf,
     herdr: &HerdrConnections,
 ) -> Result<Arc<dyn Summarizer>, BuildSummarizerError> {
-    let connection = match provider {
-        SummaryProvider::ClaudeHerdr => herdr
-            .claude
-            .as_ref()
-            .filter(|connection| connection.mode == settings.herdr_claude_billing_verification),
-        SummaryProvider::CodexHerdr => herdr
-            .codex
-            .as_ref()
-            .filter(|connection| connection.mode == settings.herdr_codex_billing_verification),
-        _ => {
-            return summarize::build_summarizer(
-                provider.key(),
-                credentials,
-                settings.ollama_base_url,
-                Some(cli_temp_base),
-            )
-            .map(Arc::from)
-        }
-    };
-    connection
-        .map(|connection| connection.summarizer.clone())
-        .ok_or(BuildSummarizerError::HerdrNotConfigured)
+    if provider.herdr_backend().is_some() {
+        return herdr
+            .selected(provider, &settings)
+            .map(|connection| connection.summarizer.clone())
+            .ok_or(BuildSummarizerError::HerdrNotConfigured);
+    }
+    summarize::build_summarizer(
+        provider.key(),
+        credentials,
+        settings.ollama_base_url,
+        Some(cli_temp_base),
+    )
+    .map(Arc::from)
 }
 
 impl LlmFactory for ProductionLlm {
+    fn herdr_is_registered(&self, provider: SummaryProvider, settings: &AppSettings) -> bool {
+        self.herdr.selected(provider, settings).is_some()
+    }
+
     fn graph(&self, settings: AppSettings) -> BackendFuture<'_, Backend, DisabledReason> {
         Box::pin(async move {
             let credentials = self.credentials.clone();
