@@ -49,17 +49,27 @@ pub(crate) struct HerdrConnections {
     pub codex: Option<HerdrConnection>,
 }
 
+pub(crate) fn herdr_verification(
+    provider: SummaryProvider,
+    settings: &AppSettings,
+) -> Option<HerdrBillingVerification> {
+    match provider {
+        SummaryProvider::ClaudeHerdr => Some(settings.herdr_claude_billing_verification),
+        SummaryProvider::CodexHerdr => Some(settings.herdr_codex_billing_verification),
+        _ => None,
+    }
+}
+
 impl HerdrConnections {
     fn selected(
         &self,
         provider: SummaryProvider,
         settings: &AppSettings,
     ) -> Option<&HerdrConnection> {
-        let (connection, mode) = match provider {
-            SummaryProvider::ClaudeHerdr => {
-                (&self.claude, settings.herdr_claude_billing_verification)
-            }
-            SummaryProvider::CodexHerdr => (&self.codex, settings.herdr_codex_billing_verification),
+        let mode = herdr_verification(provider, settings)?;
+        let connection = match provider {
+            SummaryProvider::ClaudeHerdr => &self.claude,
+            SummaryProvider::CodexHerdr => &self.codex,
             _ => return None,
         };
         connection
@@ -159,7 +169,7 @@ impl LlmFactory for ScriptedLlm {
     fn graph(&self, _settings: AppSettings) -> BackendFuture<'_, Backend, DisabledReason> {
         Box::pin(async move {
             Ok(Backend {
-                herdr: false,
+                herdr: None,
                 model: "scripted".into(),
                 summarizer: Arc::new(self.0.summarizer()),
             })
