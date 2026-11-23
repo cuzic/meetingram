@@ -294,11 +294,7 @@ async fn execute(
             })
             .await?;
             click(TABS, "アウトライン").await?;
-            select_session(
-                HISTORY_SELECTOR,
-                first.as_deref().ok_or("first_session_missing")?,
-            )
-            .await?;
+            select_outline_session(first.as_deref().ok_or("first_session_missing")?).await?;
             reveal(NODES).await?;
         }
         TourAction::FirstSession => {
@@ -326,11 +322,7 @@ async fn execute(
             reveal(EVIDENCE).await?;
         }
         TourAction::SecondSession => {
-            select_session(
-                HISTORY_SELECTOR,
-                second.as_deref().ok_or("second_session_missing")?,
-            )
-            .await?;
+            select_outline_session(second.as_deref().ok_or("second_session_missing")?).await?;
             reveal(NODES).await?;
             let stale = dom::<bool>(&format!(
                 "return visible({}).length > 0;",
