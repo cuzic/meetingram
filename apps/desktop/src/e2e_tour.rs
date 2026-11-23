@@ -161,10 +161,23 @@ async fn select_session(selector: &str, id: &str) -> TourResult {
 const HISTORY_SELECTOR: &str = "#history-outline-session";
 const OPERATIONS_SELECTOR: &str = "#history-graph-session";
 
+async fn select_outline_session(id: &str) -> TourResult {
+    select_session(HISTORY_SELECTOR, id).await?;
+    let id = serde_json::json!(id);
+    let body = format!(
+        "return visible('[data-outline-session]').some(panel => panel.dataset.outlineSession === {id});"
+    );
+    wait(STEP_TIMEOUT, || async {
+        dom::<bool>(&body).await.filter(|done| *done)
+    })
+    .await?;
+    Ok(())
+}
+
 async fn history_outline(id: &str) -> TourResult {
     click(HISTORY, "").await?;
     click(TABS, "アウトライン").await?;
-    select_session(HISTORY_SELECTOR, id).await?;
+    select_outline_session(id).await?;
     reveal(OUTLINE).await
 }
 
@@ -307,7 +320,7 @@ async fn execute(
             click(TABS, "グラフの操作").await?;
             reveal(OPERATIONS_SELECTOR).await?;
             click(TABS, "アウトライン").await?;
-            select_session(HISTORY_SELECTOR, first).await?;
+            select_outline_session(first).await?;
             reveal(NODES).await?;
             click(NODES, "").await?;
             reveal(EVIDENCE).await?;
