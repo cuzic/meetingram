@@ -16,6 +16,9 @@ pub(super) fn disabled_message(reason: DisabledReason) -> &'static str {
         DisabledReason::DisabledDuringRun => "設定で無効にしたため、議論グラフの処理を停止しました",
         DisabledReason::Provider => "議論グラフに対応するプロバイダを選んでください",
         DisabledReason::Backend => "議論グラフの接続先と認証設定を確認してください",
+        DisabledReason::HerdrStopped => {
+            "Herdr 接続を確認できなかったか、実行に失敗したため、議論グラフを停止しました"
+        }
     }
 }
 
@@ -191,6 +194,10 @@ mod tests {
             (
                 DisabledReason::Backend,
                 "議論グラフの接続先と認証設定を確認してください",
+            ),
+            (
+                DisabledReason::HerdrStopped,
+                "Herdr 接続を確認できなかったか、実行に失敗したため、議論グラフを停止しました",
             ),
         ] {
             assert_eq!(disabled_message(reason), message);

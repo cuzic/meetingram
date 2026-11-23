@@ -50,6 +50,7 @@ pub enum DisabledReason {
     DisabledDuringRun,
     Provider,
     Backend,
+    HerdrStopped,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -170,6 +171,7 @@ pub struct GraphConsumer {
 pub(crate) struct Backend {
     pub(crate) model: String,
     pub(crate) summarizer: Arc<dyn Summarizer>,
+    pub(crate) herdr: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -646,7 +648,14 @@ pub(crate) fn build_backend(
     let summarizer =
         crate::llm_factory::build_selected(provider, credentials, settings, cli_temp_base, herdr)
             .map_err(|_| DisabledReason::Backend)?;
-    Ok((provider, Backend { model, summarizer }))
+    Ok((
+        provider,
+        Backend {
+            model,
+            summarizer,
+            herdr: provider.herdr_backend().is_some(),
+        },
+    ))
 }
 
 struct Run<'a> {
@@ -731,6 +740,11 @@ impl<'a> Run<'a> {
                 match outcome {
                     Ok(_) => failures = 0,
                     Err("cancelled" | "disabled") => return false,
+                    Err(kind @ "herdr_stopped") => {
+                        self.log_failure(PatchSource::Live, kind);
+                        self.session.state().status.live_halted = true;
+                        return false;
+                    }
                     Err(kind) => {
                         failures += 1;
                         self.log_failure(PatchSource::Live, kind);
@@ -829,7 +843,7 @@ impl<'a> Run<'a> {
                 Err(kind) => {
                     self.log_failure(PatchSource::Flush, kind);
                     failures += 1;
-                    if failures >= FAILURE_LIMIT {
+                    if kind == "herdr_stopped" || failures >= FAILURE_LIMIT {
                         return;
                     }
                 }
@@ -1031,10 +1045,15 @@ impl<'a> Run<'a> {
                 if let Some(issue_stage) = issue_stage {
                     tracing::debug!(session_id = %self.sid, ?issue_stage, "graph issue consolidation request");
                 }
-                tokio::time::timeout(req.timeout, self.backend.summarizer.complete(req))
+                let response = tokio::time::timeout(req.timeout, self.backend.summarizer.complete(req))
                     .await
-                    .map_err(|_| "timeout")?
-                    .map_err(|error| error.kind())
+                    .map_err(|_| "timeout")
+                    .and_then(|result| result.map_err(|error| error.kind()));
+                if response.is_err() && self.backend.herdr {
+                    self.session.state().status.disabled_reason = Some(DisabledReason::HerdrStopped);
+                    return Err("herdr_stopped");
+                }
+                response
             } => result?,
         };
         Ok(parse_ops(&response))
@@ -1258,6 +1277,7 @@ mod tests {
         active: AtomicUsize,
         count: AtomicUsize,
         max_active: AtomicUsize,
+        herdr: bool,
     }
 
     impl Fake {
@@ -1287,6 +1307,7 @@ mod tests {
                 active: AtomicUsize::new(0),
                 count: AtomicUsize::new(0),
                 max_active: AtomicUsize::new(0),
+                herdr: false,
             };
             (Arc::new(fake), receiver)
         }
@@ -1298,6 +1319,7 @@ mod tests {
                     Some("summary-model"),
                     settings.graph_model.as_deref(),
                 ),
+                herdr: self.herdr,
                 summarizer: Arc::new(FakeSummarizer(self)),
             }
         }
@@ -2356,6 +2378,23 @@ mod tests {
             assert_eq!(next_call(&mut calls).await.timeout, Duration::from_secs(60));
         }
         assert!(calls.try_recv().is_err());
+        assert!(f.events().is_empty());
+        assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn herdr_failure_stops_flush_after_one_call() {
+        let mut f = Fixture::new();
+        f.append("synthetic unextracted turn", false);
+        let (mut fake, mut calls) = Fake::new(true, false);
+        Arc::get_mut(&mut fake).unwrap().herdr = true;
+        f.post(PostMeeting::Continue, fake).await.unwrap();
+        assert!(calls.try_recv().is_ok());
+        assert!(calls.try_recv().is_err());
+        assert_eq!(
+            f.consumer.status(f.sid).disabled_reason,
+            Some(DisabledReason::HerdrStopped)
+        );
         assert!(f.events().is_empty());
         assert_eq!(f.consumer.pending_count(f.sid).await.unwrap(), 1);
     }

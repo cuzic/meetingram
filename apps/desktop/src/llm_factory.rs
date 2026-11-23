@@ -159,6 +159,7 @@ impl LlmFactory for ScriptedLlm {
     fn graph(&self, _settings: AppSettings) -> BackendFuture<'_, Backend, DisabledReason> {
         Box::pin(async move {
             Ok(Backend {
+                herdr: false,
                 model: "scripted".into(),
                 summarizer: Arc::new(self.0.summarizer()),
             })
