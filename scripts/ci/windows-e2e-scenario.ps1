@@ -100,4 +100,11 @@ function Invoke-MeetingramScenario {
     Start-Sleep -Seconds 4
     Save-Screenshot 'stopped.png'
     Assert-SessionTranscript $stopped.last_session_id
+
+    # Core v0.11 creates the session row after live transcription ends, so a
+    # gap insert could fail before it becomes visible to the database check.
+    $log = Join-Path $env:APPDATA 'meetingram/app.log'
+    if (Select-String -LiteralPath $log -SimpleMatch 'live transcription: failed to record gap start' -Quiet) {
+        throw 'Live transcription reported a gap that could not be recorded'
+    }
 }
