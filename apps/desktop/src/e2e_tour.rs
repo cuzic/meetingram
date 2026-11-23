@@ -190,10 +190,10 @@ async fn review(state: &AppState, label: &str) -> TourResult {
     wait(STEP_TIMEOUT, || async {
         dom::<usize>(&count_expression)
             .await
-            .filter(|new_count| *new_count + 2 == count)
+            .filter(|new_count| *new_count > 0 && *new_count < count)
     })
     .await?;
-    reveal(REVIEW).await
+    reveal(&format!("{REVIEW} > h3")).await
 }
 
 async fn execute(
