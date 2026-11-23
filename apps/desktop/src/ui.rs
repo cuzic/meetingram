@@ -540,7 +540,8 @@ pub fn App() -> Element {
                 return;
             };
             let distance_from_bottom = scroll_size.height - offset.y - client_rect.size.height;
-            if distance_from_bottom <= AUTO_SCROLL_NEAR_BOTTOM_PX {
+            // Keep new scripted rows in frame throughout the unattended recording.
+            if crate::scripted_stt_active() || distance_from_bottom <= AUTO_SCROLL_NEAR_BOTTOM_PX {
                 let _ = el
                     .scroll(
                         PixelsVector2D::new(0.0, scroll_size.height),

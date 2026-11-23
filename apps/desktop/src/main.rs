@@ -236,6 +236,7 @@ fn main() {
 
     let window = WindowBuilder::new()
         .with_title("meetingram")
+        .with_maximized(scripted_stt_active())
         .with_inner_size(LogicalSize::new(480.0, 640.0));
 
     let mut desktop_config = DesktopConfig::new()
