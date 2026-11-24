@@ -3,6 +3,10 @@ import { diagram, mindmap, renderInBrowser, svgMeasurer } from 'svg-diagram/brow
 type Branch = { label: string; sub?: string; children?: Branch[] };
 type Request = { version: 1; root: Branch };
 
+function depth(branch: Branch): number {
+  return 1 + Math.max(0, ...(branch.children ?? []).map(depth));
+}
+
 let active = false;
 
 async function render(request: Request) {
@@ -13,7 +17,10 @@ async function render(request: Request) {
     await document.fonts.ready;
     const measure = svgMeasurer();
     try {
-      const figure = diagram({ title: '議論マップ', appearance: 'light', theme: 'blue', width: 'fit' })
+      // A right-facing mindmap needs room for each column. The app scrolls the
+      // resulting image at its native scale, so the default 940px is a floor.
+      const width = Math.max(940, 40 + depth(request.root) * 370);
+      const figure = diagram({ title: '議論マップ', appearance: 'light', theme: 'blue', width, maxWidth: width })
         .add(mindmap(request.root, { layout: 'right', maxNodeW: 320 }));
       const result = await renderInBrowser(figure, { measure });
       if (result.xml.length) return { error: 'invalid_svg' };

@@ -29,6 +29,10 @@ name = "history-discussion-map"
 action = "discussion_map"
 
 [[tour]]
+name = "saved-discussion-map"
+action = "save_discussion_map"
+
+[[tour]]
 name = "approved"
 action = "approve"
 

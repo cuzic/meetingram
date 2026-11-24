@@ -70,6 +70,21 @@ async fn render(diagram: discussion_diagram::Diagram) -> Result<(String, u32, bo
         .map_err(|_| "描画がタイムアウトしました")?
 }
 
+async fn pick_save_path(session_id: SessionId) -> Option<std::path::PathBuf> {
+    #[cfg(feature = "e2e-scripted")]
+    if crate::scripted_stt_active() {
+        if let Some(directory) = std::env::var_os("MEETINGRAM_E2E_TOUR_DIR") {
+            return Some(std::path::PathBuf::from(directory).join("discussion-map.svg"));
+        }
+    }
+    rfd::AsyncFileDialog::new()
+        .set_file_name(format!("discussion-{session_id}.svg"))
+        .add_filter("SVG", &["svg"])
+        .save_file()
+        .await
+        .map(|file| file.path().to_path_buf())
+}
+
 #[component]
 pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, String)>) -> Element {
     let state = use_context::<Arc<AppState>>();
@@ -229,10 +244,7 @@ pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, Str
                     let Some(svg) = image.peek().as_ref().map(|item| item.svg.clone()) else { return };
                     saving.set(true);
                     spawn(async move {
-                        let filename = format!("discussion-{session_id}.svg");
-                        if let Some(file) = rfd::AsyncFileDialog::new()
-                            .set_file_name(filename).add_filter("SVG", &["svg"]).save_file().await {
-                            let path = file.path().to_path_buf();
+                        if let Some(path) = pick_save_path(session_id).await {
                             let result = tokio::task::spawn_blocking(move || std::fs::write(path, svg)).await;
                             message.set(Some(if matches!(result, Ok(Ok(()))) { "SVG を保存しました" } else { "SVG を保存できませんでした" }));
                         }

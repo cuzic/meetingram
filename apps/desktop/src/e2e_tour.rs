@@ -270,6 +270,22 @@ async fn execute(
             .await?;
             reveal(&format!("{panel} img")).await?;
         }
+        TourAction::SaveDiscussionMap => {
+            use base64::{engine::general_purpose::STANDARD, Engine as _};
+            let path = std::path::PathBuf::from(
+                std::env::var_os("MEETINGRAM_E2E_TOUR_DIR").ok_or("tour_directory_missing")?,
+            )
+            .join("discussion-map.svg");
+            let preview = dom::<String>(r#"return document.querySelector('section[aria-label="議論マップ"] img')?.src ?? '';"#)
+                .await
+                .and_then(|url| STANDARD.decode(url.strip_prefix("data:image/svg+xml;base64,")?).ok())
+                .ok_or("diagram_preview_missing")?;
+            click("button", "SVG を保存").await?;
+            wait(STEP_TIMEOUT, || async {
+                std::fs::read(&path).ok().filter(|saved| *saved == preview)
+            })
+            .await?;
+        }
         TourAction::LiveEvidence => {
             wait_status(state, Duration::from_secs(80), |status| {
                 status.recording && status.elapsed_ms >= 60_000
