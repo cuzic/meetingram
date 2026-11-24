@@ -257,14 +257,19 @@ async fn execute(
             reveal(NODES).await?;
         }
         TourAction::DiscussionMap => {
-            click("#meetingram-draw-discussion-map", "")
-                .await
-                .map_err(|_| "diagram_draw_button_unavailable")?;
+            // Confirm the image, even if the click's IPC acknowledgement
+            // races with a rerender that replaces the button's contents.
             const READY: &str = r#"
                 const img = document.getElementById("meetingram-discussion-map");
-                if (!img) return 0;
-                if (!img.complete || img.naturalWidth === 0) return 1;
-                return 2;
+                if (img?.complete && img.naturalWidth > 0) return 2;
+                const button = document.getElementById("meetingram-draw-discussion-map");
+                if (!button) return 0;
+                if (!button.disabled && !button.dataset.e2eRequested) {
+                    button.dataset.e2eRequested = "true";
+                    button.scrollIntoView({block: "center"});
+                    button.click();
+                }
+                return 1;
             "#;
             let mut last = 0;
             let wait_result = tokio::time::timeout(STEP_TIMEOUT, async {
@@ -279,7 +284,7 @@ async fn execute(
             .await;
             if wait_result.is_err() {
                 return Err(match last {
-                    0 => "diagram_preview_missing",
+                    0 => "diagram_draw_button_unavailable",
                     1 => "diagram_image_not_loaded",
                     _ => "diagram_dom_query_failed",
                 });
