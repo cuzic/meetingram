@@ -93,7 +93,7 @@ pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, Str
     let mut message = use_signal(|| None::<&'static str>);
     let mut running = use_signal(|| false);
     let mut saving = use_signal(|| false);
-    let mut zoom = use_signal(|| 100);
+    let mut zoom = use_signal(|| 0_u32);
     let consumer = state.graph_consumer.clone();
     let mut graph_status = use_signal(|| {
         let status = consumer.status(session_id);
@@ -233,9 +233,16 @@ pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, Str
                 }
                 label {
                     "表示倍率"
-                    input { r#type: "range", min: "50", max: "200", step: "10", value: "{zoom()}",
-                        oninput: move |event| {
-                            if let Ok(value) = event.value().parse::<u32>() { zoom.set(value.clamp(50, 200)); }
+                    select {
+                        value: "{zoom_percent}",
+                        onchange: move |event| {
+                            if let Ok(value) = event.value().parse::<u32>() {
+                                zoom.set(value);
+                            }
+                        },
+                        option { value: "0", "全体表示" }
+                        for percent in [50, 75, 100, 125, 150, 200] {
+                            option { key: "{percent}", value: "{percent}", "{percent}%" }
                         }
                     }
                 }
@@ -252,7 +259,7 @@ pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, Str
                     });
                 }, "SVG を保存" }
                 div { style: "overflow: auto; width: 100%; max-height: 65vh;",
-                    img { id: "meetingram-discussion-map", alt: "会議の議論マップ", src: "{rendered.url}", style: format!("width: {}px; max-width: none;", rendered.width * zoom_percent / 100) }
+                    img { id: "meetingram-discussion-map", alt: "会議の議論マップ", src: "{rendered.url}", style: if zoom_percent == 0 { "width: 100%;".to_owned() } else { format!("width: {}px; max-width: none;", rendered.width * zoom_percent / 100) } }
                 }
             }
         }

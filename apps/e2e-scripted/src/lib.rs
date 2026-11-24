@@ -53,6 +53,8 @@ struct Utterance {
 pub enum TourAction {
     LiveOutline,
     DiscussionMap,
+    DiscussionMapPerformance,
+    StopRecordingFromUi,
     SaveDiscussionMap,
     LiveEvidence,
     Consolidated,

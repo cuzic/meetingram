@@ -217,7 +217,7 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
     let utterances = selected_node.map(|node| evidence(graph, &node.nid));
 
     rsx! {
-        section { class: "panel", role: "tabpanel", aria_label: "アウトライン",
+        section { class: "panel", style: "max-width: 960px;", role: "tabpanel", aria_label: "アウトライン",
             if let Some(error) = error {
                 {error}
             }

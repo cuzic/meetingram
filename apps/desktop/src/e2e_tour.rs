@@ -287,6 +287,58 @@ async fn execute(
                 .await
                 .map_err(|_| "diagram_reveal_failed")?;
         }
+        TourAction::DiscussionMapPerformance => {
+            #[derive(serde::Deserialize)]
+            struct Timing {
+                fast_30: u32,
+                fast_100: u32,
+                longest_task: u32,
+            }
+            let data = tokio::time::timeout(
+                STEP_TIMEOUT,
+                dom::<Timing>(include_str!("discussion_diagram_e2e.js")),
+            )
+            .await
+            .map_err(|_| "diagram_timing_timeout")?
+            .ok_or("diagram_timing_failed")?;
+            tracing::info!(
+                fast_30 = data.fast_30,
+                fast_100 = data.fast_100,
+                longest_task_ms = data.longest_task,
+                "scripted discussion map timing"
+            );
+            if data.fast_30 < 9 || data.fast_100 < 9 || data.longest_task > 500 {
+                return Err("diagram_timing_limit");
+            }
+        }
+        TourAction::StopRecordingFromUi => {
+            let ready = std::path::PathBuf::from(
+                std::env::var_os("MEETINGRAM_E2E_TOUR_DIR").ok_or("tour_directory_missing")?,
+            )
+            .join("stop-from-ui.ready");
+            wait(Duration::from_secs(115), || async {
+                tokio::fs::try_exists(&ready)
+                    .await
+                    .ok()
+                    .filter(|exists| *exists)
+            })
+            .await?;
+            click("button", "← 戻る").await?;
+            let latency = dom::<u64>(r#"
+                const stop = document.querySelector('button.stop');
+                if (!stop || stop.disabled) return null;
+                const start = performance.now();
+                stop.click();
+                while (performance.now() - start <= 500) {
+                    if (stop.disabled || !stop.isConnected) return Math.ceil(performance.now() - start);
+                    await new Promise(resolve => setTimeout(resolve, 4));
+                }
+                return null;
+            "#).await.ok_or("stop_control_not_accepted")?;
+            tracing::info!(latency_ms = latency, "scripted stop control accepted");
+            // The next step switches between the two completed sessions.
+            click(HISTORY, "").await?;
+        }
         TourAction::SaveDiscussionMap => {
             use base64::{engine::general_purpose::STANDARD, Engine as _};
             let path = std::path::PathBuf::from(

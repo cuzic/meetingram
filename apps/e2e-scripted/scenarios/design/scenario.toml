@@ -13,6 +13,10 @@ name = "live-discussion-map"
 action = "discussion_map"
 
 [[tour]]
+name = "discussion-map-performance"
+action = "discussion_map_performance"
+
+[[tour]]
 name = "live-evidence"
 action = "live_evidence"
 
@@ -51,6 +55,10 @@ action = "rebuild_started"
 [[tour]]
 name = "rebuild-complete"
 action = "rebuild_complete"
+
+[[tour]]
+name = "stop-recording-from-ui"
+action = "stop_recording_from_ui"
 
 [[tour]]
 name = "first-session"
