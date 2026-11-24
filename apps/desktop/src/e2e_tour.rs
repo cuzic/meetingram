@@ -259,16 +259,33 @@ async fn execute(
         TourAction::DiscussionMap => {
             let panel = r#"section[aria-label="議論マップ"]"#;
             click(&format!("{panel} button"), "議論を図解").await?;
-            let js = format!(
-                r#"return [...document.querySelectorAll('{} img')].some(img =>
-                img.naturalWidth > 0 && img.src.startsWith('data:image/svg+xml;base64,'));"#,
-                panel
-            );
-            wait(STEP_TIMEOUT, || async {
-                dom::<bool>(&js).await.filter(|ready| *ready)
+            const READY: &str = r#"
+                const img = document.getElementById("meetingram-discussion-map");
+                if (!img) return 0;
+                if (!img.complete || img.naturalWidth === 0) return 1;
+                return 2;
+            "#;
+            let mut last = 0;
+            let wait_result = tokio::time::timeout(STEP_TIMEOUT, async {
+                loop {
+                    last = dom::<u8>(READY).await.unwrap_or(3);
+                    if last == 2 {
+                        break;
+                    }
+                    tokio::time::sleep(POLL_INTERVAL).await;
+                }
             })
-            .await?;
-            reveal(&format!("{panel} img")).await?;
+            .await;
+            if wait_result.is_err() {
+                return Err(match last {
+                    0 => "diagram_preview_missing",
+                    1 => "diagram_image_not_loaded",
+                    _ => "diagram_dom_query_failed",
+                });
+            }
+            reveal("#meetingram-discussion-map")
+                .await
+                .map_err(|_| "diagram_reveal_failed")?;
         }
         TourAction::SaveDiscussionMap => {
             use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -276,7 +293,7 @@ async fn execute(
                 std::env::var_os("MEETINGRAM_E2E_TOUR_DIR").ok_or("tour_directory_missing")?,
             )
             .join("discussion-map.svg");
-            let preview = dom::<String>(r#"return document.querySelector('section[aria-label="議論マップ"] img')?.src ?? '';"#)
+            let preview = dom::<String>(r#"return document.getElementById("meetingram-discussion-map")?.getAttribute("src") ?? "";"#)
                 .await
                 .and_then(|url| STANDARD.decode(url.strip_prefix("data:image/svg+xml;base64,")?).ok())
                 .ok_or("diagram_preview_missing")?;

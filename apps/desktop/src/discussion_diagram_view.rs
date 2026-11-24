@@ -201,7 +201,7 @@ pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, Str
     };
 
     rsx! {
-        section { aria_label: "議論マップ",
+        section { aria_label: "議論マップ", style: "width: 100%; min-width: 0;",
             label {
                 "図解する範囲"
                 select {
@@ -251,8 +251,8 @@ pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, Str
                         saving.set(false);
                     });
                 }, "SVG を保存" }
-                div { style: "overflow: auto; max-height: 65vh;",
-                    img { alt: "会議の議論マップ", src: "{rendered.url}", style: format!("width: {}px; max-width: none;", rendered.width * zoom_percent / 100) }
+                div { style: "overflow: auto; width: 100%; max-height: 65vh;",
+                    img { id: "meetingram-discussion-map", alt: "会議の議論マップ", src: "{rendered.url}", style: format!("width: {}px; max-width: none;", rendered.width * zoom_percent / 100) }
                 }
             }
         }
