@@ -16,6 +16,7 @@ struct GoldNode {
     kind: NodeKind,
     text: String,
     grounds: Vec<i64>,
+    confidence: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -129,7 +130,7 @@ impl ScriptedSummarizer {
                     .collect();
                 ops.push(json!({
                     "op": "add_node", "tmp": node.id, "kind": node.kind,
-                    "text": node.text, "grounds": grounds, "confidence": 0.8,
+                    "text": node.text, "grounds": grounds, "confidence": node.confidence.unwrap_or(0.8),
                 }));
                 endpoints.insert(node.id.as_str(), (node.id.as_str(), Some(*first_uid)));
             }

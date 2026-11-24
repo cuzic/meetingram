@@ -238,6 +238,126 @@ async fn review(state: &AppState, label: &str) -> TourResult {
     }
 }
 
+async fn select_change_field(field: &str, text: &str) -> TourResult {
+    let body = format!(
+        r#"
+        const select = visible({})[0];
+        const option = select && Array.from(select.options).find(option => option.textContent.includes({}));
+        if (!option) return false;
+        select.value = option.value;
+        select.dispatchEvent(new Event('change', {{bubbles: true}}));
+        return true;
+        "#,
+        serde_json::json!(format!(
+            "section[data-decision-changes] select[data-change-field='{field}']"
+        )),
+        serde_json::json!(text),
+    );
+    wait(STEP_TIMEOUT, || async {
+        dom::<bool>(&body).await.filter(|done| *done)
+    })
+    .await?;
+    Ok(())
+}
+
+async fn create_change(replacement: &str) -> TourResult {
+    const PANEL: &str = "section[data-decision-changes]";
+    let form = format!("{PANEL} details:not([data-change-state])");
+    let body = format!(
+        "const details = visible({})[0]; if (!details) return false; details.open = true; return true;",
+        serde_json::json!(form),
+    );
+    wait(STEP_TIMEOUT, || async {
+        dom::<bool>(&body).await.filter(|done| *done)
+    })
+    .await?;
+    select_change_field("previous", "試作Aの配布は火曜")
+        .await
+        .map_err(|_| "change_previous_unavailable")?;
+    select_change_field("replacement", replacement)
+        .await
+        .map_err(|_| "change_replacement_unavailable")?;
+    select_change_field("evidence", "試作Aの火曜配布は取り消し")
+        .await
+        .map_err(|_| "change_evidence_unavailable")?;
+    click(&format!("{form} button"), "確認候補を作成")
+        .await
+        .map_err(|_| "change_form_incomplete")?;
+    click(
+        &format!("{PANEL} details[data-change-state='pending'] > summary"),
+        "",
+    )
+    .await?;
+    let body = format!(
+        r#"
+        const pending = visible("section[data-decision-changes] details[data-change-state='pending'][open]")[0];
+        return !!pending && pending.textContent.includes('試作Aの配布日は火曜に決めます')
+            && pending.textContent.includes({})
+            && pending.textContent.includes('試作Aの火曜配布は取り消し');
+        "#,
+        serde_json::json!(replacement),
+    );
+    wait(STEP_TIMEOUT, || async {
+        dom::<bool>(&body).await.filter(|done| *done)
+    })
+    .await
+    .map_err(|_| "change_evidence_not_displayed")?;
+    Ok(())
+}
+
+async fn decision_history(session: &str) -> TourResult {
+    const PANEL: &str = "section[data-decision-changes]";
+    create_change("試作Bの配布は火曜").await?;
+    let unchecked = r#"
+        const button = visible('section[data-decision-changes] button')
+            .find(button => button.textContent.trim() === '承認');
+        return !!button && button.disabled;
+    "#;
+    wait(STEP_TIMEOUT, || async {
+        dom::<bool>(unchecked).await.filter(|done| *done)
+    })
+    .await?;
+    click(&format!("{PANEL} button"), "却下").await?;
+    reveal(&format!("{PANEL} details[data-change-state='rejected']")).await?;
+
+    create_change("試作Aの配布は木曜").await?;
+    click(&format!("{PANEL} input[type=checkbox]"), "").await?;
+    click(&format!("{PANEL} button"), "承認").await?;
+    reveal(&format!("{PANEL} details[data-change-state='approved']"))
+        .await
+        .map_err(|_| "change_not_approved")?;
+    let current = r#"
+        const outline = visible('section[aria-label="アウトライン"] button[aria-pressed]');
+        return outline.some(node => node.textContent.includes('変更前・履歴') && node.textContent.includes('試作Aの配布は火曜'))
+            && outline.some(node => node.textContent.includes('現行・変更確認済み') && node.textContent.includes('試作Aの配布は木曜'))
+            && outline.some(node => node.textContent.includes('試作Bの配布は火曜') && !node.textContent.includes('変更前・履歴'));
+    "#;
+    wait(STEP_TIMEOUT, || async {
+        dom::<bool>(current).await.filter(|done| *done)
+    })
+    .await?;
+    click("button", "← 戻る").await?;
+    click("section.summary button", "要約を生成")
+        .await
+        .map_err(|_| "change_summary_action_unavailable")?;
+    let summarized = r#"
+        const section = visible('section.summary')[0];
+        if (!section) return false;
+        const details = Array.from(section.children)
+            .find(element => element.tagName === 'DETAILS' && element.textContent.includes('生成要約'));
+        return !!details && !details.open
+            && details.textContent.includes('変更確認の結果は要約本文に反映されません')
+            && section.querySelector('[data-change-state="approved"]').textContent.includes('試作Aの配布は木曜');
+    "#;
+    wait(STEP_TIMEOUT, || async {
+        dom::<bool>(summarized).await.filter(|done| *done)
+    })
+    .await
+    .map_err(|_| "change_summary_not_displayed")?;
+    history_outline(session).await?;
+    Ok(())
+}
+
 async fn execute(
     state: &AppState,
     action: TourAction,
@@ -285,6 +405,9 @@ async fn execute(
         }
         TourAction::Approve => review(state, "承認").await?,
         TourAction::Reject => review(state, "却下").await?,
+        TourAction::DecisionHistory => {
+            decision_history(first.as_deref().ok_or("first_session_missing")?).await?;
+        }
         TourAction::GraphSettings => {
             click("button", "← 戻る").await?;
             click(SETTINGS, "").await?;

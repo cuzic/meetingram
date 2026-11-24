@@ -29,6 +29,10 @@ name = "rejected"
 action = "reject"
 
 [[tour]]
+name = "decision-history"
+action = "decision_history"
+
+[[tour]]
 name = "graph-settings"
 action = "graph_settings"
 

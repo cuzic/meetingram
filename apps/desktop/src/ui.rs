@@ -23,6 +23,9 @@ use crate::transcript::{self, TimelineItem};
 use crate::transcription_status;
 
 #[cfg(windows)]
+#[path = "graph_decision_view.rs"]
+mod graph_decision_view;
+#[cfg(windows)]
 #[path = "graph_history_view.rs"]
 mod graph_history_view;
 #[cfg(windows)]
@@ -510,7 +513,13 @@ pub fn App() -> Element {
     // never point at different sessions.
     let mut gaps = use_signal(Vec::<TranscriptionGap>::new);
     let mut gap_retranscribe_state = use_signal(HashMap::<i64, GapRetranscribeState>::new);
-    let mut summary_text = use_signal(|| None::<String>);
+    let mut summary_text = use_signal(|| {
+        None::<(
+            recorder_domain::SessionId,
+            String,
+            chrono::DateTime<chrono::Utc>,
+        )>
+    });
     let mut summary_message = use_signal(|| None::<String>);
     let mut summary_busy = use_signal(|| false);
     // Task #71's manual "export to Markdown" button — its own message signal
@@ -662,7 +671,7 @@ pub fn App() -> Element {
                 .ok()
                 .flatten()
         });
-        summary_text.set(latest.map(|s| s.text));
+        summary_text.set(latest.map(|s| (s.session_id, s.text, s.generated_at)));
 
         let segments = session_id
             .and_then(|id| {
@@ -799,7 +808,9 @@ pub fn App() -> Element {
                 .await
             {
                 Ok(text) => {
-                    summary_text.set(Some(text));
+                    if selected_session_id() == Some(session_id) {
+                        summary_text.set(Some((session_id, text, chrono::Utc::now())));
+                    }
                 }
                 Err(e) => summary_message.set(Some(format!("要約に失敗しました: {e}"))),
             }
@@ -1131,9 +1142,12 @@ pub fn App() -> Element {
                 if let Some(msg) = summary_message() {
                     p { class: "hint", "{msg}" }
                 }
-                if let Some(text) = summary_text() {
-                    div { class: "summary-text", "{text}" }
-                }
+                {render_summary(
+                    selected_session_id_value,
+                    summary_text().and_then(|(sid, text, generated_at)| {
+                        (Some(sid) == selected_session_id_value).then_some((text, generated_at))
+                    }),
+                )}
                 // #71: manual export of the latest session's transcript/summary to a
                 // local Markdown file — enabled whenever a session exists, same as
                 // the summary button above; a session with no summary yet still
@@ -1155,6 +1169,24 @@ pub fn App() -> Element {
             if let Some(err) = action_error_text {
                 p { class: "error", "{err}" }
             }
+        }
+    }
+}
+
+fn render_summary(
+    session_id: Option<recorder_domain::SessionId>,
+    summary: Option<(String, chrono::DateTime<chrono::Utc>)>,
+) -> Element {
+    #[cfg(windows)]
+    if let Some(session_id) = session_id {
+        return rsx! { graph_decision_view::SummaryDecisionHistory {
+            key: "{session_id}", session_id, summary,
+        } };
+    }
+    let _ = session_id;
+    rsx! {
+        if let Some((text, _)) = summary {
+            div { class: "summary-text", "{text}" }
         }
     }
 }
