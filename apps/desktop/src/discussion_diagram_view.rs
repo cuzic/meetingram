@@ -218,7 +218,7 @@ pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, Str
                     }
                 }
             }
-            button { disabled: running() || rebuilding, onclick: draw,
+            button { id: "meetingram-draw-discussion-map", disabled: running() || rebuilding, onclick: draw,
                 if running() { "図解中…" } else if has_image { "図を更新" } else { "議論を図解" }
             }
             if let Some(text) = message() {

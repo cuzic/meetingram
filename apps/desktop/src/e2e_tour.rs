@@ -257,8 +257,9 @@ async fn execute(
             reveal(NODES).await?;
         }
         TourAction::DiscussionMap => {
-            let panel = r#"section[aria-label="議論マップ"]"#;
-            click(&format!("{panel} button"), "議論を図解").await?;
+            click("#meetingram-draw-discussion-map", "")
+                .await
+                .map_err(|_| "diagram_draw_button_unavailable")?;
             const READY: &str = r#"
                 const img = document.getElementById("meetingram-discussion-map");
                 if (!img) return 0;
@@ -324,6 +325,13 @@ async fn execute(
             })
             .await?;
             click("button", "← 戻る").await?;
+            wait(STEP_TIMEOUT, || async {
+                dom::<bool>("return !!document.querySelector('button.stop:not([disabled])');")
+                    .await
+                    .filter(|ready| *ready)
+            })
+            .await
+            .map_err(|_| "stop_control_missing")?;
             let latency = dom::<u64>(r#"
                 const stop = document.querySelector('button.stop');
                 if (!stop || stop.disabled) return null;
