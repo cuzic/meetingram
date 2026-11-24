@@ -271,10 +271,18 @@ async fn create_change(replacement: &str) -> TourResult {
         dom::<bool>(&body).await.filter(|done| *done)
     })
     .await?;
-    select_change_field("previous", "試作Aの配布は火曜").await?;
-    select_change_field("replacement", replacement).await?;
-    select_change_field("evidence", "試作Aの火曜配布は取り消し").await?;
-    click(&format!("{form} button"), "確認候補を作成").await?;
+    select_change_field("previous", "試作Aの配布は火曜")
+        .await
+        .map_err(|_| "change_previous_unavailable")?;
+    select_change_field("replacement", replacement)
+        .await
+        .map_err(|_| "change_replacement_unavailable")?;
+    select_change_field("evidence", "試作Aの火曜配布は取り消し")
+        .await
+        .map_err(|_| "change_evidence_unavailable")?;
+    click(&format!("{form} button"), "確認候補を作成")
+        .await
+        .map_err(|_| "change_form_incomplete")?;
     click(
         &format!("{PANEL} details[data-change-state='pending'] > summary"),
         "",
@@ -292,7 +300,8 @@ async fn create_change(replacement: &str) -> TourResult {
     wait(STEP_TIMEOUT, || async {
         dom::<bool>(&body).await.filter(|done| *done)
     })
-    .await?;
+    .await
+    .map_err(|_| "change_evidence_not_displayed")?;
     Ok(())
 }
 
@@ -314,7 +323,9 @@ async fn decision_history(session: &str) -> TourResult {
     create_change("試作Aの配布は木曜").await?;
     click(&format!("{PANEL} input[type=checkbox]"), "").await?;
     click(&format!("{PANEL} button"), "承認").await?;
-    reveal(&format!("{PANEL} details[data-change-state='approved']")).await?;
+    reveal(&format!("{PANEL} details[data-change-state='approved']"))
+        .await
+        .map_err(|_| "change_not_approved")?;
     let current = r#"
         const outline = visible('section[aria-label="アウトライン"] button[aria-pressed]');
         return outline.some(node => node.textContent.includes('変更前・履歴') && node.textContent.includes('試作Aの配布は火曜'))
@@ -326,7 +337,9 @@ async fn decision_history(session: &str) -> TourResult {
     })
     .await?;
     click("button", "← 戻る").await?;
-    click("section.summary button", "要約を生成").await?;
+    click("section.summary button", "要約を生成")
+        .await
+        .map_err(|_| "change_summary_action_unavailable")?;
     let summarized = r#"
         const section = visible('section.summary')[0];
         if (!section) return false;
@@ -339,7 +352,8 @@ async fn decision_history(session: &str) -> TourResult {
     wait(STEP_TIMEOUT, || async {
         dom::<bool>(summarized).await.filter(|done| *done)
     })
-    .await?;
+    .await
+    .map_err(|_| "change_summary_not_displayed")?;
     history_outline(session).await?;
     Ok(())
 }

@@ -44,7 +44,11 @@ pub(super) fn changes_view(
                             .filter(|node| node.is_live() && matches!(node.kind, NodeKind::Decision | NodeKind::Action))
                             .map(|node| (node.nid.clone(), node.kind, node.text.clone())).collect::<Vec<_>>(),
                         utterances: history.graph.utterances.values().map(|u| {
-                            (u.uid.clone(), u.row_id, format!("{} · {}", u.speaker_label, u.text))
+                            let mut text: String = u.text.chars().take(90).collect();
+                            if text.len() < u.text.len() {
+                                text.push('…');
+                            }
+                            (u.uid.clone(), u.row_id, format!("{} · {}", u.speaker_label, text))
                         }).collect::<Vec<_>>(),
                     }
                     if history.graph.nodes.values().any(|node| node.status == discussion_graph::Status::Merged
@@ -150,6 +154,7 @@ fn AddChange(
             label { "変更前"
                 select {
                     "data-change-field": "previous",
+                    style: "display: block; width: 100%; max-width: 32rem;",
                     value: previous(),
                     onchange: move |event| {
                         previous.set(event.value());
@@ -164,6 +169,7 @@ fn AddChange(
             label { "変更後"
                 select {
                     "data-change-field": "replacement",
+                    style: "display: block; width: 100%; max-width: 32rem;",
                     value: replacement(),
                     onchange: move |event| replacement.set(event.value()),
                     option { value: "", "選択" }
@@ -178,6 +184,7 @@ fn AddChange(
             label { "変更を示す発話"
                 select {
                     "data-change-field": "evidence",
+                    style: "display: block; width: 100%; max-width: 32rem;",
                     value: ground(),
                     onchange: move |event| ground.set(event.value()),
                     option { value: "", "発話を選択" }
