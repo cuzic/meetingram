@@ -26,14 +26,15 @@ pub(super) fn changes_view(
                     {outcomes(history, label, display)}
                 }
                 for change in &history.changes {
-                    {change_view(history, change)}
-                    if can_review {
-                        ReviewChange {
+                    {change_view(history, change, if can_review {
+                        rsx! { ReviewChange {
                             key: "{generation}-{history.graph.rev}-{change.id}-{change.state}",
                             session_id, generation, rev: history.graph.rev,
                             id: change.id, state: change.state,
-                        }
-                    }
+                        } }
+                    } else {
+                        rsx! {}
+                    })}
                 }
                 if can_review {
                     AddChange {
@@ -45,6 +46,11 @@ pub(super) fn changes_view(
                         utterances: history.graph.utterances.values().map(|u| {
                             (u.uid.clone(), u.row_id, format!("{} · {}", u.speaker_label, u.text))
                         }).collect::<Vec<_>>(),
+                    }
+                    if history.graph.nodes.values().any(|node| node.status == discussion_graph::Status::Merged
+                        && matches!(node.kind, NodeKind::Decision | NodeKind::Action))
+                    {
+                        p { class: "hint", "以前の整理で統合された決定・宿題があります。変更前の項目が選べない場合は、グラフを作り直してください。" }
                     }
                 }
             }
@@ -71,7 +77,11 @@ fn outcomes(history: &DecisionHistory, label: &str, display: DecisionDisplay) ->
     }
 }
 
-fn change_view(history: &DecisionHistory, change: &discussion_graph::DecisionChange) -> Element {
+fn change_view(
+    history: &DecisionHistory,
+    change: &discussion_graph::DecisionChange,
+    review: Element,
+) -> Element {
     let graph = &history.graph;
     let previous = graph
         .nodes
@@ -107,6 +117,7 @@ fn change_view(history: &DecisionHistory, change: &discussion_graph::DecisionCha
             }
             h4 { "変更を示す発話" }
             {evidence_view(graph.utterances.get(&change.evidence).into_iter().collect())}
+            {review}
         }
     }
 }
