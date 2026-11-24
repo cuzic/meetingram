@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "apps/desktop",
     "apps/desktop-cli",
+    "apps/discussion-diagram",
     "apps/e2e-scripted",
 ]
 

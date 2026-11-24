@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="176" viewBox="0 0 940 176" role="img" aria-labelledby="svg-title">
+  <title id="svg-title">議論マップ</title>
+  <style>
+    text { font-family: 'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic','YuGothic',Meiryo,'Noto Sans JP',sans-serif; }
+    .emoji { font-family: 'Noto Color Emoji','Segoe UI Emoji',sans-serif; }
+  </style>
+  <rect x="0" y="0" width="940" height="176" fill="#ffffff"/>
+
+  <path d="M232,88 L256,88 L256,88 L276,88" fill="none" stroke="#6f6659" stroke-width="2"/>
+  <path d="M572,88 L592,88 L592,48 L616,48" fill="none" stroke="#6f6659" stroke-width="2"/>
+  <path d="M572,88 L592,88 L592,128 L616,128" fill="none" stroke="#6f6659" stroke-width="2"/>
+  <rect x="120" y="60" width="112" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
+  <rect x="276" y="60" width="296" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
+  <rect x="616" y="20" width="204" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
+  <rect x="616" y="100" width="168" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
+  <text x="176" y="82" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">議論の全体像</text>
+  <text x="176" y="102" text-anchor="middle" font-size="14" fill="#6f6659">版 11</text>
+  <text x="423" y="82" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">参加者に配布する案と反対意見を確認する</text>
+  <text x="423" y="102" text-anchor="middle" font-size="14" fill="#6f6659">問い · 未解決</text>
+  <text x="717" y="42" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">次回までに確認する<tspan class="emoji">😀</tspan> &amp; &lt; &gt;</text>
+  <text x="717" y="62" text-anchor="middle" font-size="14" fill="#6f6659">案 · 要確認</text>
+  <text x="698" y="122" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">費用の見積もりが必要</text>
+  <text x="698" y="142" text-anchor="middle" font-size="14" fill="#6f6659">理由 · 反対</text>
+</svg>

@@ -59,6 +59,9 @@ genai = "0.7.5"
 # entries) so there's exactly one `app-service` dependency edge per platform, with
 # no ambiguity about how Cargo merges them.
 [target.'cfg(windows)'.dependencies]
+discussion-diagram = { path = "../discussion-diagram" }
+base64 = "0.22"
+rfd = { version = "0.17", default-features = false }
 e2e-scripted = { path = "../e2e-scripted", optional = true }
 # "live-transcription" wires real-time Deepgram transcription into the Windows
 # capture session (see crates/app-service/src/live_transcription.rs) — real

@@ -9,6 +9,10 @@ name = "live-outline"
 action = "live_outline"
 
 [[tour]]
+name = "live-discussion-map"
+action = "discussion_map"
+
+[[tour]]
 name = "live-evidence"
 action = "live_evidence"
 
@@ -19,6 +23,10 @@ action = "consolidated"
 [[tour]]
 name = "history-evidence"
 action = "history_evidence"
+
+[[tour]]
+name = "history-discussion-map"
+action = "discussion_map"
 
 [[tour]]
 name = "approved"

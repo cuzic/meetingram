@@ -366,7 +366,7 @@ impl GraphConsumer {
         .await
     }
 
-    #[cfg(test)]
+    #[cfg(any(windows, test))]
     pub async fn load_graph(self: &Arc<Self>, sid: SessionId) -> Result<Graph, &'static str> {
         self.db(move |store| store.load_graph(sid)).await
     }

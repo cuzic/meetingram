@@ -6,7 +6,7 @@ A desktop tool that records and transcribes meetings while turning the discussio
 
 ## 今の状態
 
-録音と文字起こしの部分は [1on1-recorder](https://github.com/cuzic/1on1-recorder) のデスクトップアプリ(Dioxus)と CLI を引き継いだものです。図解と質問支援はこれから作ります。
+録音と文字起こしの部分は [1on1-recorder](https://github.com/cuzic/1on1-recorder) のデスクトップアプリ(Dioxus)と CLI を引き継いだものです。議論グラフはアウトラインで確認できます。Windows では録音中と履歴のアウトラインから「議論を図解」を開き、svg-diagram でその時点までの議論を表示できます。「図を更新」で新しい議論を反映し、「SVG を保存」で表示中の図を保存できます。大きなグラフでは議題を選んで範囲を絞れます。
 
 録音・文字起こし・イベント配信・Rhai プラグインの crate は [meetingram-core](https://github.com/cuzic/meetingram-core) にあり、ここからは git 依存(タグ固定)で参照しています。コアを更新したら、`Cargo.toml` の `[workspace.dependencies]` のタグをまとめて上げます。
 

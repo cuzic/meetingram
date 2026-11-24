@@ -52,6 +52,7 @@ struct Utterance {
 #[serde(rename_all = "snake_case")]
 pub enum TourAction {
     LiveOutline,
+    DiscussionMap,
     LiveEvidence,
     Consolidated,
     HistoryEvidence,

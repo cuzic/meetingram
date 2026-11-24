@@ -256,6 +256,20 @@ async fn execute(
             click(TABS, "アウトライン").await?;
             reveal(NODES).await?;
         }
+        TourAction::DiscussionMap => {
+            let panel = r#"section[aria-label="議論マップ"]"#;
+            click(&format!("{panel} button"), "議論を図解").await?;
+            let js = format!(
+                r#"return [...document.querySelectorAll('{} img')].some(img =>
+                img.naturalWidth > 0 && img.src.startsWith('data:image/svg+xml;base64,'));"#,
+                panel
+            );
+            wait(STEP_TIMEOUT, || async {
+                dom::<bool>(&js).await.filter(|ready| *ready)
+            })
+            .await?;
+            reveal(&format!("{panel} img")).await?;
+        }
         TourAction::LiveEvidence => {
             wait_status(state, Duration::from_secs(80), |status| {
                 status.recording && status.elapsed_ms >= 60_000
