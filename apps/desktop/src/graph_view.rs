@@ -68,7 +68,7 @@ impl HistoryPending {
 }
 
 pub(super) fn rebuild_confirmation(session_label: &str) -> String {
-    format!("セッション（{session_label}）のグラフを作り直すと、承認・却下の結果も消えます。")
+    format!("セッション（{session_label}）のグラフを作り直すと、承認・却下の結果と決定・宿題の変更履歴も消えます。")
 }
 
 impl GraphView {
@@ -344,7 +344,7 @@ mod tests {
     fn rebuild_confirmation_identifies_the_session() {
         assert_eq!(
             rebuild_confirmation("2026-11-21 12:30:00"),
-            "セッション（2026-11-21 12:30:00）のグラフを作り直すと、承認・却下の結果も消えます。"
+            "セッション（2026-11-21 12:30:00）のグラフを作り直すと、承認・却下の結果と決定・宿題の変更履歴も消えます。"
         );
     }
 }

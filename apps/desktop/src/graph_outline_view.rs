@@ -165,17 +165,22 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
                     match load_changed_graph(
                         &mut loaded,
                         current,
-                        consumer.load_outline(session_id, history),
+                        consumer.load_decision_history(session_id, history),
                     )
                     .await
                     {
-                        Some(Ok((graph, review_available))) => {
+                        Some(Ok((decision_history, review_available))) => {
                             let rows = if history {
-                                candidates(&graph)
+                                candidates(&decision_history.graph)
                             } else {
                                 Vec::new()
                             };
-                            snapshot.set(Some((graph, rows, current.1, review_available)));
+                            snapshot.set(Some((
+                                decision_history,
+                                rows,
+                                current.1,
+                                review_available,
+                            )));
                             load_failed.set(false);
                             retry_delay = Duration::ZERO;
                         }
@@ -204,10 +209,12 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
             p { class: "hint", role: "status", "議論グラフを読み込めませんでした" }
         }
     });
-    let Some((graph, candidates, generation, review_available)) = snapshot.as_ref() else {
+    let Some((decision_history, candidates, generation, review_available)) = snapshot.as_ref()
+    else {
         return error
             .unwrap_or_else(|| rsx! { p { class: "hint", "議論グラフを読み込んでいます" } });
     };
+    let graph = &decision_history.graph;
     let rows = outline_rows(&build_outline(graph), threshold());
     let selected_id = selected();
     let selected_node = selected_id
@@ -234,7 +241,12 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
                         let opacity = if dimmed { 0.6 } else { 1.0 };
                         let kind = kind_label(node.kind);
                         let reference = reference_label(is_reference);
-                        let status = status_label(node.status);
+                        let status = match decision_history.display(&node.nid) {
+                            discussion_graph::DecisionDisplay::Historical => "変更前・履歴",
+                            discussion_graph::DecisionDisplay::Pending => "変更の確認待ち",
+                            discussion_graph::DecisionDisplay::Current => "現行・変更確認済み",
+                            discussion_graph::DecisionDisplay::Unchanged => status_label(node.status),
+                        };
                         let stance = match relation {
                             Some(EdgeKind::Supports) => " · ＋賛成",
                             Some(EdgeKind::ObjectsTo) => " · −反対",
@@ -258,6 +270,10 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
             if let Some(utterances) = utterances {
                 {evidence_view(utterances)}
             }
+            {super::graph_decision_view::changes_view(
+                decision_history, session_id, *generation, history && *review_available
+                    && review_enabled() && !load_failed(),
+            )}
             if history && stale_review() {
                 p { class: "hint", role: "status", "一覧が更新されました" }
             }

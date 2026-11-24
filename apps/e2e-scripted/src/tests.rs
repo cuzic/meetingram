@@ -200,6 +200,6 @@ async fn incremental_replay_applies_the_gold_graph() {
         }
         graph = result.graph;
     }
-    assert_eq!(graph.nodes.len(), 39);
+    assert_eq!(graph.nodes.len(), 42);
     assert_eq!(graph.edges.len(), 32);
 }

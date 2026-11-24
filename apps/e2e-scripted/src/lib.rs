@@ -55,6 +55,7 @@ pub enum TourAction {
     LiveEvidence,
     Consolidated,
     HistoryEvidence,
+    DecisionHistory,
     Approve,
     Reject,
     GraphSettings,

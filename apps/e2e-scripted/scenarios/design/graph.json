@@ -1,5 +1,29 @@
 {
   "nodes": [
+  {
+    "id": "release-a-old",
+    "kind": "decision",
+    "text": "試作Aの配布は火曜",
+    "grounds": [
+      19
+    ]
+  },
+  {
+    "id": "release-b",
+    "kind": "decision",
+    "text": "試作Bの配布は火曜",
+    "grounds": [
+      21
+    ]
+  },
+  {
+    "id": "release-a-new",
+    "kind": "decision",
+    "text": "試作Aの配布は木曜",
+    "grounds": [
+      23
+    ]
+  },
     {
       "id": "i1",
       "kind": "issue",

@@ -66,6 +66,19 @@ pub struct GraphStatus {
     pub review_allowed: bool,
 }
 
+#[cfg(windows)]
+pub(crate) enum DecisionHistoryOperation {
+    Add {
+        previous: String,
+        replacement: Option<String>,
+        evidence: String,
+    },
+    Review {
+        id: u64,
+        action: discussion_graph::DecisionChangeAction,
+    },
+}
+
 #[derive(Default)]
 struct SessionState {
     status: GraphStatus,
@@ -349,7 +362,78 @@ impl GraphConsumer {
         .await?
     }
 
-    #[cfg(any(windows, test))]
+    #[cfg(windows)]
+    pub async fn load_decision_history(
+        self: &Arc<Self>,
+        sid: SessionId,
+        history: bool,
+    ) -> Result<(discussion_graph::DecisionHistory, bool), &'static str> {
+        let consumer = self.clone();
+        self.db(move |store| {
+            let snapshot = store.load_decision_history(sid)?;
+            let can_review = history
+                && store.consolidation_completed(sid)?.is_some()
+                && consumer.status(sid).review_allowed;
+            Ok((snapshot, can_review))
+        })
+        .await
+    }
+
+    #[cfg(windows)]
+    pub async fn update_decision_history(
+        self: &Arc<Self>,
+        sid: SessionId,
+        generation: u64,
+        listed_rev: u64,
+        operation: DecisionHistoryOperation,
+    ) -> Result<(), &'static str> {
+        use discussion_graph::store::StoreError;
+        let session = self.session(sid);
+        let execution = session.execution.clone().lock_owned().await;
+        let consumer = self.clone();
+        self.db(move |store| {
+            let _session = session;
+            let _execution = execution;
+            let status = consumer.status(sid);
+            if status.graph_generation != generation {
+                return Ok(Err("review_stale"));
+            }
+            if !status.review_allowed || store.consolidation_completed(sid)?.is_none() {
+                return Ok(Err("review_unavailable"));
+            }
+            let result = match operation {
+                DecisionHistoryOperation::Add {
+                    previous,
+                    replacement,
+                    evidence,
+                } => store.add_decision_change(
+                    sid,
+                    listed_rev,
+                    &previous,
+                    replacement.as_deref(),
+                    &evidence,
+                ),
+                DecisionHistoryOperation::Review { id, action } => {
+                    store.review_decision_change(sid, listed_rev, id, action)
+                }
+            };
+            match result {
+                Ok(_) => {
+                    let rev = store.revision(sid)?;
+                    consumer.sessions().revisions.entry(sid).or_default().0 = rev;
+                    Ok(Ok(()))
+                }
+                Err(StoreError::StaleDecisionHistory) => Ok(Err("review_stale")),
+                Err(StoreError::InvalidDecisionChange | StoreError::InvalidChangeTransition) => {
+                    Ok(Err("invalid_change"))
+                }
+                Err(error) => Err(error),
+            }
+        })
+        .await?
+    }
+
+    #[cfg(test)]
     pub async fn load_outline(
         self: &Arc<Self>,
         sid: SessionId,
