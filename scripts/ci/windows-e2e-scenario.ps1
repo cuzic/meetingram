@@ -225,6 +225,12 @@ function Invoke-MeetingramScenario {
         throw 'Stopped graph did not reach consolidation'
     }
     Assert-SessionTranscript $stopped.last_session_id $recordingSeconds
+    # The stored length must be this recording, not time since the runner booted.
+    $durationMs = [long]$stopped.last_total_duration_ms
+    Write-Host "Stored session length: $durationMs ms (recorded for about $recordingSeconds s)"
+    if ($durationMs -lt ($recordingSeconds - 20) * 1000 -or $durationMs -gt ($recordingSeconds + 30) * 1000) {
+        throw "Stored session length $durationMs ms is not close to the $recordingSeconds s recording"
+    }
 
     # The app acknowledges rebuild_started only after observing the revision drop
     # and rebuild_complete only after observing a new consolidated revision.
