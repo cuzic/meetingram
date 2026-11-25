@@ -1,6 +1,6 @@
 # ADR 0007: 議論グラフと文字起こしから CRT（現状問題構造ツリー）を作る
 
-- Status: Proposed
+- Status: Accepted
 - 日付: 2026-11-25
 - 関連: [ADR 0001 — 議論グラフ](0001-discussion-graph.md)、[ADR 0004 — svg-diagram で議論を図解する](0004-svg-discussion-map.md)、
   [ADR 0006 — 対立解消図と TOC の図の共通の仕組み](0006-conflict-cloud.md)、svg-diagram の `causeTree` 部品（v0.10.0）
@@ -176,3 +176,4 @@ ADR 0006 §2 の `subject` は、会議全体なら `"all"`、議題か細かな
 | r1 | 初版 |
 | r2 | round 1（`docs/reviews/adr-0006-round1.md`）の M3、M4、m3〜m6 を反映 |
 | r3 | round 2（`docs/reviews/adr-0006-round2.md`）の m1、m2 を反映 |
+| r4 | round 4 で収束（`docs/reviews/adr-0006-round4.md`）。Accepted（2026-11-25） |

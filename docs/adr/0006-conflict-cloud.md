@@ -1,6 +1,6 @@
 # ADR 0006: 議論グラフから対立解消図を作る（TOC の図の共通の仕組みを含む）
 
-- Status: Proposed
+- Status: Accepted
 - 日付: 2026-11-25
 - 関連: [ADR 0001 — 議論グラフ](0001-discussion-graph.md)、[ADR 0002 — Windows E2E](0002-e2e-scripted-backends.md)、
   [ADR 0004 — svg-diagram で議論を図解する](0004-svg-discussion-map.md)、[ADR 0007 — CRT](0007-current-reality-tree.md)、
@@ -296,3 +296,4 @@ LLM と描画の失敗・遅延は、分析の画面の文言にだけ出る。
 | r2 | round 1（`docs/reviews/adr-0006-round1.md`）の M1〜M3、m1〜m3、m6、m7、n1〜n3 を反映 |
 | r3 | round 2（`docs/reviews/adr-0006-round2.md`）の M1、m3、m4、n1 を反映 |
 | r4 | round 3 の M1（LLM の d・d2 の本文も 116 単位で切る）を反映 |
+| r5 | round 4 で収束（`docs/reviews/adr-0006-round4.md`）。Accepted（2026-11-25） |
