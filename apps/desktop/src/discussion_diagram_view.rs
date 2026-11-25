@@ -237,15 +237,17 @@ pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, Str
                 label {
                     "表示倍率"
                     select {
-                        value: "{zoom_percent}",
+                        id: "meetingram-discussion-map-zoom",
                         onchange: move |event| {
                             if let Ok(value) = event.value().parse::<u32>() {
                                 zoom.set(value);
                             }
                         },
-                        option { value: "0", "全体表示" }
+                        // `selected` on each option: a `value` on the select is applied
+                        // before the options are rendered and does not take effect.
+                        option { value: "0", selected: zoom_percent == 0, "全体表示" }
                         for percent in [50, 75, 100, 125, 150, 200] {
-                            option { key: "{percent}", value: "{percent}", "{percent}%" }
+                            option { key: "{percent}", value: "{percent}", selected: zoom_percent == percent, "{percent}%" }
                         }
                     }
                 }
