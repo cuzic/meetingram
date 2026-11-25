@@ -82,11 +82,21 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+      - name: Verify bundled discussion renderer
+        working-directory: apps/desktop/diagram-renderer
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+          git diff --exit-code -- renderer.js
+
       - name: Check formatting
         run: cargo fmt --all --check
 
       - name: Clippy
-        run: cargo clippy -p desktop-cli -p e2e-scripted --all-targets --no-deps -- -D warnings
+        run: cargo clippy -p desktop-cli -p e2e-scripted -p discussion-diagram --all-targets --no-deps -- -D warnings
 
       - name: Test
-        run: cargo test -p desktop-cli -p e2e-scripted
+        run: cargo test -p desktop-cli -p e2e-scripted -p discussion-diagram

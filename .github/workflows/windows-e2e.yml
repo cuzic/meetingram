@@ -136,6 +136,7 @@ jobs:
           path: |
             ${{ runner.temp }}/e2e-windows-recording/*.mp4
             ${{ runner.temp }}/e2e-windows-recording/*.png
+            ${{ runner.temp }}/e2e-windows-recording/discussion-map.svg
             ${{ runner.temp }}/e2e-windows-recording/*.ready
             ${{ runner.temp }}/e2e-windows-recording/status-*.json
             ${{ runner.temp }}/e2e-windows-recording/app.log

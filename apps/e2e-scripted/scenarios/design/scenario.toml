@@ -9,6 +9,14 @@ name = "live-outline"
 action = "live_outline"
 
 [[tour]]
+name = "live-discussion-map"
+action = "discussion_map"
+
+[[tour]]
+name = "discussion-map-performance"
+action = "discussion_map_performance"
+
+[[tour]]
 name = "live-evidence"
 action = "live_evidence"
 
@@ -19,6 +27,14 @@ action = "consolidated"
 [[tour]]
 name = "history-evidence"
 action = "history_evidence"
+
+[[tour]]
+name = "history-discussion-map"
+action = "discussion_map"
+
+[[tour]]
+name = "saved-discussion-map"
+action = "save_discussion_map"
 
 [[tour]]
 name = "approved"
@@ -39,6 +55,10 @@ action = "rebuild_started"
 [[tour]]
 name = "rebuild-complete"
 action = "rebuild_complete"
+
+[[tour]]
+name = "stop-recording-from-ui"
+action = "stop_recording_from_ui"
 
 [[tour]]
 name = "first-session"

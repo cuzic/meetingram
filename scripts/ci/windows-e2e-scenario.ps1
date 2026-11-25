@@ -243,7 +243,7 @@ function Invoke-MeetingramScenario {
     Invoke-MeetingramCtl $Ctl start | Out-Null
     & $PlayTone
     Start-Sleep -Seconds 30
-    Invoke-MeetingramCtl $Ctl stop | Out-Null
+    New-Item -ItemType File -Path (Join-Path $Output "stop-from-ui.ready") | Out-Null
     Wait-TourAction $tour 'second_session' 75
     if ($tour.Next -ne $tour.Steps.Count) { throw 'Tour did not capture every step' }
     $second = Save-MeetingramStatus $Ctl (Join-Path $Output 'status-second.json') $false

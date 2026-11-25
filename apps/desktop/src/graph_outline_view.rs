@@ -217,12 +217,20 @@ pub(super) fn GraphOutline(session_id: SessionId, #[props(default)] history: boo
     let utterances = selected_node.map(|node| evidence(graph, &node.nid));
 
     rsx! {
-        section { class: "panel", role: "tabpanel", aria_label: "アウトライン",
+        section { class: "panel", style: "max-width: 960px;", role: "tabpanel", aria_label: "アウトライン",
             if let Some(error) = error {
                 {error}
             }
             if rows.is_empty() {
                 p { class: "hint", "表示できる議論グラフはありません" }
+            }
+            if !rows.is_empty() {
+                super::discussion_diagram_view::DiscussionDiagram {
+                    key: "{session_id}",
+                    session_id,
+                    options: discussion_diagram::agendas(graph).into_iter()
+                        .map(|(id, label)| (id.to_owned(), label.to_owned())).collect::<Vec<_>>(),
+                }
             }
             for (index, row) in rows.into_iter().enumerate() {
                 match row {

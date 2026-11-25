@@ -23,6 +23,9 @@ use crate::transcript::{self, TimelineItem};
 use crate::transcription_status;
 
 #[cfg(windows)]
+#[path = "discussion_diagram_view.rs"]
+mod discussion_diagram_view;
+#[cfg(windows)]
 #[path = "graph_history_view.rs"]
 mod graph_history_view;
 #[cfg(windows)]

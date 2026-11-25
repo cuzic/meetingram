@@ -256,6 +256,118 @@ async fn execute(
             click(TABS, "アウトライン").await?;
             reveal(NODES).await?;
         }
+        TourAction::DiscussionMap => {
+            // Confirm the image, even if the click's IPC acknowledgement
+            // races with a rerender that replaces the button's contents.
+            const READY: &str = r#"
+                const img = document.getElementById("meetingram-discussion-map");
+                if (img?.complete && img.naturalWidth > 0) return 2;
+                const button = document.getElementById("meetingram-draw-discussion-map");
+                if (!button) return 0;
+                if (!button.disabled && !button.dataset.e2eRequested) {
+                    button.dataset.e2eRequested = "true";
+                    button.scrollIntoView({block: "center"});
+                    button.click();
+                }
+                return 1;
+            "#;
+            let mut last = 0;
+            let wait_result = tokio::time::timeout(STEP_TIMEOUT, async {
+                loop {
+                    last = dom::<u8>(READY).await.unwrap_or(3);
+                    if last == 2 {
+                        break;
+                    }
+                    tokio::time::sleep(POLL_INTERVAL).await;
+                }
+            })
+            .await;
+            if wait_result.is_err() {
+                return Err(match last {
+                    0 => "diagram_draw_button_unavailable",
+                    1 => "diagram_image_not_loaded",
+                    _ => "diagram_dom_query_failed",
+                });
+            }
+            reveal("#meetingram-discussion-map")
+                .await
+                .map_err(|_| "diagram_reveal_failed")?;
+        }
+        TourAction::DiscussionMapPerformance => {
+            #[derive(serde::Deserialize)]
+            struct Timing {
+                fast_30: u32,
+                fast_100: u32,
+                longest_task: u32,
+            }
+            let data = tokio::time::timeout(
+                STEP_TIMEOUT,
+                dom::<Timing>(include_str!("discussion_diagram_e2e.js")),
+            )
+            .await
+            .map_err(|_| "diagram_timing_timeout")?
+            .ok_or("diagram_timing_failed")?;
+            tracing::info!(
+                fast_30 = data.fast_30,
+                fast_100 = data.fast_100,
+                longest_task_ms = data.longest_task,
+                "scripted discussion map timing"
+            );
+            if data.fast_30 < 9 || data.fast_100 < 9 || data.longest_task > 500 {
+                return Err("diagram_timing_limit");
+            }
+        }
+        TourAction::StopRecordingFromUi => {
+            let ready = std::path::PathBuf::from(
+                std::env::var_os("MEETINGRAM_E2E_TOUR_DIR").ok_or("tour_directory_missing")?,
+            )
+            .join("stop-from-ui.ready");
+            wait(Duration::from_secs(115), || async {
+                tokio::fs::try_exists(&ready)
+                    .await
+                    .ok()
+                    .filter(|exists| *exists)
+            })
+            .await?;
+            click("button", "← 戻る").await?;
+            wait(STEP_TIMEOUT, || async {
+                dom::<bool>("return !!document.querySelector('button.stop:not([disabled])');")
+                    .await
+                    .filter(|ready| *ready)
+            })
+            .await
+            .map_err(|_| "stop_control_missing")?;
+            let latency = dom::<u64>(r#"
+                const stop = document.querySelector('button.stop');
+                if (!stop || stop.disabled) return null;
+                const start = performance.now();
+                stop.click();
+                while (performance.now() - start <= 500) {
+                    if (stop.disabled || !stop.isConnected) return Math.ceil(performance.now() - start);
+                    await new Promise(resolve => setTimeout(resolve, 4));
+                }
+                return null;
+            "#).await.ok_or("stop_control_not_accepted")?;
+            tracing::info!(latency_ms = latency, "scripted stop control accepted");
+            // The next step switches between the two completed sessions.
+            click(HISTORY, "").await?;
+        }
+        TourAction::SaveDiscussionMap => {
+            use base64::{engine::general_purpose::STANDARD, Engine as _};
+            let path = std::path::PathBuf::from(
+                std::env::var_os("MEETINGRAM_E2E_TOUR_DIR").ok_or("tour_directory_missing")?,
+            )
+            .join("discussion-map.svg");
+            let preview = dom::<String>(r#"return document.getElementById("meetingram-discussion-map")?.getAttribute("src") ?? "";"#)
+                .await
+                .and_then(|url| STANDARD.decode(url.strip_prefix("data:image/svg+xml;base64,")?).ok())
+                .ok_or("diagram_preview_missing")?;
+            click("button", "SVG を保存").await?;
+            wait(STEP_TIMEOUT, || async {
+                std::fs::read(&path).ok().filter(|saved| *saved == preview)
+            })
+            .await?;
+        }
         TourAction::LiveEvidence => {
             wait_status(state, Duration::from_secs(80), |status| {
                 status.recording && status.elapsed_ms >= 60_000
