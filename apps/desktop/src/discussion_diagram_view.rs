@@ -62,6 +62,9 @@ async fn render(diagram: discussion_diagram::Diagram) -> Result<(String, u32, bo
             Ok(RenderResult::Failure { error }) if error == "limit_exceeded" => {
                 Err("図が上限を超えました。議題を選んでください")
             }
+            Ok(RenderResult::Failure { error }) if error == "busy" => {
+                Err("前の描画が終わるまでお待ちください")
+            }
             _ => Err("議論を図解できませんでした"),
         }
     }

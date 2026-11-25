@@ -85,8 +85,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22.18.0
+      # TEMPORARY: svg-diagram's mindmap edge and tags (ADR 0081) are not released
+      # yet, so the renderer is bundled from this pinned commit. After the
+      # release, remove this checkout and SVG_DIAGRAM_SRC, and use the npm
+      # package version again.
+      - uses: actions/checkout@v4
+        with:
+          repository: cuzic/svg-diagram
+          ref: a2336c01695720cbec7e3d19288d252a4b1c9a13
+          path: svg-diagram-src
       - name: Verify bundled discussion renderer
         working-directory: apps/desktop/diagram-renderer
+        env:
+          SVG_DIAGRAM_SRC: ${{ github.workspace }}/svg-diagram-src
         run: |
           npm ci --ignore-scripts
           npm run build

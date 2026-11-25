@@ -26,8 +26,25 @@ struct Branch {
     sub: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     tone: Option<&'static str>,
+    /// The line to the parent. Only stances set it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    edge: Option<BranchEdge>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    tags: Vec<Tag>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     children: Vec<Branch>,
+}
+
+#[derive(Serialize)]
+struct BranchEdge {
+    tone: &'static str,
+    line: &'static str,
+}
+
+#[derive(Serialize)]
+struct Tag {
+    text: &'static str,
+    tone: &'static str,
 }
 
 pub fn agendas(graph: &Graph) -> Vec<(&str, &str)> {
@@ -50,6 +67,8 @@ pub fn project(
         label: "議論の全体像".into(),
         sub: caption,
         tone: None,
+        edge: None,
+        tags: vec![],
         children: vec![],
     };
     let mut remaining = 99; // The root is also a displayed item.
@@ -83,6 +102,8 @@ pub fn project(
                 label: "未整理".into(),
                 sub: String::new(),
                 tone: None,
+                edge: None,
+                tags: vec![],
                 children: vec![],
             };
             for node in outline.unattached {
@@ -193,22 +214,32 @@ fn node_branch(
     let question = (node.kind == NodeKind::Issue).then(|| {
         if derived.decided.contains(&node.nid) {
             "決定済み"
-        } else if derived.unanswered.contains(&node.nid) {
-            "未回答"
         } else if node.status == Status::Retracted {
             "撤回済み"
+        } else if derived.unanswered.contains(&node.nid) {
+            "未回答"
         } else {
             "検討中"
         }
     });
-    let status = match node.kind {
-        NodeKind::Issue => question,
-        NodeKind::Action => Some(match node.status {
-            Status::Open => "未解決",
-            Status::Resolved => "解決済み",
-            Status::Decided => "決定済み",
-            Status::Retracted => "撤回済み",
-            _ => node.status.as_str(),
+    let state = match node.kind {
+        NodeKind::Issue => question.map(|text| {
+            let tone = match text {
+                "未回答" => "danger",
+                "決定済み" => "accent",
+                _ => "muted",
+            };
+            Tag { text, tone }
+        }),
+        NodeKind::Action => Some(Tag {
+            text: match node.status {
+                Status::Open => "未解決",
+                Status::Resolved => "解決済み",
+                Status::Decided => "決定済み",
+                Status::Retracted => "撤回済み",
+                _ => node.status.as_str(),
+            },
+            tone: "muted",
         }),
         _ => None,
     };
@@ -218,22 +249,46 @@ fn node_branch(
         NodeKind::Issue if question == Some("未回答") => Some("danger"),
         _ => None,
     };
-    let stance = match relation {
-        Some(EdgeKind::Supports) => Some("賛成"),
-        Some(EdgeKind::ObjectsTo) => Some("反対"),
-        _ => None,
+    let (stance, edge) = match relation {
+        Some(EdgeKind::Supports) => (
+            Some(Tag {
+                text: "賛成",
+                tone: "accent",
+            }),
+            Some(BranchEdge {
+                tone: "accent",
+                line: "solid",
+            }),
+        ),
+        Some(EdgeKind::ObjectsTo) => (
+            Some(Tag {
+                text: "反対",
+                tone: "danger",
+            }),
+            Some(BranchEdge {
+                tone: "danger",
+                line: "dashed",
+            }),
+        ),
+        _ => (None, None),
     };
-    let sub = [
-        Some(kind),
-        status,
-        stance,
-        reference.then_some("参照"),
-        (node.review == Review::Auto && node.confidence < threshold).then_some("要確認"),
+    // At most three tags: kind, then the question state or the stance, then the
+    // review flag.
+    let tags = [
+        Some(Tag {
+            text: kind,
+            tone: "muted",
+        }),
+        state.or(stance),
+        (node.review == Review::Auto && node.confidence < threshold).then_some(Tag {
+            text: "要確認",
+            tone: "muted",
+        }),
     ]
     .into_iter()
     .flatten()
-    .collect::<Vec<_>>()
-    .join(" · ");
+    .collect();
+    let sub = if reference { "参照" } else { "" }.to_string();
     let label = node
         .text
         .chars()
@@ -243,6 +298,8 @@ fn node_branch(
         label,
         sub,
         tone,
+        edge,
+        tags,
         children: vec![],
     }
 }
@@ -293,7 +350,14 @@ pub fn valid_svg(svg: &str) -> bool {
                         "stroke-width",
                         "stroke-dasharray",
                     ][..],
-                    "path" => &["d", "fill", "stroke", "stroke-width"][..],
+                    "path" => &[
+                        "d",
+                        "fill",
+                        "stroke",
+                        "stroke-width",
+                        "stroke-dasharray",
+                        "stroke-linecap",
+                    ][..],
                     "text" => &["x", "y", "text-anchor", "font-size", "font-weight", "fill"][..],
                     "tspan" => &["class"][..],
                     _ => return false,
@@ -309,6 +373,7 @@ pub fn valid_svg(svg: &str) -> bool {
                                     })
                             }
                             "class" => attr.value() == "emoji",
+                            "stroke-linecap" => attr.value() == "round",
                             "stroke-dasharray" => {
                                 let value = attr.value();
                                 (1..=8).contains(&value.len())
@@ -357,6 +422,8 @@ mod tests {
             "<image href=\"https://example.com\"/>",
             "<rect stroke-dasharray=\"url(#x)\"/>",
             "<rect stroke-dasharray=\"6,4,2\"/>",
+            "<path stroke-linecap=\"square\"/>",
+            "<path stroke-dasharray=\"url(#x)\"/>",
         ] {
             assert!(!valid_svg(&wrap(fragment)), "{fragment}");
         }
@@ -462,47 +529,86 @@ mod tests {
             .unwrap_or(&serde_json::Value::Null)
     }
 
+    fn project_json(graph: &Graph) -> serde_json::Value {
+        serde_json::to_value(project(graph, None, 0.6, String::new()).unwrap()).unwrap()
+    }
+
+    /// The tags of a node as "text:tone" strings.
+    fn tags(json: &serde_json::Value, id: &str) -> Vec<String> {
+        find(&json["root"], &format!("text {id}"))["tags"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|tag| {
+                format!(
+                    "{}:{}",
+                    tag["text"].as_str().unwrap(),
+                    tag["tone"].as_str().unwrap()
+                )
+            })
+            .collect()
+    }
+
+    fn tone<'a>(json: &'a serde_json::Value, id: &str) -> Option<&'a str> {
+        find(&json["root"], &format!("text {id}"))["tone"].as_str()
+    }
+
     #[test]
-    fn tones_and_states_follow_kind_and_edges() {
-        let graph = tones_graph();
-        let json =
-            serde_json::to_value(project(&graph, None, 0.6, String::new()).unwrap()).unwrap();
-        let root = &json["root"];
-        let sub = |id: &str| {
-            find(root, &format!("text {id}"))["sub"]
-                .as_str()
-                .unwrap_or("")
-        };
-        let tone = |id: &str| find(root, &format!("text {id}"))["tone"].as_str();
-        // A decision is solid and carries no state.
-        assert_eq!(tone("dec"), Some("solid"));
-        assert_eq!(sub("dec"), "決定");
+    fn tones_tags_and_edges_follow_kind_and_edges() {
+        let json = project_json(&tones_graph());
+        let node = |id: &str| find(&json["root"], &format!("text {id}")).clone();
+        // A decision is solid; its tags carry no state.
+        assert_eq!(tone(&json, "dec"), Some("solid"));
+        assert_eq!(tags(&json, "dec"), ["決定:muted"]);
         // The stored status is "open", yet a live decision makes it decided.
-        assert_eq!(sub("done"), "問い · 決定済み");
-        assert_eq!(tone("done"), None);
+        assert_eq!(tags(&json, "done"), ["問い:muted", "決定済み:accent"]);
+        assert_eq!(tone(&json, "done"), None);
         // An unanswered question is danger.
-        assert_eq!(tone("open"), Some("danger"));
-        assert_eq!(sub("open"), "問い · 未回答");
-        // Stances are told apart by their label, not a tone, and show no state.
-        assert_eq!(tone("pro"), None);
-        assert_eq!(tone("con"), None);
-        assert_eq!(sub("pro"), "理由 · 賛成");
-        assert_eq!(sub("con"), "理由 · 反対");
-        // Positions are plain; homework is accented with its state.
-        assert_eq!(tone("pos"), None);
-        assert_eq!(tone("act"), Some("accent"));
-        assert_eq!(sub("act"), "宿題 · 未解決");
+        assert_eq!(tone(&json, "open"), Some("danger"));
+        assert_eq!(tags(&json, "open"), ["問い:muted", "未回答:danger"]);
+        // Stances: a tag and a line, no box tone, no state.
+        assert_eq!(tone(&json, "pro"), None);
+        assert_eq!(tone(&json, "con"), None);
+        assert_eq!(tags(&json, "pro"), ["理由:muted", "賛成:accent"]);
+        assert_eq!(tags(&json, "con"), ["理由:muted", "反対:danger"]);
+        assert_eq!(
+            node("pro")["edge"],
+            serde_json::json!({"tone": "accent", "line": "solid"})
+        );
+        assert_eq!(
+            node("con")["edge"],
+            serde_json::json!({"tone": "danger", "line": "dashed"})
+        );
+        // Other nodes get no edge.
+        for id in ["pos", "dec", "act", "done"] {
+            assert!(node(id)["edge"].is_null(), "{id}");
+        }
+        // Positions are plain; homework is accented with its state tag.
+        assert_eq!(tone(&json, "pos"), None);
+        assert_eq!(tone(&json, "act"), Some("accent"));
+        assert_eq!(tags(&json, "act"), ["宿題:muted", "未解決:muted"]);
+        // The sub line is only for references and the root caption.
+        assert_eq!(node("pos")["sub"], serde_json::Value::Null);
+    }
+
+    #[test]
+    fn low_confidence_adds_a_review_tag_within_three_tags() {
+        let mut graph = tones_graph();
+        graph.nodes.get_mut("pro").unwrap().confidence = 0.1;
+        let json = project_json(&graph);
+        assert_eq!(
+            tags(&json, "pro"),
+            ["理由:muted", "賛成:accent", "要確認:muted"]
+        );
     }
 
     #[test]
     fn answered_question_without_decision_is_under_discussion() {
         let mut graph = tones_graph();
         graph.edges.remove("dec-done");
-        let json =
-            serde_json::to_value(project(&graph, None, 0.6, String::new()).unwrap()).unwrap();
-        let done = find(&json["root"], "text done");
-        assert_eq!(done["sub"], "問い · 検討中");
-        assert!(done["tone"].is_null());
+        let json = project_json(&graph);
+        assert_eq!(tags(&json, "done"), ["問い:muted", "検討中:muted"]);
+        assert_eq!(tone(&json, "done"), None);
     }
 
     #[test]
@@ -518,19 +624,55 @@ mod tests {
         graph
             .edges
             .insert("d-q".into(), edge("d", "q", EdgeKind::Resolves));
-        let json =
-            serde_json::to_value(project(&graph, None, 0.6, String::new()).unwrap()).unwrap();
-        let q = find(&json["root"], "text q");
-        assert_eq!(q["sub"], "問い · 決定済み");
-        assert!(q["tone"].is_null());
+        let json = project_json(&graph);
+        assert_eq!(tags(&json, "q"), ["問い:muted", "決定済み:accent"]);
+        assert_eq!(tone(&json, "q"), None);
+    }
+
+    #[test]
+    fn retracted_question_is_not_danger() {
+        // m1: retracted comes before unanswered.
+        let mut graph = Graph::default();
+        graph
+            .nodes
+            .insert("q".into(), node("q", NodeKind::Issue, Status::Retracted));
+        let json = project_json(&graph);
+        assert_eq!(tags(&json, "q"), ["問い:muted", "撤回済み:muted"]);
+        assert_eq!(tone(&json, "q"), None);
     }
 
     #[test]
     fn a_rejected_decision_does_not_decide_the_question() {
         let mut graph = tones_graph();
         graph.nodes.get_mut("dec").unwrap().review = Review::Rejected;
-        let json =
-            serde_json::to_value(project(&graph, None, 0.6, String::new()).unwrap()).unwrap();
-        assert_eq!(find(&json["root"], "text done")["sub"], "問い · 検討中");
+        let json = project_json(&graph);
+        assert_eq!(tags(&json, "done"), ["問い:muted", "検討中:muted"]);
+    }
+
+    #[test]
+    fn a_rejected_resolves_edge_does_not_decide_the_question() {
+        // m2
+        let mut graph = tones_graph();
+        graph.edges.get_mut("dec-done").unwrap().review = Review::Rejected;
+        let json = project_json(&graph);
+        assert_eq!(tags(&json, "done"), ["問い:muted", "検討中:muted"]);
+    }
+
+    #[test]
+    fn unattached_items_alone_can_exceed_the_limit() {
+        // m2: the group header plus 99 unattached items exceed the budget of 99.
+        let mut graph = Graph::default();
+        for i in 0..99 {
+            let id = format!("n{i:03}");
+            graph
+                .nodes
+                .insert(id.clone(), node(&id, NodeKind::Action, Status::Open));
+        }
+        assert!(matches!(
+            project(&graph, None, 0.6, String::new()),
+            Err(ProjectionError::Limit)
+        ));
+        graph.nodes.remove("n098");
+        assert!(project(&graph, None, 0.6, String::new()).is_ok());
     }
 }
