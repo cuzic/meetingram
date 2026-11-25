@@ -292,11 +292,11 @@ async fn execute(
             // The zoom select must show the initial 100% (M1): a select whose
             // option is not marked selected would still read "全体表示".
             let zoom = dom::<String>(
-                r#"
-                const select = document.getElementById("meetingram-discussion-map-zoom");
+                r##"
+                const select = visible("#meetingram-discussion-map-zoom")[0];
                 const option = select?.selectedOptions?.[0];
                 return select ? `${select.value}|${option?.textContent ?? ""}` : "";
-                "#,
+                "##,
             )
             .await;
             if zoom.as_deref() != Some("100|100%") {
