@@ -62,6 +62,9 @@ async fn render(diagram: discussion_diagram::Diagram) -> Result<(String, u32, bo
             Ok(RenderResult::Failure { error }) if error == "limit_exceeded" => {
                 Err("図が上限を超えました。議題を選んでください")
             }
+            Ok(RenderResult::Failure { error }) if error == "busy" => {
+                Err("前の描画が終わるまでお待ちください")
+            }
             _ => Err("議論を図解できませんでした"),
         }
     }
@@ -93,7 +96,7 @@ pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, Str
     let mut message = use_signal(|| None::<&'static str>);
     let mut running = use_signal(|| false);
     let mut saving = use_signal(|| false);
-    let mut zoom = use_signal(|| 0_u32);
+    let mut zoom = use_signal(|| 100_u32);
     let consumer = state.graph_consumer.clone();
     let mut graph_status = use_signal(|| {
         let status = consumer.status(session_id);
@@ -234,15 +237,17 @@ pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, Str
                 label {
                     "表示倍率"
                     select {
-                        value: "{zoom_percent}",
+                        id: "meetingram-discussion-map-zoom",
                         onchange: move |event| {
                             if let Ok(value) = event.value().parse::<u32>() {
                                 zoom.set(value);
                             }
                         },
-                        option { value: "0", "全体表示" }
+                        // `selected` on each option: a `value` on the select is applied
+                        // before the options are rendered and does not take effect.
+                        option { value: "0", selected: zoom_percent == 0, "全体表示" }
                         for percent in [50, 75, 100, 125, 150, 200] {
-                            option { key: "{percent}", value: "{percent}", "{percent}%" }
+                            option { key: "{percent}", value: "{percent}", selected: zoom_percent == percent, "{percent}%" }
                         }
                     }
                 }

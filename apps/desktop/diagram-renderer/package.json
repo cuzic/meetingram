@@ -1,1 +1,1 @@
-{"private":true,"type":"module","scripts":{"build":"node build.mjs"},"dependencies":{"svg-diagram":"0.9.0"},"devDependencies":{"esbuild":"0.25.12"}}
+{"private":true,"type":"module","scripts":{"build":"node build.mjs"},"dependencies":{"svg-diagram":"https://github.com/cuzic/svg-diagram/releases/download/v0.10.0/svg-diagram-0.10.0.tgz"},"devDependencies":{"esbuild":"0.25.12"}}

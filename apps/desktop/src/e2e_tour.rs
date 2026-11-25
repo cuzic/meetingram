@@ -289,6 +289,19 @@ async fn execute(
                     _ => "diagram_dom_query_failed",
                 });
             }
+            // The zoom select must show the initial 100% (M1): a select whose
+            // option is not marked selected would still read "全体表示".
+            let zoom = dom::<String>(
+                r##"
+                const select = visible("#meetingram-discussion-map-zoom")[0];
+                const option = select?.selectedOptions?.[0];
+                return select ? `${select.value}|${option?.textContent ?? ""}` : "";
+                "##,
+            )
+            .await;
+            if zoom.as_deref() != Some("100|100%") {
+                return Err("diagram_zoom_not_100");
+            }
             reveal("#meetingram-discussion-map")
                 .await
                 .map_err(|_| "diagram_reveal_failed")?;
