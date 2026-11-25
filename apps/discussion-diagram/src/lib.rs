@@ -531,6 +531,6 @@ mod tests {
         graph.nodes.get_mut("dec").unwrap().review = Review::Rejected;
         let json =
             serde_json::to_value(project(&graph, None, 0.6, String::new()).unwrap()).unwrap();
-        assert_eq!(find(&json["root"], "text done")["sub"], "問い");
+        assert_eq!(find(&json["root"], "text done")["sub"], "問い · 検討中");
     }
 }
