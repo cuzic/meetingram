@@ -187,13 +187,22 @@ fn node_branch(
         NodeKind::Action => "宿題",
         _ => node.kind.as_str(),
     };
-    let unanswered = node.kind == NodeKind::Issue && derived.unanswered.contains(&node.nid);
-    // Only questions and homework carry a state. A question's state follows its
-    // edges (a live decision, or no answer) before the stored status.
+    // Only questions and homework carry a state. A question's state and tone
+    // come from one judgment over its edges (a live decision, an answer), not
+    // from the stored status.
+    let question = (node.kind == NodeKind::Issue).then(|| {
+        if derived.decided.contains(&node.nid) {
+            "決定済み"
+        } else if derived.unanswered.contains(&node.nid) {
+            "未回答"
+        } else if node.status == Status::Retracted {
+            "撤回済み"
+        } else {
+            "検討中"
+        }
+    });
     let status = match node.kind {
-        NodeKind::Issue if derived.decided.contains(&node.nid) => Some("決定済み"),
-        NodeKind::Issue if unanswered => Some("未回答"),
-        NodeKind::Issue if node.status == Status::Retracted => Some("撤回済み"),
+        NodeKind::Issue => question,
         NodeKind::Action => Some(match node.status {
             Status::Open => "未解決",
             Status::Resolved => "解決済み",
@@ -203,12 +212,10 @@ fn node_branch(
         }),
         _ => None,
     };
-    let tone = match (node.kind, relation) {
-        (NodeKind::Decision, _) => Some("solid"),
-        (NodeKind::Action, _) => Some("accent"),
-        (NodeKind::Issue, _) if unanswered => Some("danger"),
-        (NodeKind::Argument, Some(EdgeKind::Supports)) => Some("new"),
-        (NodeKind::Argument, Some(EdgeKind::ObjectsTo)) => Some("removed"),
+    let tone = match node.kind {
+        NodeKind::Decision => Some("solid"),
+        NodeKind::Action => Some("accent"),
+        NodeKind::Issue if question == Some("未回答") => Some("danger"),
         _ => None,
     };
     let stance = match relation {
@@ -476,15 +483,46 @@ mod tests {
         // An unanswered question is danger.
         assert_eq!(tone("open"), Some("danger"));
         assert_eq!(sub("open"), "問い · 未回答");
-        // Opposite stances differ and neither shows a state.
-        assert_eq!(tone("pro"), Some("new"));
-        assert_eq!(tone("con"), Some("removed"));
+        // Stances are told apart by their label, not a tone, and show no state.
+        assert_eq!(tone("pro"), None);
+        assert_eq!(tone("con"), None);
         assert_eq!(sub("pro"), "理由 · 賛成");
         assert_eq!(sub("con"), "理由 · 反対");
         // Positions are plain; homework is accented with its state.
         assert_eq!(tone("pos"), None);
         assert_eq!(tone("act"), Some("accent"));
         assert_eq!(sub("act"), "宿題 · 未解決");
+    }
+
+    #[test]
+    fn answered_question_without_decision_is_under_discussion() {
+        let mut graph = tones_graph();
+        graph.edges.remove("dec-done");
+        let json =
+            serde_json::to_value(project(&graph, None, 0.6, String::new()).unwrap()).unwrap();
+        let done = find(&json["root"], "text done");
+        assert_eq!(done["sub"], "問い · 検討中");
+        assert!(done["tone"].is_null());
+    }
+
+    #[test]
+    fn decided_question_without_answer_is_not_danger() {
+        // A confirmation question decided at once: a decision, no responds_to.
+        let mut graph = Graph::default();
+        graph
+            .nodes
+            .insert("q".into(), node("q", NodeKind::Issue, Status::Open));
+        graph
+            .nodes
+            .insert("d".into(), node("d", NodeKind::Decision, Status::Decided));
+        graph
+            .edges
+            .insert("d-q".into(), edge("d", "q", EdgeKind::Resolves));
+        let json =
+            serde_json::to_value(project(&graph, None, 0.6, String::new()).unwrap()).unwrap();
+        let q = find(&json["root"], "text q");
+        assert_eq!(q["sub"], "問い · 決定済み");
+        assert!(q["tone"].is_null());
     }
 
     #[test]
