@@ -1,6 +1,6 @@
 # ADR 0004 — svg-diagram で会議の議論を図解する
 
-- Status: Proposed
+- Status: Accepted
 - 日付: 2026-11-24
 - 関連: [ADR 0001 — 議論グラフ](0001-discussion-graph.md)、[ADR 0002 — Windows E2E](0002-e2e-scripted-backends.md)
 
@@ -10,11 +10,11 @@ Meetingram の主要な成果物は、それまでの会議内容を俯瞰でき
 
 ## owner の決定
 
-| 問い | 決定または提案 |
+| 問い | 決定 |
 | --- | --- |
 | 最優先の成果物 | svg-diagram による会議内容の図解（2026-11-24） |
-| 表示の起点と最初の図種 | 提案。録音中と履歴で、利用者が操作して表示・更新できる議論マップを作る |
-| 初回の配布方式 | 提案。svg-diagram のブラウザ向けコードを Windows アプリに組み込む |
+| 表示の起点と最初の図種 | 録音中と履歴で、利用者が操作して表示・更新できる議論マップを作る。CRT・対立解消図は別 ADR（2026-11-25） |
+| 初回の配布方式 | svg-diagram のブラウザ向けコードを Windows アプリに組み込む（2026-11-25） |
 
 ## 選択肢
 
@@ -22,7 +22,7 @@ Meetingram の主要な成果物は、それまでの会議内容を俯瞰でき
 - **B. Node と svg-diagram のレンダラーを同梱する。** 描画負荷を別プロセスに分離できる。配布形式、依存ライブラリ、Windows でのフォント解決を追加で扱う。
 - **C. 編集用の TypeScript を書き出す。** 実装は小さい。図を見る操作は外部の環境構築とビルドに依存する。
 
-## 提案する決定
+## 決定
 
 A を採用する。対象は既存の議論グラフ画面を持つ Windows。svg-diagram 0.9.0 の `svg-diagram/browser` は `diagram`、`mindmap`、`renderInBrowser`、`svgMeasurer` を公開する。Node 専用依存に到達しない入口であることを既存のバンドルテストが検証している。[ブラウザ用公開 API](https://github.com/cuzic/svg-diagram/blob/v0.9.0/lib/web.ts)
 
@@ -90,3 +90,4 @@ Opus はブロッカーなし・要修正と判定した。r4 で WebView2 検�
 | r2 | ブラウザ向け API を採用し、Windows 配布・検証・更新の契約を具体化 |
 | r3 | 追加レビュー第1回の指摘を反映 |
 | r4 | 追加レビュー第2回の指摘を反映 |
+| r5 | owner が図種と配布方式を承認し Accepted（2026-11-25）。PR #38 のレビュー（`docs/reviews/pr38-round1.md`、`pr38-round2.md`）で、tone・状態ラベル・文節の折り返しを反映 |
