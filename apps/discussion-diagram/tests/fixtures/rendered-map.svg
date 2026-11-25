@@ -1,24 +1,45 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="940" height="176" viewBox="0 0 940 176" role="img" aria-labelledby="svg-title">
+<svg xmlns="http://www.w3.org/2000/svg" width="1520" height="436" viewBox="0 0 1520 436" role="img" aria-labelledby="svg-title">
   <title id="svg-title">議論マップ</title>
   <style>
     text { font-family: 'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic','YuGothic',Meiryo,'Noto Sans JP',sans-serif; }
     .emoji { font-family: 'Noto Color Emoji','Segoe UI Emoji',sans-serif; }
   </style>
-  <rect x="0" y="0" width="940" height="176" fill="#ffffff"/>
+  <rect x="0" y="0" width="1520" height="436" fill="#ffffff"/>
 
-  <path d="M232,88 L256,88 L256,88 L276,88" fill="none" stroke="#6f6659" stroke-width="2"/>
-  <path d="M572,88 L592,88 L592,48 L616,48" fill="none" stroke="#6f6659" stroke-width="2"/>
-  <path d="M572,88 L592,88 L592,128 L616,128" fill="none" stroke="#6f6659" stroke-width="2"/>
-  <rect x="120" y="60" width="112" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
-  <rect x="276" y="60" width="296" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
-  <rect x="616" y="20" width="204" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
-  <rect x="616" y="100" width="168" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
-  <text x="176" y="82" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">議論の全体像</text>
-  <text x="176" y="102" text-anchor="middle" font-size="14" fill="#6f6659">版 11</text>
-  <text x="423" y="82" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">参加者に配布する案と反対意見を確認する</text>
-  <text x="423" y="102" text-anchor="middle" font-size="14" fill="#6f6659">問い · 未解決</text>
-  <text x="717" y="42" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">次回までに確認する<tspan class="emoji">😀</tspan> &amp; &lt; &gt;</text>
-  <text x="717" y="62" text-anchor="middle" font-size="14" fill="#6f6659">案 · 要確認</text>
-  <text x="698" y="122" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">費用の見積もりが必要</text>
-  <text x="698" y="142" text-anchor="middle" font-size="14" fill="#6f6659">理由 · 反対</text>
+  <path d="M380,220 L400,220 L400,88 L424,88" fill="none" stroke="#6f6659" stroke-width="2"/>
+  <path d="M716,88 L740,88 L740,88 L760,88" fill="none" stroke="#6f6659" stroke-width="2"/>
+  <path d="M916,88 L992,88 L992,48 L1072,48" fill="none" stroke="#6f6659" stroke-width="2"/>
+  <path d="M916,88 L992,88 L992,128 L1072,128" fill="none" stroke="#6f6659" stroke-width="2"/>
+  <path d="M380,220 L400,220 L400,300 L424,300" fill="none" stroke="#6f6659" stroke-width="2"/>
+  <path d="M564,300 L664,300 L664,208 L760,208" fill="none" stroke="#6f6659" stroke-width="2"/>
+  <path d="M564,300 L664,300 L664,300 L760,300" fill="none" stroke="#6f6659" stroke-width="2"/>
+  <path d="M564,300 L664,300 L664,388 L760,388" fill="none" stroke="#6f6659" stroke-width="2"/>
+  <rect x="268" y="192" width="112" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
+  <rect x="424" y="60" width="292" height="56" rx="8" fill="#ffffff" stroke="#b91c1c" stroke-width="2.5" stroke-dasharray="6,4"/>
+  <rect x="760" y="60" width="156" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
+  <rect x="1072" y="20" width="180" height="56" rx="8" fill="#dce9f7" stroke="#1d5fa8" stroke-width="2.5"/>
+  <rect x="1072" y="100" width="168" height="56" rx="8" fill="#f6f8fa" stroke="#6f6659" stroke-width="2.5" stroke-dasharray="6,4"/>
+  <rect x="424" y="272" width="140" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
+  <rect x="760" y="180" width="112" height="56" rx="8" fill="#ffffff" stroke="#22201b" stroke-width="2.5"/>
+  <rect x="760" y="260" width="268" height="76" rx="8" fill="#1d5fa8" stroke="#1d5fa8" stroke-width="2.5"/>
+  <rect x="760" y="360" width="140" height="56" rx="8" fill="#dce9f7" stroke="#1d5fa8" stroke-width="2.5"/>
+  <text x="323" y="212" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">議論の全体像</text>
+  <text x="323" y="232" text-anchor="middle" font-size="14" fill="#6f6659">版 11</text>
+  <text x="570" y="82" text-anchor="middle" font-size="14" font-weight="700" fill="#b91c1c">参加者に配布する案と反対意見を確認する</text>
+  <text x="570" y="102" text-anchor="middle" font-size="14" fill="#6f6659">問い · 未回答</text>
+  <text x="838" y="82" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">資料を事前配布する</text>
+  <text x="838" y="102" text-anchor="middle" font-size="14" fill="#6f6659">案 · 要確認</text>
+  <text x="1162" y="42" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">準備の時間を節約できる</text>
+  <text x="1162" y="62" text-anchor="middle" font-size="14" fill="#22201b">賛成</text>
+  <text x="1155" y="122" text-anchor="middle" font-size="14" font-weight="700" fill="#6f6659">費用の見積もりが必要</text>
+  <text x="1155" y="142" text-anchor="middle" font-size="14" fill="#6f6659">反対</text>
+  <text x="493" y="292" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">配布方法を決める</text>
+  <text x="493" y="312" text-anchor="middle" font-size="14" fill="#6f6659">問い · 決定済み</text>
+  <text x="817" y="202" text-anchor="middle" font-size="14" font-weight="700" fill="#22201b">メールで送る</text>
+  <text x="817" y="222" text-anchor="middle" font-size="14" fill="#6f6659">案</text>
+  <text x="894" y="282" text-anchor="middle" font-size="14" font-weight="700" fill="#ffffff">金曜までに参加者全員が見られる共有</text>
+  <text x="894" y="302" text-anchor="middle" font-size="14" font-weight="700" fill="#ffffff">フォルダへ資料を置く</text>
+  <text x="894" y="322" text-anchor="middle" font-size="14" fill="#ffffff">決定</text>
+  <text x="831" y="382" text-anchor="middle" font-size="14" font-weight="700" fill="#1d5fa8">見積もりを集める</text>
+  <text x="831" y="402" text-anchor="middle" font-size="14" fill="#22201b">宿題 · 未解決</text>
 </svg>

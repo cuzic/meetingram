@@ -1,7 +1,8 @@
 use discussion_graph::{
-    build_outline, EdgeKind, Graph, Node, NodeKind, OutlineNode, Review, Status,
+    build_outline, detect_gaps, EdgeKind, Graph, Node, NodeKind, OutlineNode, Review, Status,
 };
 use serde::Serialize;
+use std::collections::BTreeSet;
 
 pub const MAX_SVG_BYTES: usize = 1024 * 1024;
 
@@ -23,6 +24,8 @@ struct Branch {
     label: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     sub: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tone: Option<&'static str>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     children: Vec<Branch>,
 }
@@ -42,9 +45,11 @@ pub fn project(
     caption: String,
 ) -> Result<Diagram, ProjectionError> {
     let outline = build_outline(graph);
+    let derived = Derived::new(graph);
     let mut root = Branch {
         label: "議論の全体像".into(),
         sub: caption,
+        tone: None,
         children: vec![],
     };
     let mut remaining = 99; // The root is also a displayed item.
@@ -55,25 +60,36 @@ pub fn project(
             .find(|entry| entry.node.nid == id)
             .ok_or(ProjectionError::UnknownAgenda)?;
         root.label = "選択した議題".into();
-        root.children
-            .push(project_branch(selected, 1, threshold, &mut remaining)?);
+        root.children.push(project_branch(
+            selected,
+            1,
+            threshold,
+            &derived,
+            &mut remaining,
+        )?);
     } else {
         for entry in &outline.agendas {
-            root.children
-                .push(project_branch(entry, 1, threshold, &mut remaining)?);
+            root.children.push(project_branch(
+                entry,
+                1,
+                threshold,
+                &derived,
+                &mut remaining,
+            )?);
         }
         if !outline.unattached.is_empty() {
             check_limit("未整理", 1, &mut remaining)?;
             let mut unattached = Branch {
                 label: "未整理".into(),
                 sub: String::new(),
+                tone: None,
                 children: vec![],
             };
             for node in outline.unattached {
                 check_limit(&node.text, 2, &mut remaining)?;
                 unattached
                     .children
-                    .push(node_branch(node, None, false, threshold));
+                    .push(node_branch(node, None, false, threshold, &derived));
             }
             root.children.push(unattached);
         }
@@ -100,21 +116,69 @@ fn project_branch(
     entry: &OutlineNode<'_>,
     depth: usize,
     threshold: f64,
+    derived: &Derived,
     remaining: &mut usize,
 ) -> Result<Branch, ProjectionError> {
     check_limit(&entry.node.text, depth, remaining)?;
-    let mut branch = node_branch(entry.node, entry.relation, entry.is_reference, threshold);
+    let mut branch = node_branch(
+        entry.node,
+        entry.relation,
+        entry.is_reference,
+        threshold,
+        derived,
+    );
     if !entry.is_reference {
         for child in &entry.children {
-            branch
-                .children
-                .push(project_branch(child, depth + 1, threshold, remaining)?);
+            branch.children.push(project_branch(
+                child,
+                depth + 1,
+                threshold,
+                derived,
+                remaining,
+            )?);
         }
     }
     Ok(branch)
 }
 
-fn node_branch(node: &Node, relation: Option<EdgeKind>, reference: bool, threshold: f64) -> Branch {
+/// What the edges say about each issue, independent of its stored status.
+struct Derived {
+    unanswered: BTreeSet<String>,
+    decided: BTreeSet<String>,
+}
+
+impl Derived {
+    fn new(graph: &Graph) -> Self {
+        let live = |nid: &str| graph.nodes.get(nid).is_some_and(Node::is_live);
+        let decided = graph
+            .edges
+            .values()
+            .filter(|edge| {
+                edge.kind == EdgeKind::Resolves
+                    && edge.review != Review::Rejected
+                    && live(&edge.src)
+                    && live(&edge.dst)
+                    && graph.nodes[&edge.src].kind == NodeKind::Decision
+            })
+            .map(|edge| edge.dst.clone())
+            .collect();
+        Self {
+            unanswered: detect_gaps(graph, false)
+                .unanswered_issues
+                .into_iter()
+                .collect(),
+            decided,
+        }
+    }
+}
+
+fn node_branch(
+    node: &Node,
+    relation: Option<EdgeKind>,
+    reference: bool,
+    threshold: f64,
+    derived: &Derived,
+) -> Branch {
     let kind = match node.kind {
         NodeKind::Issue => "問い",
         NodeKind::Position => "案",
@@ -123,12 +187,29 @@ fn node_branch(node: &Node, relation: Option<EdgeKind>, reference: bool, thresho
         NodeKind::Action => "宿題",
         _ => node.kind.as_str(),
     };
-    let status = match node.status {
-        Status::Open => "未解決",
-        Status::Resolved => "解決済み",
-        Status::Decided => "決定済み",
-        Status::Retracted => "撤回済み",
-        _ => node.status.as_str(),
+    let unanswered = node.kind == NodeKind::Issue && derived.unanswered.contains(&node.nid);
+    // Only questions and homework carry a state. A question's state follows its
+    // edges (a live decision, or no answer) before the stored status.
+    let status = match node.kind {
+        NodeKind::Issue if derived.decided.contains(&node.nid) => Some("決定済み"),
+        NodeKind::Issue if unanswered => Some("未回答"),
+        NodeKind::Issue if node.status == Status::Retracted => Some("撤回済み"),
+        NodeKind::Action => Some(match node.status {
+            Status::Open => "未解決",
+            Status::Resolved => "解決済み",
+            Status::Decided => "決定済み",
+            Status::Retracted => "撤回済み",
+            _ => node.status.as_str(),
+        }),
+        _ => None,
+    };
+    let tone = match (node.kind, relation) {
+        (NodeKind::Decision, _) => Some("solid"),
+        (NodeKind::Action, _) => Some("accent"),
+        (NodeKind::Issue, _) if unanswered => Some("danger"),
+        (NodeKind::Argument, Some(EdgeKind::Supports)) => Some("new"),
+        (NodeKind::Argument, Some(EdgeKind::ObjectsTo)) => Some("removed"),
+        _ => None,
     };
     let stance = match relation {
         Some(EdgeKind::Supports) => Some("賛成"),
@@ -137,7 +218,7 @@ fn node_branch(node: &Node, relation: Option<EdgeKind>, reference: bool, thresho
     };
     let sub = [
         Some(kind),
-        Some(status),
+        status,
         stance,
         reference.then_some("参照"),
         (node.review == Review::Auto && node.confidence < threshold).then_some("要確認"),
@@ -154,6 +235,7 @@ fn node_branch(node: &Node, relation: Option<EdgeKind>, reference: bool, thresho
     Branch {
         label,
         sub,
+        tone,
         children: vec![],
     }
 }
@@ -202,6 +284,7 @@ pub fn valid_svg(svg: &str) -> bool {
                         "fill",
                         "stroke",
                         "stroke-width",
+                        "stroke-dasharray",
                     ][..],
                     "path" => &["d", "fill", "stroke", "stroke-width"][..],
                     "text" => &["x", "y", "text-anchor", "font-size", "font-weight", "fill"][..],
@@ -219,6 +302,14 @@ pub fn valid_svg(svg: &str) -> bool {
                                     })
                             }
                             "class" => attr.value() == "emoji",
+                            "stroke-dasharray" => {
+                                let value = attr.value();
+                                (1..=8).contains(&value.len())
+                                    && value.split(',').count() == 2
+                                    && value.split(',').all(|part| {
+                                        !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit())
+                                    })
+                            }
                             _ => true,
                         }
                 })
@@ -257,6 +348,8 @@ mod tests {
             "<rect fill=\"url(https://example.com)\"/>",
             "<style>text { fill: \\75rl(x) }</style>",
             "<image href=\"https://example.com\"/>",
+            "<rect stroke-dasharray=\"url(#x)\"/>",
+            "<rect stroke-dasharray=\"6,4,2\"/>",
         ] {
             assert!(!valid_svg(&wrap(fragment)), "{fragment}");
         }
@@ -294,5 +387,112 @@ mod tests {
             project(&graph, None, 0.6, String::new()),
             Err(ProjectionError::Limit)
         ));
+    }
+
+    fn node(id: &str, kind: NodeKind, status: Status) -> Node {
+        Node {
+            nid: id.into(),
+            kind,
+            text: format!("text {id}"),
+            status,
+            merged_into: None,
+            confidence: 1.0,
+            review: Review::Auto,
+            created_rev: 1,
+            updated_rev: 1,
+        }
+    }
+
+    fn edge(src: &str, dst: &str, kind: EdgeKind) -> discussion_graph::Edge {
+        discussion_graph::Edge {
+            eid: format!("{src}-{dst}"),
+            src: src.into(),
+            dst: dst.into(),
+            kind,
+            confidence: 1.0,
+            review: Review::Auto,
+            created_rev: 1,
+        }
+    }
+
+    fn tones_graph() -> Graph {
+        let mut graph = Graph::default();
+        for (id, kind, status) in [
+            ("open", NodeKind::Issue, Status::Open),
+            ("done", NodeKind::Issue, Status::Open),
+            ("pos", NodeKind::Position, Status::Open),
+            ("pro", NodeKind::Argument, Status::Open),
+            ("con", NodeKind::Argument, Status::Open),
+            ("dec", NodeKind::Decision, Status::Decided),
+            ("act", NodeKind::Action, Status::Open),
+        ] {
+            graph.nodes.insert(id.into(), node(id, kind, status));
+        }
+        for (src, dst, kind) in [
+            ("pos", "done", EdgeKind::RespondsTo),
+            ("pro", "pos", EdgeKind::Supports),
+            ("con", "pos", EdgeKind::ObjectsTo),
+            ("dec", "done", EdgeKind::Resolves),
+            ("act", "dec", EdgeKind::Assigns),
+        ] {
+            graph
+                .edges
+                .insert(format!("{src}-{dst}"), edge(src, dst, kind));
+        }
+        graph
+    }
+
+    fn find<'a>(branch: &'a serde_json::Value, label: &str) -> &'a serde_json::Value {
+        if branch["label"] == label {
+            return branch;
+        }
+        branch["children"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|child| find(child, label))
+            .find(|found| !found.is_null())
+            .unwrap_or(&serde_json::Value::Null)
+    }
+
+    #[test]
+    fn tones_and_states_follow_kind_and_edges() {
+        let graph = tones_graph();
+        let json =
+            serde_json::to_value(project(&graph, None, 0.6, String::new()).unwrap()).unwrap();
+        let root = &json["root"];
+        let sub = |id: &str| {
+            find(root, &format!("text {id}"))["sub"]
+                .as_str()
+                .unwrap_or("")
+        };
+        let tone = |id: &str| find(root, &format!("text {id}"))["tone"].as_str();
+        // A decision is solid and carries no state.
+        assert_eq!(tone("dec"), Some("solid"));
+        assert_eq!(sub("dec"), "決定");
+        // The stored status is "open", yet a live decision makes it decided.
+        assert_eq!(sub("done"), "問い · 決定済み");
+        assert_eq!(tone("done"), None);
+        // An unanswered question is danger.
+        assert_eq!(tone("open"), Some("danger"));
+        assert_eq!(sub("open"), "問い · 未回答");
+        // Opposite stances differ and neither shows a state.
+        assert_eq!(tone("pro"), Some("new"));
+        assert_eq!(tone("con"), Some("removed"));
+        assert_eq!(sub("pro"), "理由 · 賛成");
+        assert_eq!(sub("con"), "理由 · 反対");
+        // Positions are plain; homework is accented with its state.
+        assert_eq!(tone("pos"), None);
+        assert_eq!(tone("act"), Some("accent"));
+        assert_eq!(sub("act"), "宿題 · 未解決");
+    }
+
+    #[test]
+    fn a_rejected_decision_does_not_decide_the_question() {
+        let mut graph = tones_graph();
+        graph.nodes.get_mut("dec").unwrap().review = Review::Rejected;
+        let json =
+            serde_json::to_value(project(&graph, None, 0.6, String::new()).unwrap()).unwrap();
+        assert_eq!(find(&json["root"], "text done")["sub"], "問い");
     }
 }
