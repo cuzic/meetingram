@@ -142,6 +142,16 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Upload binaries for VM verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vm-binaries
+          path: |
+            target/x86_64-pc-windows-msvc/debug/desktop.exe
+            target/x86_64-pc-windows-msvc/debug/meetingramctl.exe
+          retention-days: 3
+
       - name: Summarize the E2E
         if: always()
         env:
