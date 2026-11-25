@@ -96,7 +96,7 @@ pub(super) fn DiscussionDiagram(session_id: SessionId, options: Vec<(String, Str
     let mut message = use_signal(|| None::<&'static str>);
     let mut running = use_signal(|| false);
     let mut saving = use_signal(|| false);
-    let mut zoom = use_signal(|| 0_u32);
+    let mut zoom = use_signal(|| 100_u32);
     let consumer = state.graph_consumer.clone();
     let mut graph_status = use_signal(|| {
         let status = consumer.status(session_id);

@@ -243,11 +243,18 @@ fn node_branch(
         }),
         _ => None,
     };
-    let tone = match node.kind {
-        NodeKind::Decision => Some("solid"),
-        NodeKind::Action => Some("accent"),
-        NodeKind::Issue if question == Some("未回答") => Some("danger"),
-        _ => None,
+    // A low-confidence item is faded so that it is not emphasised, whatever its
+    // kind (a doubtful decision must not stand out).
+    let doubtful = node.review == Review::Auto && node.confidence < threshold;
+    let tone = if doubtful {
+        Some("muted")
+    } else {
+        match node.kind {
+            NodeKind::Decision => Some("solid"),
+            NodeKind::Action => Some("accent"),
+            NodeKind::Issue if question == Some("未回答") => Some("danger"),
+            _ => None,
+        }
     };
     let (stance, edge) = match relation {
         Some(EdgeKind::Supports) => (
@@ -272,18 +279,13 @@ fn node_branch(
         ),
         _ => (None, None),
     };
-    // At most three tags: kind, then the question state or the stance, then the
-    // review flag.
+    // At most two tags: the kind, then the question state or the stance.
     let tags = [
         Some(Tag {
             text: kind,
             tone: "muted",
         }),
         state.or(stance),
-        (node.review == Review::Auto && node.confidence < threshold).then_some(Tag {
-            text: "要確認",
-            tone: "muted",
-        }),
     ]
     .into_iter()
     .flatten()
@@ -454,7 +456,7 @@ mod tests {
         assert_eq!(agendas(&graph), vec![("a", "検討事項")]);
         let json = serde_json::to_string(&project(&graph, Some("a"), 0.6, "rev 1".into()).unwrap())
             .unwrap();
-        assert!(json.contains("検討事項") && json.contains("要確認"));
+        assert!(json.contains("検討事項") && json.contains("\"tone\":\"muted\""));
         assert!(!json.contains("却下した項目"));
         graph.nodes.get_mut("a").unwrap().text = "長".repeat(241);
         assert!(matches!(
@@ -592,14 +594,26 @@ mod tests {
     }
 
     #[test]
-    fn low_confidence_adds_a_review_tag_within_three_tags() {
+    fn low_confidence_fades_the_box_whatever_its_kind() {
         let mut graph = tones_graph();
-        graph.nodes.get_mut("pro").unwrap().confidence = 0.1;
+        for id in ["dec", "act", "open", "pro"] {
+            graph.nodes.get_mut(id).unwrap().confidence = 0.1;
+        }
         let json = project_json(&graph);
+        // Faded, not emphasised; no review tag.
+        for id in ["dec", "act", "open", "pro"] {
+            assert_eq!(tone(&json, id), Some("muted"), "{id}");
+        }
+        assert_eq!(tags(&json, "open"), ["問い:muted", "未回答:danger"]);
+        assert_eq!(tags(&json, "pro"), ["理由:muted", "賛成:accent"]);
+        // The stance line does not depend on confidence.
         assert_eq!(
-            tags(&json, "pro"),
-            ["理由:muted", "賛成:accent", "要確認:muted"]
+            find(&json["root"], "text pro")["edge"],
+            serde_json::json!({"tone": "accent", "line": "solid"})
         );
+        // A reviewed (approved) item is confident whatever its score.
+        graph.nodes.get_mut("dec").unwrap().review = Review::Approved;
+        assert_eq!(tone(&project_json(&graph), "dec"), Some("solid"));
     }
 
     #[test]

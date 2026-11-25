@@ -1,4 +1,4 @@
-import { diagram, mindmap, renderInBrowser, svgMeasurer } from 'svg-diagram/browser';
+import { diagram, legend, mindmap, renderInBrowser, svgMeasurer } from 'svg-diagram/browser';
 
 const TONES = ['plain', 'accent', 'new', 'changed', 'removed', 'muted', 'danger', 'solid', 'solid-danger'] as const;
 const TAG_TONES = ['accent', 'muted', 'danger'] as const;
@@ -15,6 +15,15 @@ type Branch = {
   tags?: Tag[];
   children?: Branch[];
 };
+// The legend is fixed text: it never comes from the request.
+const LEGEND = [
+  { label: '賛成の理由（青の実線）', line: 'solid', arrow: 'none' },
+  { label: '反対の理由（赤の破線）', line: 'dashed', arrow: 'none' },
+  { label: '決定（濃い青）', tone: 'solid' },
+  { label: '宿題（薄い青）', tone: 'accent' },
+  { label: '未回答の問い（赤）', tone: 'danger' },
+  { label: '要確認（薄い箱。確信度が低い）', tone: 'muted' },
+] as const;
 type Request = { version: 1; root: Branch };
 
 const oneOf = <T extends string>(list: readonly T[], value: unknown): value is T =>
@@ -63,7 +72,8 @@ async function render(request: Request) {
       // resulting image at its native scale, so the default 940px is a floor.
       const width = Math.max(940, 40 + depth(request.root) * 370);
       const figure = diagram({ title: '議論マップ', appearance: 'light', theme: 'blue', wrap: 'bunsetsu-soft', width, maxWidth: width })
-        .add(mindmap(sanitize(request.root), { layout: 'right', maxNodeW: 320 }));
+        .add(mindmap(sanitize(request.root), { layout: 'right', maxNodeW: 320 }))
+        .add(legend([...LEGEND]));
       const result = await renderInBrowser(figure, { measure });
       if (result.xml.length) return { error: 'invalid_svg' };
       if (!result.verdict.ok) return { error: 'render_failed' };
