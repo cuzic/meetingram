@@ -1,0 +1,99 @@
+{
+  "a": {
+    "text": "余剰予算を、あとで必要になる支出にきちんと充てられる状態にする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "予算の見通しをよくしておきたい",
+    "basis": "stated",
+    "grounds": [
+      "u87"
+    ],
+    "nids": [
+      "a15"
+    ]
+  },
+  "c": {
+    "text": "期をまたいで出る支出にも、余った分を使えるようにしておきたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "d": {
+    "text": "余剰予算を予備費に移す",
+    "basis": "stated",
+    "grounds": [
+      "u86",
+      "u87"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d2": {
+    "text": "余剰予算を来期に回す",
+    "basis": "stated",
+    "grounds": [
+      "u86"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "使えるお金の状況が見通せないと、必要な支出に充てる判断を誤るおそれがあるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "必要な支出は今期のうちに出るとは限らず、期をまたいで使えないと不足するおそれがあるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "来期に回した分は今期の管理から外れ、あとで使える額が見えにくくなるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "来期に回す分も、金額と使える時期を今期の予算表に並べて示す形にする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "予備費に移した分は、期の終わりを越えると使えなくなる可能性があるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "dd",
+      "text": "予算の手続き上、予備費に移した余りは、あとから来期分へ振り替えられないと考えられるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "p7",
+        "p8"
+      ],
+      "injection": {
+        "text": "予備費に移した余りのうち未使用の分を、期末に来期分へ振り替えられる手続きを設ける",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

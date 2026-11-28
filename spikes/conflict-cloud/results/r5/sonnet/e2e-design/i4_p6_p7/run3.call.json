@@ -1,0 +1,23 @@
+{
+  "meeting": "e2e-design",
+  "subject": "i4:p6:p7",
+  "model": "sonnet",
+  "run": 3,
+  "elapsed_ms": 16914,
+  "input_chars": 4345,
+  "stage": "Full",
+  "parse_ok": true,
+  "error": null,
+  "dropped": 0,
+  "downgraded": 0,
+  "timeout": false,
+  "retried": false,
+  "attempts": [
+    {
+      "elapsed_ms": 16914,
+      "ok": true,
+      "error": null,
+      "timeout": false
+    }
+  ]
+}
