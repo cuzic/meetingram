@@ -19,7 +19,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{backend::Backend, data};
 
-pub const MODELS: [&str; 2] = ["sonnet", "haiku"];
+/// Round 2 measures sonnet only.
+pub const MODELS: [&str; 1] = ["sonnet"];
+/// The candidate cap still assumes two models, so round 2 uses the same 22 candidates as round 1.
+pub const CAP_MODELS: usize = 2;
 pub const RUNS: u32 = 3;
 pub const MAX_CALLS: usize = 150;
 
@@ -52,7 +55,7 @@ pub fn make_plan(data_dir: &Path) -> Result<Plan> {
         found.push((name.to_owned(), candidates));
         graphs.push((name.to_owned(), graph));
     }
-    let per_cap = MAX_CALLS / (RUNS as usize * MODELS.len());
+    let per_cap = MAX_CALLS / (RUNS as usize * CAP_MODELS);
     let total: usize = found.iter().map(|(_, c)| c.len()).sum();
     let cap = (total > per_cap).then(|| {
         (0..=total)

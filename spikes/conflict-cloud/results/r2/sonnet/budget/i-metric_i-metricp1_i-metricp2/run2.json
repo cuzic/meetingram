@@ -1,0 +1,108 @@
+{
+  "a": {
+    "text": "四週の試行で作業時間の負担がどう変わったかを、去年の値と比べて正しく判断できるようにする。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-metric"
+    ]
+  },
+  "b": {
+    "text": "人や週で棚卸しの担当件数が違っても、作業時間の差を説明できる比較にしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u24",
+      "u25"
+    ],
+    "nids": [
+      "i-metricp1"
+    ]
+  },
+  "c": {
+    "text": "問い合わせ対応や待ち時間を含む当番の拘束が減り、金曜午前に別の作業を入れられるかを見えるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u26"
+    ],
+    "nids": [
+      "i-metricp2"
+    ]
+  },
+  "d": {
+    "text": "作業時間を棚卸し一件あたりで比較する。",
+    "basis": "stated",
+    "grounds": [
+      "u25"
+    ],
+    "nids": [
+      "i-metricp1"
+    ]
+  },
+  "d2": {
+    "text": "作業時間を当番の勤務一回あたりで比較する。",
+    "basis": "stated",
+    "grounds": [
+      "u26"
+    ],
+    "nids": [
+      "i-metricp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "担当件数の違いによる影響を分けられないと、時間の増減が試行による変化なのか判別できないから。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "当番がほかの作業に使える時間が増えなければ、試行で負担が軽くなったとは言えないから。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "勤務一回あたりの値は、その勤務で受け持つ棚卸しの件数によって増減し、作業の速さの変化と区別できないから。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "どの当番勤務にも、同じ件数の棚卸しを割り当てる。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "件数を単位にするだけでは、問い合わせ対応や待ち時間も含む当番の拘束が見えないから。",
+      "basis": "stated",
+      "grounds": [
+        "u26"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "問い合わせ対応と待機を別の担当に移し、当番の拘束を棚卸し作業だけにする。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "試行の結果は去年の値と並べる一つの指標で判定するため、分母の違う二つの値を同時には判定に使えないから。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "試行の判定欄を二つにして、それぞれ分母の違う指標で去年の値と比べられるようにする。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

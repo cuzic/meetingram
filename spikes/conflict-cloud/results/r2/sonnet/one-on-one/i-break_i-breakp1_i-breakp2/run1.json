@@ -1,0 +1,86 @@
+{
+  "a": {
+    "text": "休憩中に仕事の通知や画面から離れ、頭を切り替えて席に戻れるようにする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-break"
+    ]
+  },
+  "b": {
+    "text": "予定の合間の短い時間でも、準備や考え事に取られずに休みたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "c": {
+    "text": "休憩中は、机の前で画面を見る状態から離れたい",
+    "basis": "stated",
+    "grounds": [
+      "u107"
+    ],
+    "nids": [
+      "i-breakp2"
+    ]
+  },
+  "d": {
+    "text": "休憩の十分だけ携帯の通知を止める",
+    "basis": "stated",
+    "grounds": [
+      "u106"
+    ],
+    "nids": [
+      "i-breakp1"
+    ]
+  },
+  "d2": {
+    "text": "端末を席に置いて歩く",
+    "basis": "stated",
+    "grounds": [
+      "u107"
+    ],
+    "nids": [
+      "i-breakp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "休憩は短いので、準備や考え事に時間を使うと、頭を切り替える余裕がなくなるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "席を離れても仕事の画面を見てしまうと、休憩を取っても頭が切り替わった感じがしないことがあるから",
+      "basis": "stated",
+      "grounds": [
+        "u105"
+      ],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "予定の間が五分しかない日に歩こうとすると、行き先を考えているうちに休憩が終わりそうだから",
+      "basis": "stated",
+      "grounds": [
+        "u107"
+      ],
+      "nids": []
+    },
+    {
+      "on": "cd",
+      "text": "通知を止めても携帯が手元にあれば、自分から仕事の画面を開いてしまうから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "休憩の間は、携帯で自分から開こうとしても仕事の画面が表示されない状態になる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

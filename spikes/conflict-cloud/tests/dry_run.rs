@@ -41,7 +41,7 @@ fn fake_backend_pipeline_writes_all_artifacts() {
     let review = fs::read_to_string(out.join("REVIEW.md")).unwrap();
     assert!(review.contains("**A** [inferred]") && review.contains("- ground u"));
     let summary = fs::read_to_string(out.join("SUMMARY.md")).unwrap();
-    assert!(summary.contains("| sonnet |") && summary.contains("| haiku |"));
+    assert!(summary.contains("| sonnet |"));
     let first = &plan.items[0];
     let dir = out
         .join("sonnet")

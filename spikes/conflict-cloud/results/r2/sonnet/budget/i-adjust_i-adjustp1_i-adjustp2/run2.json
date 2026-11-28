@@ -1,0 +1,104 @@
+{
+  "a": {
+    "text": "予算が不足しても、今期の仕事や次の枠への影響を抑えられる費目の調整にする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjust"
+    ]
+  },
+  "b": {
+    "text": "端末の比較検証の結果を、次の枠の締め切りまでに出せる状態を保ちたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "a-adjust"
+    ]
+  },
+  "c": {
+    "text": "入ったばかりの人が、今期のうちに手順を覚える機会を保ちたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "d": {
+    "text": "研修を次期の初めに移す",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d2": {
+    "text": "検証端末を借りる回数を抑える",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "i-adjustp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "次の枠の判断には比較結果が材料として必要で、締め切りを過ぎた結果はその判断に使えないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "締め切り後に届いた比較結果も、次の枠の判断に反映できる手続きにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "新しく入った人が今期のうちに手順を覚えられないと、今期の現場の仕事に支障や余分な負担が出るから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "新しく入った人の今期の担当を、研修で扱う手順が要らない仕事にする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "端末を借りる回数を減らす場合、相手先の空きが月末に寄ると、比較結果を次の枠の締め切りまでに出せない可能性があるから",
+      "basis": "stated",
+      "grounds": [
+        "u101"
+      ],
+      "nids": [
+        "a-adjust"
+      ],
+      "injection": {
+        "text": "相手先と取り決め、締め切りに間に合う借用日を空き状況に左右されず使えるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "研修を次期に延期すると、入ったばかりの人が今期のうちに手順を覚える機会を失うから",
+      "basis": "stated",
+      "grounds": [
+        "u100"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "準備した内製の教材を使い、研修の日程とは別に今期中に手順を学べる機会を設ける",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

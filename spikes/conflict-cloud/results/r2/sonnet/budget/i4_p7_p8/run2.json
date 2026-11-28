@@ -1,0 +1,96 @@
+{
+  "a": {
+    "text": "今期の予算の余りを、手続き上できる範囲で、必要な支出に支障なく生かせるようにする。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "余りを含めた予算の見通しをよくしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u87"
+    ],
+    "nids": [
+      "a15"
+    ]
+  },
+  "c": {
+    "text": "来期に必要となる支出の原資を確保しておきたい。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "d": {
+    "text": "余剰予算を予備費に移す。",
+    "basis": "stated",
+    "grounds": [
+      "u86",
+      "u87"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d2": {
+    "text": "余剰予算を来期に回す。",
+    "basis": "stated",
+    "grounds": [
+      "u86"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "余りの額は端末の金額しだいで動くため、見通しが立たないと支出に充てられる額を判断できないから。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "来期には、来期に新しく割り当てられる予算だけでは賄えない支出があるから。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "来期に回した余りは今期の備えとして扱えず、今期の急な支出を含めた資金の見通しが立ちにくくなるから。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "来期に回す手続きをした余りでも、今期の急な支出には充てられる扱いにする。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "予備費に移した余りは、期の終わりに元へ戻して来期の支出に使うことができないから。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "予備費に移した分のうち未使用の額は、期の終わりに戻して来期へ回せる手続きにする。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "どちらの案も同じ余剰の金額を充てるため、予備費に移した分を重ねて来期の原資にはできないから。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

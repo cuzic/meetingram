@@ -1,0 +1,96 @@
+{
+  "a": {
+    "text": "今期の余剰予算を、今後必要になる支出に役立てられる形で管理する",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "余剰予算を含めた予算の見通しをよくしたい",
+    "basis": "stated",
+    "grounds": [
+      "u87"
+    ],
+    "nids": [
+      "a15"
+    ]
+  },
+  "c": {
+    "text": "来期の支出に使える原資を確保しておきたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "d": {
+    "text": "余剰予算を予備費に移す",
+    "basis": "stated",
+    "grounds": [
+      "u86",
+      "u87"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d2": {
+    "text": "余剰予算を来期に回す",
+    "basis": "stated",
+    "grounds": [
+      "u86"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "残っている金額とその状態を把握できなければ、どの支出にいくら充てられるかを判断できないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "来期にも支出が生じ、その時点で原資が足りなければ必要なものを賄えないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "予備費なら残額が今期の予算内に項目として示されるが、来期に回すと今期の予算表では追えなくなるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "来期に回した金額も、今期の予算表で残額と行き先を追えるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "予備費に移した金額は、期の終わりに戻して来期の支出に使うことができないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "予備費の未使用分を、期の終わりに戻して来期の支出に使える手続きにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "手続き上、同じ余剰分の金額は、予備費への移動と来期への繰り越しの両方には計上できないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}
