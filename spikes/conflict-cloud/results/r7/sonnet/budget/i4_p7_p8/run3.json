@@ -1,0 +1,106 @@
+{
+  "a": {
+    "text": "余った予算を、今後必要になる支出に確実に使える状態にする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "余った予算の見通しをよくしたい",
+    "basis": "stated",
+    "grounds": [
+      "u87"
+    ],
+    "nids": [
+      "a15"
+    ]
+  },
+  "c": {
+    "text": "来期に必要になる支出の財源を確保しておきたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "p8"
+    ]
+  },
+  "d": {
+    "text": "余剰予算を予備費に移す",
+    "basis": "stated",
+    "grounds": [
+      "u86",
+      "u87"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d2": {
+    "text": "余剰予算を来期に回す",
+    "basis": "stated",
+    "grounds": [
+      "u86"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "余った予算の見通しが悪いと、必要な支出が出ても充てられるかを判断できないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "来期の支出の財源を確保しておかないと、来期に必要が生じたときに資金が足りなくなるおそれがあるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "余りを来期に回すと今期の不足には充てられず、予備費に置く場合より見通しが悪くなるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "p7",
+        "p8"
+      ]
+    },
+    {
+      "on": "cd",
+      "text": "予備費に移した余りは期の終わりに戻せず、来期の支出の財源にできなくなるおそれがあるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "p7"
+      ],
+      "injection": {
+        "text": "予備費に移した余りのうち未使用分は、期末に戻して来期の財源にできる扱いにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "手続き上、同じ余りは予備費か来期分の一方にしか計上できないと考えられるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "p7",
+        "p8"
+      ],
+      "injection": {
+        "text": "同じ余りを今期は予備費として置き、使わなかった分は来期へ繰り越せる手続きを設ける",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

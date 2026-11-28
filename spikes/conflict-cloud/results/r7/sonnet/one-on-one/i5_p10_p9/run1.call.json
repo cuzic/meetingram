@@ -1,0 +1,23 @@
+{
+  "meeting": "one-on-one",
+  "subject": "i5:p10:p9",
+  "model": "sonnet",
+  "run": 1,
+  "elapsed_ms": 18616,
+  "input_chars": 5134,
+  "stage": "Full",
+  "parse_ok": true,
+  "error": null,
+  "dropped": 0,
+  "downgraded": 0,
+  "timeout": false,
+  "retried": false,
+  "attempts": [
+    {
+      "elapsed_ms": 18616,
+      "ok": true,
+      "error": null,
+      "timeout": false
+    }
+  ]
+}
