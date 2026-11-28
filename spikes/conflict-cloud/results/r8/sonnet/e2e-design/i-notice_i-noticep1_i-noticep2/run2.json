@@ -1,0 +1,113 @@
+{
+  "a": {
+    "text": "読み手の警告から録音の異常を捉え、録音作業を損なわずに必要な手当てができる状態",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-notice"
+    ]
+  },
+  "b": {
+    "text": "録音を操作している人が、その場で異常に気づけるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u116"
+    ],
+    "nids": [
+      "i-noticep1",
+      "a-notice"
+    ]
+  },
+  "c": {
+    "text": "画面の警告に頻繁に視線を取られずに済むようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "d": {
+    "text": "録音画面に短い警告を載せる",
+    "basis": "stated",
+    "grounds": [
+      "u116"
+    ],
+    "nids": [
+      "i-noticep1"
+    ]
+  },
+  "d2": {
+    "text": "診断一覧にだけ警告を載せる",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "録音の異常には、その場で気づかないと再試験して手当てする機会を逃すものがあるから",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "操作している人が頻繁に視線を取られると、録音の操作や状況の確認がおろそかになるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "診断一覧にだけ置くと、録音が終わるまで誰も一覧を開かず、異常に気づかないままになることがあるから",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": [
+        "a-notice",
+        "i-noticep2"
+      ],
+      "injection": {
+        "text": "異常が起きた時点で操作している人に通知音で知らせ、録音中に診断一覧を開くきっかけを作る",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "録音画面に警告を載せると、診断一覧にだけ置く場合と違い、操作中の視線が頻繁に警告へ向くから",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": [
+        "i-noticep1"
+      ]
+    },
+    {
+      "on": "dd",
+      "text": "警告の定義は出し先を問わず1つの欄にまとめる作りで、出し先ごとに違う必要情報を併せて定められないと考えられるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "i-notice"
+      ],
+      "injection": {
+        "text": "警告の定義を録音画面用と診断一覧用の欄に分け、出し先ごとに必要な情報を別々に持てるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

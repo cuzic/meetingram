@@ -1,0 +1,109 @@
+{
+  "a": {
+    "text": "予算が足りなくなっても、今後の仕事への支障を抑えて今期を乗り切れている",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjust"
+    ]
+  },
+  "b": {
+    "text": "端末検証の比較結果を、次の枠の締め切りまでに出せるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "a-adjust"
+    ]
+  },
+  "c": {
+    "text": "入ったばかりの人が、今期のうちに手順を覚える機会を確保したい",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": []
+  },
+  "d": {
+    "text": "研修を次期の初めに移す",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d2": {
+    "text": "検証端末を借りる回数を抑える",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "i-adjustp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "次の枠の判断には端末の比較結果が必要で、それが遅れると後の仕事に支障が出るから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "新しい人が手順を早く覚えないと、現場の仕事が滞ったり周りの負担が増えたりするから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "借りる回数を減らすと、相手先の空きが月末に寄った場合、比較結果が締め切りに間に合わない可能性があるから",
+      "basis": "stated",
+      "grounds": [
+        "u101"
+      ],
+      "nids": [
+        "a-adjust"
+      ],
+      "injection": {
+        "text": "別の調達先も使えるようにして、一つの相手先の空き状況に左右されず早い時期に端末を使えるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "研修を次期に移すと、入ったばかりの人が今期のうちに手順を覚える機会を失うから",
+      "basis": "stated",
+      "grounds": [
+        "u100"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "今期は現場で個別に教える時間を設け、研修を待たずに手順を覚えられるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "不足している今期の予算では、研修の実施と端末を減らさず借りることの両方の費用は賄えないと考えられるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "今期の予算の外から不足分の財源を確保し、研修と端末の借用の両方の費用を賄う",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

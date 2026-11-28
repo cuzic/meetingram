@@ -115,7 +115,7 @@ dependencies = [
 [[package]]
 name = "discussion-graph"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=fix%2Fcloud-prompt#32dc12f9556e993f6d14253bf70c5382348cced9"
+source = "git+https://github.com/cuzic/meetingram-core?branch=fix%2Fcloud-prompt#da50124af7fc574a42fdc6115199ee57083ace3a"
 dependencies = [
  "recorder-domain",
  "rusqlite",
@@ -338,7 +338,7 @@ checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
 [[package]]
 name = "recorder-domain"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=fix%2Fcloud-prompt#32dc12f9556e993f6d14253bf70c5382348cced9"
+source = "git+https://github.com/cuzic/meetingram-core?branch=fix%2Fcloud-prompt#da50124af7fc574a42fdc6115199ee57083ace3a"
 dependencies = [
  "async-trait",
  "chrono",
@@ -423,7 +423,7 @@ dependencies = [
 [[package]]
 name = "session-store"
 version = "0.1.0"
-source = "git+https://github.com/cuzic/meetingram-core?branch=fix%2Fcloud-prompt#32dc12f9556e993f6d14253bf70c5382348cced9"
+source = "git+https://github.com/cuzic/meetingram-core?branch=fix%2Fcloud-prompt#da50124af7fc574a42fdc6115199ee57083ace3a"
 dependencies = [
  "chrono",
  "recorder-domain",

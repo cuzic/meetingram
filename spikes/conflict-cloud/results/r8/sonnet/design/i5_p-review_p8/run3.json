@@ -1,0 +1,112 @@
+{
+  "a": {
+    "text": "次のレビューで、中断・遅れ・版違いの扱いに問題がないかを、参加者が納得して判断できている",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "b": {
+    "text": "形式の確認にとどまらず、実際の動きまで確かめたい",
+    "basis": "stated",
+    "grounds": [
+      "u93"
+    ],
+    "nids": [
+      "a9"
+    ]
+  },
+  "c": {
+    "text": "レビューの確認を速く進めたい",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "d": {
+    "text": "中断試験の実演からレビューを始める",
+    "basis": "stated",
+    "grounds": [
+      "u132",
+      "u133"
+    ],
+    "nids": [
+      "p-review"
+    ]
+  },
+  "d2": {
+    "text": "ドキュメントの確認からレビューを始める",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "形式が正しくても、実際の動きが期待どおりとは限らないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "確認に時間がかかるほど参加者の集中が続かず、判断に必要な点を見落としやすくなるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "ドキュメントを見るだけでは、形式しか確認できないから",
+      "basis": "stated",
+      "grounds": [
+        "u93"
+      ],
+      "nids": [
+        "a9"
+      ],
+      "injection": {
+        "text": "中断試験で読み出せた範囲などの実行記録をドキュメントに載せ、読んで実際の動きも確認できるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "ドキュメントを先に見る形なら、試験を流している間に目を通せて速く進みそうだから",
+      "basis": "stated",
+      "grounds": [
+        "u92"
+      ],
+      "nids": [
+        "p8"
+      ],
+      "injection": {
+        "text": "参加者がレビュー前にドキュメントを読んでおき、レビュー中の読む時間をなくす",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "実演の冒頭は画面の結果を追う必要があり、同じ参加者が同時にドキュメントの確認に集中することはできないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "実演の画面を追う人とドキュメントを確認する人を分け、後で互いの確認結果を共有する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

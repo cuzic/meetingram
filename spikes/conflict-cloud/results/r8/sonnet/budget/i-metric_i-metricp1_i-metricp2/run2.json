@@ -1,0 +1,125 @@
+{
+  "a": {
+    "text": "四週の試行で当番の作業の負担がどれだけ軽くなったかを、去年と比べて取り違えなく把握できている",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-metric"
+    ]
+  },
+  "b": {
+    "text": "人や週で棚卸しの件数が違っても、作業時間の差を説明できるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u24",
+      "u25"
+    ],
+    "nids": [
+      "i-metricp1"
+    ]
+  },
+  "c": {
+    "text": "当番の拘束が空き、金曜午前に別の作業を入れられるようになったかが見えるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u26"
+    ],
+    "nids": [
+      "i-metricp2"
+    ]
+  },
+  "d": {
+    "text": "棚卸し一件あたりの作業時間で比較する",
+    "basis": "stated",
+    "grounds": [
+      "u25"
+    ],
+    "nids": [
+      "i-metricp1"
+    ]
+  },
+  "d2": {
+    "text": "当番の勤務一回あたりで比較する",
+    "basis": "stated",
+    "grounds": [
+      "u26"
+    ],
+    "nids": [
+      "i-metricp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "人によって棚卸しの担当件数が違い、四週の合計だけでは去年の値と比べられないおそれがあるから",
+      "basis": "stated",
+      "grounds": [
+        "u24"
+      ],
+      "nids": [
+        "i-metric"
+      ]
+    },
+    {
+      "on": "ac",
+      "text": "棚卸しの時間だけが短くなっても、当番は金曜午前に別の作業を入れられない可能性があるから",
+      "basis": "stated",
+      "grounds": [
+        "u26"
+      ],
+      "nids": [
+        "i-metricp2"
+      ]
+    },
+    {
+      "on": "bd",
+      "text": "勤務一回あたりの値には勤務ごとの件数の多少が混ざり、作業の短縮による差と件数による差を区別できないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "i-metricp1",
+        "i-metricp2"
+      ],
+      "injection": {
+        "text": "勤務ごとの棚卸し件数と一件ごとの所要時間を記録し、勤務の値の差を件数の分と短縮の分に分けられるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "問い合わせへの回答や待ち時間も当番の拘束に含まれ、棚卸しの件数だけを単位にするとそれが見えないから",
+      "basis": "stated",
+      "grounds": [
+        "u26"
+      ],
+      "nids": [
+        "i-metricp1",
+        "i-metricp2"
+      ],
+      "injection": {
+        "text": "問い合わせへの回答と待ち時間も記録して各件に割り振り、一件あたりの時間に当番の拘束全体が表れるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "試行の効果は一つの単位の値で去年と比べて判定するもので、二つの単位を並べると結果が食い違ったとき結論が出せないと考えられるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "i-metricp1",
+        "i-metricp2"
+      ],
+      "injection": {
+        "text": "一件あたりは棚卸し作業の短縮、勤務一回あたりは当番の拘束の変化を判定する値とし、別々の結論を出せるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

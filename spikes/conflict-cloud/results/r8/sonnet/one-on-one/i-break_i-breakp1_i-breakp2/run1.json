@@ -1,0 +1,103 @@
+{
+  "a": {
+    "text": "休憩を取ったあと、仕事から頭が切り替わった感じで席に戻れるようになる",
+    "basis": "stated",
+    "grounds": [
+      "u105"
+    ],
+    "nids": [
+      "i-break"
+    ]
+  },
+  "b": {
+    "text": "予定の間が短い日でも、過ごし方を考えることに時間を取られず休憩を使いたい",
+    "basis": "stated",
+    "grounds": [
+      "u107"
+    ],
+    "nids": [
+      "i-breakp2"
+    ]
+  },
+  "c": {
+    "text": "休憩中は、机の前で画面を見る状態から離れたい",
+    "basis": "stated",
+    "grounds": [
+      "u107"
+    ],
+    "nids": [
+      "i-breakp2"
+    ]
+  },
+  "d": {
+    "text": "休憩の十分だけ携帯の通知を止める",
+    "basis": "stated",
+    "grounds": [
+      "u106"
+    ],
+    "nids": [
+      "i-breakp1"
+    ]
+  },
+  "d2": {
+    "text": "端末を席に置いて歩く",
+    "basis": "stated",
+    "grounds": [
+      "u107"
+    ],
+    "nids": [
+      "i-breakp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "短い休憩が過ごし方を考えるだけで過ぎると、仕事から気持ちを離す時間が残らないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "机の前で画面を見続けていると、休憩の時間があっても頭が仕事の状態のままになりやすいから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "予定の間が五分しかない日は、端末を置いて歩こうとしても、行き先を考えているうちに休憩が終わりそうだから",
+      "basis": "stated",
+      "grounds": [
+        "u107"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "短い休憩で歩く行き先を前もって一つ決めておき、その場で考えなくて済むようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "通知を止めても携帯や仕事の画面は身近に残るので、机の前で画面を見ることは続きうるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "dd",
+      "text": "通知を止める案は休憩中も携帯を手元で使う用があることを想定していて、席に置くとその用が足せないと考えられるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "時刻の確認など休憩中の用は腕時計などで済ませ、携帯が手元になくても困らないようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

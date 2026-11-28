@@ -1,0 +1,23 @@
+{
+  "meeting": "m3",
+  "subject": "g1:g5:g7",
+  "model": "sonnet",
+  "run": 1,
+  "elapsed_ms": 22818,
+  "input_chars": 9582,
+  "stage": "Full",
+  "parse_ok": true,
+  "error": null,
+  "dropped": 0,
+  "downgraded": 0,
+  "timeout": false,
+  "retried": false,
+  "attempts": [
+    {
+      "elapsed_ms": 22818,
+      "ok": true,
+      "error": null,
+      "timeout": false
+    }
+  ]
+}
