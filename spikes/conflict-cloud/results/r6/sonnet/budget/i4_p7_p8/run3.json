@@ -1,0 +1,109 @@
+{
+  "a": {
+    "text": "予算の余りを、この先必要になる支出に充てられる状態にしておく",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "余った予算の見通しをよくしておきたい",
+    "basis": "stated",
+    "grounds": [
+      "u87"
+    ],
+    "nids": [
+      "a15"
+    ]
+  },
+  "c": {
+    "text": "余った予算を、今期が終わった後に出る支出にも使えるようにしておきたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "d": {
+    "text": "余剰予算を予備費に移す",
+    "basis": "stated",
+    "grounds": [
+      "u86",
+      "u87"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d2": {
+    "text": "余剰予算を来期に回す",
+    "basis": "stated",
+    "grounds": [
+      "u86"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "余りの状況が見通せないと、支出が必要になったときに充てられる額を判断し損ねるおそれがあるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "予算を充てる必要のある支出は、今期の中で出尽くすとは限らないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "予備費へ置くほうが、来期に回すよりも余りの見通しがよくなるから",
+      "basis": "stated",
+      "grounds": [
+        "u87"
+      ],
+      "nids": [
+        "a15",
+        "p7"
+      ],
+      "injection": {
+        "text": "余りの金額、置き先、使える時期を、置き先がどこでも同じ予算表で追えるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "予備費に移した余りは、期の終わりに戻せず、今期より後の支出に使えなくなるおそれがあるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "p7"
+      ],
+      "injection": {
+        "text": "予備費に移した分は、使わなければ期の終わりに戻して来期で使える扱いを手続きに定める",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "余りを分けて一部を予備費に移し、残りを来期に回す組み合わせは、手続き上できないと考えられるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "余りを分割し、今期中に必要になりうる額は予備費に移して、残りの額は来期に回す",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "a": {
+    "text": "録音中に読み手の異常が起きても、使える録音結果が得られる",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-notice"
+    ]
+  },
+  "b": {
+    "text": "録音を操作している人が、読み手の異常にその場で気づけるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u116",
+      "u117"
+    ],
+    "nids": [
+      "i-noticep1",
+      "a-notice"
+    ]
+  },
+  "c": {
+    "text": "画面を使う人が、警告に頻繁に視線を取られずに済むようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "d": {
+    "text": "録音画面に短い警告を載せる",
+    "basis": "stated",
+    "grounds": [
+      "u116"
+    ],
+    "nids": [
+      "i-noticep1"
+    ]
+  },
+  "d2": {
+    "text": "診断一覧にだけ警告を載せる",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "録音中の異常には、その場で対処しないと使える結果を得にくくなるものがあるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "操作中に何度も注意をそらされると、操作や確認の誤りが増えて録音結果に響くから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "警告が診断一覧だけだと、録音が終わるまで誰も一覧を開かなければ、その場で再試験する機会を逃すから",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": [
+        "a-notice"
+      ],
+      "injection": {
+        "text": "録音中に異常が起きたら、音で操作している人に知らせる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "録音画面に警告を出すと、診断一覧だけに置く場合と違い、画面で頻繁に視線を取られることになるから",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": [
+        "i-noticep2"
+      ]
+    },
+    {
+      "on": "dd",
+      "text": "警告は種類によって出し先を分けられないため、録音画面への表示と診断一覧だけへの掲載は組み合わせられないと考えられるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "その場で再試験の判断が要る警告だけを録音画面に短く出し、ほかの警告は診断一覧にだけ載せる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

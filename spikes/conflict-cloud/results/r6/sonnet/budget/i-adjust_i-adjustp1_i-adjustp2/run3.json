@@ -1,0 +1,109 @@
+{
+  "a": {
+    "text": "予算が不足しても、費用を予算内に収めながら、今期に必要な現場の業務と検証を支障なく進められる",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjust"
+    ]
+  },
+  "b": {
+    "text": "検証端末の比較結果を、次の枠の締め切りまでに出せるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "a-adjust"
+    ]
+  },
+  "c": {
+    "text": "入ったばかりの人が、今期のうちに手順を覚える機会を確保したい",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": []
+  },
+  "d": {
+    "text": "研修を次期の初めに移す",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d2": {
+    "text": "最初の一か月は検証端末を借りる回数を減らす",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "i-adjustp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "比較結果が締め切りに遅れると、次の枠に向けた判断に検証を反映できなくなるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "入ったばかりの人が手順を知らないままだと、今期の現場の業務に支障が出るから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "借用回数を減らすと、相手先の空きが月末に寄った場合、比較結果が次の枠の締め切りに間に合わない可能性があるから",
+      "basis": "stated",
+      "grounds": [
+        "u101"
+      ],
+      "nids": [
+        "a-adjust"
+      ],
+      "injection": {
+        "text": "月末より前に必要な端末を使える別の調達先を確保する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "研修を次期の初めに移すと、入ったばかりの人が今期のうちに手順を覚える機会を失うから",
+      "basis": "stated",
+      "grounds": [
+        "u100"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "研修日を移しても、準備した内製教材と現場の個別指導で、今期のうちに必要な手順を覚えられるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "不足への対応は一つの費目にまとめる必要があり、研修の延期と端末の借用削減に分けて組み合わせることはできないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "不足額を両費目に分け、今期に欠かせない研修と締め切りに必要な借用は残して、ほかの研修を次期に移し、ほかの借用を減らす",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

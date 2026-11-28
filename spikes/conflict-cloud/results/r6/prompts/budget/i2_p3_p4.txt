@@ -1,0 +1,34 @@
+issue
+{"nid":"i2","text":"検証端末を購入するか借りるか","uids":["u31","u57","u131","u132"]}
+other_issues
+{"nid":"i1","text":"今期の追加採用枠を開けるか"}
+{"nid":"i3","text":"残りの研修費をどう使うか"}
+{"nid":"i4","text":"余剰予算を予備費に移すか来期に回すか"}
+{"nid":"i-metric","text":"四週の試行の作業時間を何で割って比較するか"}
+{"nid":"i-adjust","text":"予算が不足したときにどの費目から調整するか"}
+positions
+{"nid":"p3","slot":"d","text":"検証用の予備機を一台買う","uids":["u32","u39"]}
+{"nid":"p4","slot":"d2","text":"検証用端末を借りる","uids":["u35"]}
+arguments
+{"nid":"a6","relation":"supports","target":"p3","text":"一台を常時検証に使える","uids":["u33"]}
+{"nid":"a7","relation":"objects_to","target":"p3","text":"使用日は月に二日しかない","uids":["u34"]}
+{"nid":"a8","relation":"supports","target":"p4","text":"借用日程に試験をまとめられる","uids":["u36"]}
+{"nid":"a9","relation":"objects_to","target":"p4","text":"借用では機種を毎回そろえにくい","uids":["u37","u38"]}
+{"nid":"a10","relation":"objects_to","target":"p4","text":"借用端末は返却前に初期化が要る","uids":["u53","u54"]}
+decisions
+actions
+utterances
+{"speaker_label":"自分","text":"端末の支出はどこまで見込んでますか。保証の数字は本体と一緒に入っているのでしょうか。","uid":"u31"}
+{"speaker_label":"相手","text":"候補は予備機を一台買う案です。いつでも使えるよう一台を検証専用で確保する考えです。","uid":"u32"}
+{"speaker_label":"相手 (話者2)","text":"常時検証に一台空くのが利点です。試験が急に一日増えても借りる手続きがありません。","uid":"u33"}
+{"speaker_label":"相手 (話者3)","text":"ただ使う日はまだ月に二日です。使っていない間も置く場所は必要になります。","uid":"u34"}
+{"speaker_label":"自分","text":"借りる案も予算表に入れました。使う日がまだ少ないならこちらも残したいです。","uid":"u35"}
+{"speaker_label":"相手","text":"借りると試験をまとめて組めます。同じ週に試したいものを先に一日へ寄せられます。","uid":"u36"}
+{"speaker_label":"相手 (話者2)","text":"機種を毎回同じにできませんけど、前回との差が設定なのか機種なのか切り分けが必要です。","uid":"u37"}
+{"speaker_label":"相手 (話者3)","text":"あ、再現性か","uid":"u38"}
+{"speaker_label":"自分","text":"一台買う話は保守も込みですか","uid":"u39"}
+{"speaker_label":"自分","text":"貸し出しだと設定を毎回消すんですか。共通の手順があれば時間も見積もれそうです。","uid":"u53"}
+{"speaker_label":"相手","text":"返す前に初期化が要ります。消えたことを確認するところまでが手順に入っています。","uid":"u54"}
+{"speaker_label":"自分","text":"じゃあ今日決めるのは保留です。見積もりが二つそろってから同じ条件で比較しましょう。","uid":"u57"}
+{"speaker_label":"自分","text":"端末の判断はまだ、えっと","uid":"u131"}
+{"speaker_label":"相手","text":"見積もり待ちです。二通そろわなければ、いつまで待つかも次回話しましょう。","uid":"u132"}
