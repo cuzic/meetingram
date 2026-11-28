@@ -1,0 +1,101 @@
+{
+  "a": {
+    "text": "読み手で起きた異常が、録音の作業を妨げずに、必要な対処へ確実につながる状態にする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-notice"
+    ]
+  },
+  "b": {
+    "text": "録音を操作している人が、異常にその場で気づけるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u116",
+      "u117"
+    ],
+    "nids": [
+      "i-noticep1",
+      "a-notice"
+    ]
+  },
+  "c": {
+    "text": "画面で頻繁に視線を取られずに済むようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "d": {
+    "text": "録音画面に短い警告を載せる",
+    "basis": "stated",
+    "grounds": [
+      "u116"
+    ],
+    "nids": [
+      "i-noticep1"
+    ]
+  },
+  "d2": {
+    "text": "警告は診断一覧にだけ載せる",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "異常への対処には、録音中に気づかないと再試験などの機会を失うものがあるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "警告に頻繁に視線を取られると、操作している人が録音の作業に集中できなくなるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "診断一覧だけでは、録音が終わるまで誰も開かなければ、その場で再試験できる機会を逃すから",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": [
+        "a-notice"
+      ],
+      "injection": {
+        "text": "診断一覧が開かれていなくても、音や振動で操作している人に異常が伝わるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "録音画面に警告を載せると、操作している人が画面で頻繁に視線を取られるから",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": []
+    },
+    {
+      "on": "dd",
+      "text": "両立を妨げる制約は会議で述べられていない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

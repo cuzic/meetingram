@@ -1,0 +1,23 @@
+{
+  "meeting": "budget",
+  "subject": "i4:p7:p8",
+  "model": "sonnet",
+  "run": 2,
+  "elapsed_ms": 13810,
+  "input_chars": 4057,
+  "stage": "Full",
+  "parse_ok": true,
+  "error": null,
+  "dropped": 0,
+  "downgraded": 0,
+  "timeout": false,
+  "retried": false,
+  "attempts": [
+    {
+      "elapsed_ms": 13810,
+      "ok": true,
+      "error": null,
+      "timeout": false
+    }
+  ]
+}

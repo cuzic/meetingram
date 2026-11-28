@@ -1,0 +1,100 @@
+{
+  "a": {
+    "text": "仕事の合間に短い休憩を実際に取れて、机に向かい続けずに済むようにする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i5",
+      "a10"
+    ]
+  },
+  "b": {
+    "text": "相手の予定で会議が入っても、休憩を毎回調整し直す手間を避けたい",
+    "basis": "stated",
+    "grounds": [
+      "u93"
+    ],
+    "nids": [
+      "a11"
+    ]
+  },
+  "c": {
+    "text": "自分では区切りにくいので、休憩の時間を前もって確保しておきたい",
+    "basis": "stated",
+    "grounds": [
+      "u89",
+      "u91"
+    ],
+    "nids": []
+  },
+  "d": {
+    "text": "会議が終わったところを区切りにして休む",
+    "basis": "stated",
+    "grounds": [
+      "u94",
+      "u96"
+    ],
+    "nids": [
+      "p10"
+    ]
+  },
+  "d2": {
+    "text": "午後の中間に短い休憩を入れる",
+    "basis": "stated",
+    "grounds": [
+      "u91"
+    ],
+    "nids": [
+      "p9"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "休むたびに調整の手間がかかると、休憩が続かなくなるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "予定が空いて見えても、自分ではなかなか仕事を区切れないから",
+      "basis": "stated",
+      "grounds": [
+        "u89"
+      ],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "午後の中間に休憩を置くと、会議と重なる日があるから",
+      "basis": "stated",
+      "grounds": [
+        "u93"
+      ],
+      "nids": [
+        "a11"
+      ],
+      "injection": {
+        "text": "午後の中間の休憩時間帯には会議を入れないことを、予定を入れる相手と取り決める",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "会議の後に休む形では、休憩の時間が会議次第になり、前もって確保できないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "dd",
+      "text": "両立を妨げる制約は会議で述べられていない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

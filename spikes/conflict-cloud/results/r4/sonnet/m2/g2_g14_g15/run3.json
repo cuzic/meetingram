@@ -1,0 +1,100 @@
+{
+  "a": {
+    "text": "今後のキャリアで、本人がやりがいを感じる仕事を続けながら成長できる",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "g2"
+    ]
+  },
+  "b": {
+    "text": "自分の手を動かして技術に打ち込む時間を確保したい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "g14",
+      "g18"
+    ]
+  },
+  "c": {
+    "text": "人の成長に関わる手応えを仕事で得続けたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "g17"
+    ]
+  },
+  "d": {
+    "text": "スペシャリストとして技術を深める",
+    "basis": "stated",
+    "grounds": [
+      "u12",
+      "u63"
+    ],
+    "nids": [
+      "g14"
+    ]
+  },
+  "d2": {
+    "text": "テックリードのように人を見ながら技術もやる",
+    "basis": "stated",
+    "grounds": [
+      "u12",
+      "u63"
+    ],
+    "nids": [
+      "g15"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "本人のやりがいと成長は、自分で技術に取り組むことに大きく支えられているから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "人の成長を見る楽しさは、本人が長くやりがいを保つうえで欠かせない源だから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "人を見る役割を担うと今より会議が増え、自分で手を動かす時間が削られるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "g18"
+      ],
+      "injection": {
+        "text": "チームの会議の持ち方を変え、人を見る人でも会議の時間が今より増えないようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "スペシャリストの立場では、人の成長に継続して関わる機会を持てないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "スペシャリストの等級の役割に、後輩の育成を正式な担当として組み込む",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "両立を妨げる制約は会議で述べられていない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

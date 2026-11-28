@@ -1,0 +1,101 @@
+{
+  "a": {
+    "text": "予算が足りなくなっても、チームが今期から次の枠にかけて必要な仕事を支障なく進められる状態にする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjust"
+    ]
+  },
+  "b": {
+    "text": "端末の比較結果を、次の枠の締め切りに間に合うように出せるようにしたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "a-adjust"
+    ]
+  },
+  "c": {
+    "text": "入ったばかりの人が、今期のうちに手順を覚えられるようにしたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d": {
+    "text": "研修を次期の初めに移す",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d2": {
+    "text": "検証端末を借りる回数を抑える",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "i-adjustp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "比較結果が次の枠の締め切りより後になると、その枠で必要な判断の材料に使えないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "新しく入った人が手順を覚えていないと、今期の現場の仕事に支障が出るから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "借りる回数を減らすと、相手先の空きが月末に寄った場合、比較結果が次の枠の締め切りに間に合わない可能性があるから",
+      "basis": "stated",
+      "grounds": [
+        "u101"
+      ],
+      "nids": [
+        "a-adjust"
+      ],
+      "injection": {
+        "text": "相手先の空きが月末に寄っても、締め切りに間に合う日に検証端末を使える枠を確保しておく",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "研修を次期に延期すると、入ったばかりの人が今期のうちに手順を覚える機会を失うから",
+      "basis": "stated",
+      "grounds": [
+        "u100"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "集合研修の日程に頼らず、新しく入った人が今期の日常業務の中で手順を習得できる体制にする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "両立を妨げる制約は会議で述べられていない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

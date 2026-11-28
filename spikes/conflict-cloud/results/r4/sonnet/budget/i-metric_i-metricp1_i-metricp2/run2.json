@@ -1,0 +1,96 @@
+{
+  "a": {
+    "text": "四週の試行で当番の作業の負担がどう変わったかを、去年と比べて正しく見極められる",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-metric"
+    ]
+  },
+  "b": {
+    "text": "担当件数が人や週で違っても、棚卸しの作業時間の差を説明できるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u24",
+      "u25"
+    ],
+    "nids": [
+      "i-metricp1"
+    ]
+  },
+  "c": {
+    "text": "問い合わせ対応や待ちも含む当番の拘束を捉え、金曜午前に別の作業を入れられるかを見えるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u26"
+    ],
+    "nids": [
+      "i-metricp2"
+    ]
+  },
+  "d": {
+    "text": "棚卸し一件あたりの作業時間で比較する",
+    "basis": "stated",
+    "grounds": [
+      "u25"
+    ],
+    "nids": [
+      "i-metricp1"
+    ]
+  },
+  "d2": {
+    "text": "当番の勤務一回あたりで比較する",
+    "basis": "stated",
+    "grounds": [
+      "u26"
+    ],
+    "nids": [
+      "i-metricp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "件数の増減による時間の変化を切り分けないと、負担の変化が仕事の進め方によるものか判断できないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "一部の作業が短くなっても、当番の拘束全体が変わらなければ、負担が軽くなったとは限らないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "勤務一回あたりの時間には担当件数の多い少ないが混ざり、作業時間の差の理由を区別できないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "当番の各勤務に割り当てる棚卸しの件数を、去年の比較対象も含めて同じ条件にそろえられる配分にする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "件数を単位にするだけでは、問い合わせ対応や待ち時間を含む当番の拘束が見えないから",
+      "basis": "stated",
+      "grounds": [
+        "u26"
+      ],
+      "nids": []
+    },
+    {
+      "on": "dd",
+      "text": "両立を妨げる制約は会議で述べられていない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

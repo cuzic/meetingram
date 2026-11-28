@@ -1,0 +1,107 @@
+{
+  "a": {
+    "text": "予算が不足しても、今期から次の枠にかけて必要な仕事を支障なく進められる状態にする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjust"
+    ]
+  },
+  "b": {
+    "text": "検証端末での比較の結果を、次の枠の締め切りまでに出せるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "a-adjust"
+    ]
+  },
+  "c": {
+    "text": "入ったばかりの人が、今期のうちに手順を覚えられるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d": {
+    "text": "研修を次期の初めに移して調整する",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d2": {
+    "text": "検証端末を借りる回数を抑えて調整する",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "i-adjustp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "比較の結果が次の枠の締め切りに遅れると、その枠に関わる判断や作業が滞るから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "入ったばかりの人が手順を知らないままだと、今期の仕事に遅れや誤りが出るから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "端末を借りる回数を抑えると、相手先の空きが月末に寄れば、比較の結果が締め切りに間に合わない可能性があるから",
+      "basis": "stated",
+      "grounds": [
+        "u101"
+      ],
+      "nids": [
+        "a-adjust"
+      ],
+      "injection": {
+        "text": "今の相手先の空きに左右されないよう、早い日に端末を使える別の調達先を確保する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "研修を次期の初めに移すと、入ったばかりの人が今期のうちに手順を覚える機会を失うから",
+      "basis": "stated",
+      "grounds": [
+        "u100"
+      ],
+      "nids": [
+        "i-adjustp1"
+      ],
+      "injection": {
+        "text": "準備した内製の教材と現場での個別指導で、入ったばかりの人が今期のうちに手順を覚える機会を設ける",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "両立を妨げる制約は会議で述べられていない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

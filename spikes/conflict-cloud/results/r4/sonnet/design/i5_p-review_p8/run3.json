@@ -1,0 +1,98 @@
+{
+  "a": {
+    "text": "次のレビューの参加者が、対象の出来を納得して判断できる状態になる",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i5"
+    ]
+  },
+  "b": {
+    "text": "書き込みが中断したとき、確定ファイルがどこまで読み出せるかを実際の動きで確かめたい",
+    "basis": "stated",
+    "grounds": [
+      "u132"
+    ],
+    "nids": [
+      "p-review"
+    ]
+  },
+  "c": {
+    "text": "レビューを速く進めたい",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "d": {
+    "text": "中断試験の実演からレビューを始める",
+    "basis": "stated",
+    "grounds": [
+      "u132",
+      "u133"
+    ],
+    "nids": [
+      "p-review"
+    ]
+  },
+  "d2": {
+    "text": "ドキュメントの確認からレビューを始める",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "中断後に実際に何が読み出せるかが分からないままでは、参加者は対象の出来を判断できないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "レビューに時間がかかると、参加者が判断に必要な項目を見終えられないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "ドキュメントを見るだけでは、形式しか確認できないから",
+      "basis": "stated",
+      "grounds": [
+        "u93"
+      ],
+      "nids": [
+        "a9"
+      ],
+      "injection": {
+        "text": "ドキュメントに中断時の実行記録と読み出せた範囲の実データを載せ、実際の動きも確認できる資料にする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "実演から始めると、試験が流れている待ち時間をドキュメントの確認に活用できず、レビューが長くなるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "dd",
+      "text": "参加者は冒頭で実演の画面とドキュメントの両方に同時には集中できないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

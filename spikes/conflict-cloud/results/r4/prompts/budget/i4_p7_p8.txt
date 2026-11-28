@@ -1,0 +1,20 @@
+issue
+{"nid":"i4","text":"余剰予算を予備費に移すか来期に回すか","uids":["u85","u86","u97"]}
+other_issues
+{"nid":"i1","text":"今期の追加採用枠を開けるか"}
+{"nid":"i2","text":"検証端末を購入するか借りるか"}
+{"nid":"i3","text":"残りの研修費をどう使うか"}
+{"nid":"i-metric","text":"四週の試行の作業時間を何で割って比較するか"}
+{"nid":"i-adjust","text":"予算が不足したときにどの費目から調整するか"}
+positions
+{"nid":"p7","slot":"d","text":"余剰予算を予備費に移す","uids":["u86","u87"]}
+{"nid":"p8","slot":"d2","text":"余剰予算を来期に回す","uids":["u86"]}
+arguments
+{"nid":"a15","relation":"supports","target":"p7","text":"予備費に置くと見通しがよい","uids":["u87"]}
+decisions
+actions
+utterances
+{"speaker_label":"相手 (話者2)","text":"予算表の数字を並べると余りが出ます。ただし端末の金額が決まったら動く部分です。","uid":"u85"}
+{"speaker_label":"相手 (話者3)","text":"余りを予備費に移すか来期へ回すか、どちらまで手続き上できるのか確認したいです。","uid":"u86"}
+{"speaker_label":"自分","text":"予備費へ置く方が見通しはよくなります。あとは期の終わりに戻せるかが気になります。","uid":"u87"}
+{"speaker_label":"相手 (話者2)","text":"今日はそこを決めません。端末の見積もりと事務の回答がそろってからにします。","uid":"u97"}
