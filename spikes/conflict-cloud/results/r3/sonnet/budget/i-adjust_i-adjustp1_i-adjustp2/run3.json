@@ -1,0 +1,109 @@
+{
+  "a": {
+    "text": "予算が足りなくても、今期の現場の仕事と次の枠に向けた検証への支障を抑える",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjust"
+    ]
+  },
+  "b": {
+    "text": "端末の比較検証の結果を、次の枠の締め切りまでに出せるようにしたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "a-adjust"
+    ]
+  },
+  "c": {
+    "text": "入ったばかりの人が、今期のうちに手順を覚えられるようにしたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d": {
+    "text": "研修を次期の初めに移す",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d2": {
+    "text": "検証端末を借りる回数を抑える",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "i-adjustp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "検証結果が締め切りより遅れると次の枠の判断に使えず、検証が役立たなくなるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "入ったばかりの人は手順を覚えるまで、現場の仕事を円滑に進めにくいから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "借りる回数を減らすと、相手先の空きが月末に寄った場合、比較結果が次の枠の締め切りに間に合わない可能性があるから",
+      "basis": "stated",
+      "grounds": [
+        "u101"
+      ],
+      "nids": [
+        "a-adjust"
+      ],
+      "injection": {
+        "text": "次の枠の締め切りを、月末の借用でも比較結果が間に合う日に改める",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "研修を次期に延期すると、入ったばかりの人が今期のうちに手順を覚える機会を失うから",
+      "basis": "stated",
+      "grounds": [
+        "u100"
+      ],
+      "nids": [
+        "i-adjustp1"
+      ],
+      "injection": {
+        "text": "今期のうちに、現場で個別に手順を教える時間を設ける",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "研修と検証端末の借用が同じ不足している予算を取り合い、両方を今期に予定どおり行う費用は賄えないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "別の財源から不足分を補い、研修と端末の借用をどちらも予定どおり賄えるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "a": {
+    "text": "読み手の異常に必要な対応がとれ、録音とその後の問題追跡が支障なく進む状態",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-notice"
+    ]
+  },
+  "b": {
+    "text": "録音を操作している人が、異常にその場で気づけるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u116"
+    ],
+    "nids": [
+      "i-noticep1"
+    ]
+  },
+  "c": {
+    "text": "操作している人が、画面で頻繁に視線を取られずに済むようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "d": {
+    "text": "録音画面に短い警告を載せる",
+    "basis": "stated",
+    "grounds": [
+      "u116"
+    ],
+    "nids": [
+      "i-noticep1"
+    ]
+  },
+  "d2": {
+    "text": "診断一覧にだけ警告を載せる",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "異常を知るのが録音の終了後になると、その場で再試験できる機会を逃すことになるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "録音の終了後でも、録音中と同じ条件で再試験できる環境を保てるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "頻繁に視線を取られると、操作している人の注意が録音作業からそれ、支障が出るから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "診断一覧だけでは、録音が終わるまで誰も一覧を開かず、その場で再試験する機会を逃すおそれがあるから",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": [
+        "a-notice"
+      ],
+      "injection": {
+        "text": "録音中は操作とは別の担当者が診断一覧を常に見て、異常をすぐ操作者に伝える体制にする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "警告を診断一覧だけに置かず録音画面にも出すと、操作している人は画面で視線を取られるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "dd",
+      "text": "操作している人が録音中に向けられる視線は限られ、画面の警告を見る分は録音作業と取り合いになるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

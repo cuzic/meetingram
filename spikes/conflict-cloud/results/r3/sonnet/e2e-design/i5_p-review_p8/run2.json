@@ -1,0 +1,101 @@
+{
+  "a": {
+    "text": "次のレビューで、参加者が対象の成果物を受け入れてよいか判断できる状態になっている",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i5"
+    ]
+  },
+  "b": {
+    "text": "文書の形式にとどまらず、書き込みが中断したときの実際の挙動を早い段階で確かめたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "p-review",
+      "a9"
+    ]
+  },
+  "c": {
+    "text": "レビュー全体にかかる時間を短く抑えたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "p8"
+    ]
+  },
+  "d": {
+    "text": "中断試験の実演からレビューを始める",
+    "basis": "stated",
+    "grounds": [
+      "u132",
+      "u133"
+    ],
+    "nids": [
+      "p-review"
+    ]
+  },
+  "d2": {
+    "text": "ドキュメントの確認からレビューを始める",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "中断したときの実際の挙動が分からないままでは、成果物を受け入れた後に問題が起きないかを見極められないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "レビューに時間がかかりすぎると、必要な確認を終えられず、受け入れの判断まで進めないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "ドキュメントを先に見ても、確認できるのは形式だけだから",
+      "basis": "stated",
+      "grounds": [
+        "u93"
+      ],
+      "nids": [
+        "a9"
+      ]
+    },
+    {
+      "on": "cd",
+      "text": "実演から始めると、試験を流している間を文書の確認に充てられず、その分レビューが長くなるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "参加者にレビュー前に文書を配り、各自が読み終えた状態で参加する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "参加者はレビュー中に同じ表示画面を見て進めるので、冒頭で実演の画面と文書を同時には追えないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "実演は共有画面に映し、文書は参加者それぞれの手元の端末で開けるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

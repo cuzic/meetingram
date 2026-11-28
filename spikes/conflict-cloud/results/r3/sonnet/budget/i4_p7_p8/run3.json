@@ -1,0 +1,102 @@
+{
+  "a": {
+    "text": "今期の余剰予算が、今後必要になる支出に無理なく役立てられる状態になっている",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "余剰予算の見通しをよくしたい",
+    "basis": "stated",
+    "grounds": [
+      "u87"
+    ],
+    "nids": [
+      "a15"
+    ]
+  },
+  "c": {
+    "text": "来期に必要となる支出の原資を確保しておきたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "d": {
+    "text": "余剰予算を予備費に移す",
+    "basis": "stated",
+    "grounds": [
+      "u86",
+      "u87"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d2": {
+    "text": "余剰予算を来期に回す",
+    "basis": "stated",
+    "grounds": [
+      "u86"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "余剰の状況が見通せないと、どの必要な支出にどれだけ役立てられるかを判断できないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "来期にも支出の必要が生じ、その時点の来期の予算だけでは原資が足りなくなりうるから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "来期に回した余りは、予備費に置く場合に比べて、使える金額や状況を把握しにくいから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "余りの置き場所にかかわらず、使える金額と状況を同じ予算表で常に把握できる運用になる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "予備費に移した余りは、期の終わりに戻して来期の支出の原資にすることができないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "予備費の残りを期の終わりに戻し、来期の支出の原資にできる手続きが認められる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "どちらの案も同じ限られた余剰額を原資にするため、予備費に移した分は来期への繰り越しに充てられないから",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "同じ余剰額を、今期は予備費として扱い、未使用分は来期へ繰り越せる制度が認められる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

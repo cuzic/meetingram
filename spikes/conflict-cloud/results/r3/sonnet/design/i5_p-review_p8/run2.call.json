@@ -1,0 +1,23 @@
+{
+  "meeting": "design",
+  "subject": "i5:p-review:p8",
+  "model": "sonnet",
+  "run": 2,
+  "elapsed_ms": 17013,
+  "input_chars": 3995,
+  "stage": "Full",
+  "parse_ok": true,
+  "error": null,
+  "dropped": 0,
+  "downgraded": 0,
+  "timeout": false,
+  "retried": false,
+  "attempts": [
+    {
+      "elapsed_ms": 17013,
+      "ok": true,
+      "error": null,
+      "timeout": false
+    }
+  ]
+}
