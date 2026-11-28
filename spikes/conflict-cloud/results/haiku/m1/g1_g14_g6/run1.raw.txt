@@ -1,0 +1,20 @@
+{"a":{"text":"顧客との約束と信頼を守りつつ、品質の確かな機能をユーザーに届ける","basis":"inferred","nids":["g3"]},
+ "b":{"text":"リスクのある同期をユーザーに出さず、他の機能を12月10日に予定通り届けたい","basis":"stated","grounds":["u55","u56"],"nids":["g15"]},
+ "c":{"text":"A社などに約束した同期機能を含めて、12月中に届けたい","basis":"stated","grounds":["u17","u19"],"nids":["g7"]},
+ "d":{"text":"同期機能だけフィーチャーフラグでオフにして12月10日にリリースする"},
+ "d2":{"text":"予定通り12月10日に全機能でリリースする"},
+ "assumptions":[
+  {"on":"ab","text":"リスクのある同期がユーザーに出なければ、顧客への信頼は損なわれない","basis":"inferred",
+   "injection":{"text":"同期をユーザーに見せない別の手段を用意し、顧客向けの説明を補う","basis":"inferred"}},
+  {"on":"ac","text":"A社には12月中に出すと約束済みで、ずらすと取引関係が損なわれる","basis":"stated","grounds":["u16","u17"],
+   "injection":{"text":"A社に延期の理由と新しい提供時期を丁寧に説明し、理解を得る","basis":"inferred"}},
+  {"on":"bd","text":"フラグで同期をオフにすれば、他の機能に影響が出ない","basis":"stated","grounds":["u55"],
+   "injection":{"text":"フラグオフ状態の動作を開発環境で確認し、他機能への影響がないと確かめる","basis":"inferred"}},
+  {"on":"bd","text":"同期以外の機能は既にテストがほぼ終わっている","basis":"stated","grounds":["u54"],
+   "injection":{"text":"同期以外で未確認の箇所を探索的テストで補う","basis":"inferred"}},
+  {"on":"cd","text":"A社が一番待っているのは同期機能で、同期を外すとA社の期待に応えられない","basis":"stated","grounds":["u68","u69"]},
+  {"on":"cd","text":"12月10日までに同期機能の回帰テストを終えて、品質を確保できる","basis":"inferred",
+   "injection":{"text":"同期機能の回帰テストを前倒しして実施する","basis":"inferred"}},
+  {"on":"dd","text":"同期を含めて12月10日に出すと、動作を十分確認していない同期がユーザーに出る","basis":"stated","grounds":["u73"],
+   "injection":{"text":"同期機能の回帰テストを完了させ、確認済みの状態で出す","basis":"inferred"}}
+ ]}

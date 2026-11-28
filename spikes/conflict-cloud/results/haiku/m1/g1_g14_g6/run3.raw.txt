@@ -1,0 +1,13 @@
+{"a":{"text":"顧客に約束した v3.2 を、壊れた機能を出さずに届ける","basis":"inferred","nids":["g1","g3"]},
+"b":{"text":"リスクのある同期をユーザーに出さず、12月10日に他の機能を届けたい","basis":"stated","grounds":["u55","u56"],"nids":["g15"]},
+"c":{"text":"A社に約束した12月中のリリースを守りたい","basis":"stated","grounds":["u16","u17"],"nids":["g7"]},
+"d":{"text":"同期機能だけフィーチャーフラグでオフにして12月10日にリリースする"},
+"d2":{"text":"予定通り12月10日に同期機能を含む全機能でリリースする"},
+"assumptions":[
+{"on":"ab","text":"顧客の信頼は、壊れた機能を出さないことで保たれる","basis":"inferred"},
+{"on":"ac","text":"12月中のリリースを守ることが、顧客との約束への信頼に直結する","basis":"inferred"},
+{"on":"bd","text":"同期をフラグで切れば、リスクのある部分はユーザーに出ない","basis":"stated","grounds":["u55"],"injection":{"text":"フラグで切った状態の影響を開発環境で確認し、リスクがないことを示す","basis":"inferred"}},
+{"on":"bd","text":"フラグオフ時に他の機能へ影響が出ないと言える","basis":"inferred","injection":{"text":"フラグオフ状態の動作を12月10日までに確認する","basis":"inferred"}},
+{"on":"cd","text":"同期を外して出すと、A社が待つ価値が残らず約束を果たした意味が薄れる","basis":"stated","grounds":["u68","u69"],"injection":{"text":"同期を外した形でA社と内容を合意し直す","basis":"inferred"}},
+{"on":"dd","text":"同期機能は含めるか外すかの二択で、両案は同時に成立しない","basis":"inferred","injection":{"text":"同期の回帰テストを12月10日までに完了させ、両案を統合する","basis":"inferred"}}
+]}

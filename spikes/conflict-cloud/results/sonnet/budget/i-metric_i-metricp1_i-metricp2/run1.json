@@ -1,0 +1,118 @@
+{
+  "a": {
+    "text": "四週の試行で作業時間がどれだけ削れ、それが何に役立つかを正しく判断できるようにする。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-metric"
+    ]
+  },
+  "b": {
+    "text": "担当件数や週ごとの件数が違っても、作業時間の差を説明できるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u24",
+      "u25"
+    ],
+    "nids": [
+      "i-metricp1"
+    ]
+  },
+  "c": {
+    "text": "問い合わせ対応や待ち時間も含め、金曜午前に別の作業を入れられるほど当番の拘束が減るかを把握したい。",
+    "basis": "stated",
+    "grounds": [
+      "u26"
+    ],
+    "nids": [
+      "i-metricp2"
+    ]
+  },
+  "d": {
+    "text": "棚卸し一件あたりの作業時間で比較する。",
+    "basis": "stated",
+    "grounds": [
+      "u25"
+    ],
+    "nids": [
+      "i-metricp1"
+    ]
+  },
+  "d2": {
+    "text": "当番の勤務一回あたりで比較する。",
+    "basis": "stated",
+    "grounds": [
+      "u26"
+    ],
+    "nids": [
+      "i-metricp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "件数の違いによる影響をそろえないと、試行で作業が効率化したかを正しく判断できない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "棚卸しの時間が短くなっても、当番の拘束が減らなければ、試行の効果が十分に出たとは判断できない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "作業の効率化と当番の拘束の軽減を、別々の効果として分けて評価する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "件数あたりにそろえれば、週や担当者で件数が違っても、同じ単位で差を説明できる。",
+      "basis": "stated",
+      "grounds": [
+        "u25"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "確認だけで終わった棚卸しと修正が入った棚卸しで、数字を二つに分ける。",
+        "basis": "stated",
+        "grounds": [
+          "u25"
+        ],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "件数あたりの数字だけでは、問い合わせ対応や待ち時間を含む当番の拘束が見えない。",
+      "basis": "stated",
+      "grounds": [
+        "u26"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "件数あたりの作業時間とは別に、問い合わせ対応と待ち時間も記録する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "試行の比較に使える単位は一つだけで、二つの指標は併用できない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "一件あたりの作業時間と勤務一回あたりの拘束を併記し、それぞれ別の判断に使う。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

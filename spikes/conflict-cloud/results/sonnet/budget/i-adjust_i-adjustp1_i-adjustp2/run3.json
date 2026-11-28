@@ -1,0 +1,120 @@
+{
+  "a": {
+    "text": "予算が不足しても、今期に必要な成果への影響を抑えて予算内に収める。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjust"
+    ]
+  },
+  "b": {
+    "text": "検証の比較結果を、次の枠の締め切りまでに出せるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "a-adjust"
+    ]
+  },
+  "c": {
+    "text": "入ったばかりの人が、今期のうちに手順を覚える機会を保ちたい。",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": []
+  },
+  "d": {
+    "text": "研修を次期の初めに移す。",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d2": {
+    "text": "検証端末を借りる回数を抑える。",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "i-adjustp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "次の枠の締め切りに比較結果が間に合わなければ、今期に必要な成果が損なわれる。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "新しく入った人が今期中に手順を覚えられないと、今期に必要な成果に影響する。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "端末を借りる回数を減らすと、相手先の空きが月末に寄った場合、比較結果が締め切りに間に合わないおそれがある。",
+      "basis": "stated",
+      "grounds": [
+        "u101"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "相手先の空き日を先に確認し、締め切りに間に合う借用日を確保できる範囲で回数を減らす。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "研修を次期に延期すると、入ったばかりの人は今期のうちに手順を覚える機会を失う。",
+      "basis": "stated",
+      "grounds": [
+        "u100"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "研修を延期する場合は、今期中に必要な手順だけを現場で個別に教える。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "不足分は研修か検証端末の一方で調整すれば足り、両方を同時に調整することは選ばない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "不足額と各案で浮く額を確かめ、研修の一部の延期と借用回数の小幅な削減を組み合わせる。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "不足分の調整先は研修と検証に限られ、人の枠などほかの費目では補えない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "人の枠を含むほかの費目も分けて並べ、調整できる額があるかを見直す。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{"a":{"text":"読み手がエラーに気づき、必要な対処を取れるようにする","basis":"inferred","nids":["i4"]},
+ "b":{"text":"同じエラーの警告が繰り返し出て、読み手の画面や作業を妨げないようにしたい","basis":"stated","grounds":["u104"]},
+ "c":{"text":"同じエラーが一区間で何度起きたかを読み手が把握できるようにしたい","basis":"stated","grounds":["u105"]},
+ "d":{"text":"警告を一度だけ出す"},
+ "d2":{"text":"繰り返しエラーは件数を付ける"},
+ "assumptions":[
+  {"on":"ab","text":"読み手がエラーに気づき対処できれば、通知の目的は果たされる","basis":"inferred"},
+  {"on":"bd","text":"警告が一度でも、読み手は後から確認先を見てエラーに気づける","basis":"stated","grounds":["u109"],
+   "injection":{"text":"気づかなかったときに確認できる場所や一覧を用意する","basis":"inferred"}},
+  {"on":"cd","text":"件数付きの表示は表示の窓が限られ、読み手の目に入らないことがある","basis":"stated","grounds":["u109"],
+   "injection":{"text":"件数は警告とは別の一覧欄に置き、警告は一度だけ出す","basis":"inferred"}},
+  {"on":"dd","text":"一度きりの警告と件数の更新を、同じ通知の枠で両立させるのは難しい","basis":"inferred",
+   "injection":{"text":"件数は別の欄で更新し、警告の枠は一度だけ使う","basis":"inferred"}}
+ ]}

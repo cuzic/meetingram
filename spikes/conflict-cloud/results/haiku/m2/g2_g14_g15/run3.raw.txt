@@ -1,0 +1,17 @@
+{"a":{"text":"自分のキャリアに納得し、仕事で力を発揮し続けられる状態を保つ","basis":"inferred","nids":["g2"]},
+ "b":{"text":"技術を深め、実際に手を動かす時間を確保し続けたい","basis":"stated","grounds":["u12","u63"],"nids":["g14"]},
+ "c":{"text":"新人の成長を見守り、人に関わる役割も続けたい","basis":"stated","grounds":["u12"],"nids":["g17"]},
+ "d":{"text":"スペシャリストとして技術を深める"},
+ "d2":{"text":"テックリードとして人を見つつ技術も担う"},
+ "assumptions":[
+  {"on":"ab","text":"技術を深める時間が確保されないと、納得のいくキャリアにならない","basis":"inferred",
+   "injection":{"text":"技術に使える時間の割合を、キャリア面談で明示的に決める","basis":"inferred"}},
+  {"on":"ac","text":"人の成長に関わる役割があると、仕事への満足度が保たれる","basis":"inferred"},
+  {"on":"bd","text":"スペシャリストの評価軸が曖昧だと、この路線を続ける理由が弱まる","basis":"stated","grounds":["u73","u74"],"nids":["g16"],
+   "injection":{"text":"スペシャリストの評価軸を言語化し、上司と合意する","basis":"inferred"}},
+  {"on":"bd","text":"今年できたスペシャリスト等級により、技術路線の評価が十分に得られる","basis":"stated","grounds":["u76","u77"],"nids":["g31"]},
+  {"on":"cd","text":"テックリードになれば、人の成長に関わりつつ技術も続けられる","basis":"inferred",
+   "injection":{"text":"メンター役を業務として役割定義に明記する","basis":"inferred"}},
+  {"on":"dd","text":"会議が増えると、手を動かす時間がなくなる","basis":"stated","grounds":["u12","u81","u82"],"nids":["g18"],
+   "injection":{"text":"会議時間の上限を決め、技術作業の時間枠を先に確保する","basis":"inferred"}}
+ ]}

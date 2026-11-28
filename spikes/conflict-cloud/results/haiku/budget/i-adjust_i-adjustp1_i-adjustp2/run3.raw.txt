@@ -1,0 +1,15 @@
+{"a":{"text":"予算が不足しても、今期の研修と検証の成果を両方守りたい","basis":"inferred","nids":["i3","i2"]},
+ "b":{"text":"研修を次期に移して、今期の予算不足の穴を埋めたい","basis":"stated","grounds":["u100"],"nids":["i3"]},
+ "c":{"text":"最初の一か月の端末の借用回数を減らして、検証の費用を抑えたい","basis":"stated","grounds":["u101"],"nids":["i2"]},
+ "d":{"text":"研修を次期の初めに移す"},
+ "d2":{"text":"検証端末を借りる回数を抑える"},
+ "assumptions":[
+  {"on":"ab","text":"研修を次期に移しても、入ったばかりの人が手順を覚える遅れは次期内に取り戻せる","basis":"inferred",
+   "injection":{"text":"研修の一部を今期に残し、現場での個別指導の時間を今期内に確保する","basis":"inferred"}},
+  {"on":"bd","text":"研修を次期に移すと、今期の予算から延期分の額が実際に浮く","basis":"stated","grounds":["u100"],
+   "injection":{"text":"教材は内製で先に準備し、延期で浮いた額を今期の個別指導の費用に充てる","basis":"inferred"}},
+  {"on":"cd","text":"相手先の空きが月末に寄ると、比較の結果を次の枠の締め切りまでに出せなくなる","basis":"stated","grounds":["u101"],
+   "injection":{"text":"借用日を月初に前倒しできる空き枠を先に押さえておく","basis":"inferred"}},
+  {"on":"dd","text":"研修の延期と端末の借用抑制は同じ予算の取り合いで、両方を同時には取れない","basis":"inferred",
+   "injection":{"text":"余剰予算を予備費に移し、研修と端末の両方に予算を確保する","basis":"inferred","nids":["i4"]}}
+ ]}

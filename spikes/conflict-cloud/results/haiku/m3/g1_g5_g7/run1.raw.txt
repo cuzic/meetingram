@@ -1,0 +1,19 @@
+{"a":{"text":"期限内に監視基盤を切り替え、ログ監査要件を満たしたまま予算内で長く運用し続けられる状態にする","basis":"inferred","nids":["g1","g3"]},
+ "b":{"text":"構築の手間を減らし、導入当日から監視を使い始められるようにしたい","basis":"stated","grounds":["u15","u16"],"nids":["g8"]},
+ "c":{"text":"既存クラウドの権限やネットワークとつながり、予算内に収まる監視を使い続けたい","basis":"stated","grounds":["u64","u68"],"nids":["g12","g17"]},
+ "d":{"text":"SaaSのログナビを採用する"},
+ "d2":{"text":"利用中クラウドのマネージド監視サービスを採用する"},
+ "assumptions":[
+  {"on":"ab","text":"期限内に移行を終えるには、すぐ使い始められる構成を選ぶ必要がある","basis":"inferred",
+   "injection":{"text":"移行計画を前倒しし、構築作業に必要な期間を先に確保する","basis":"inferred"}},
+  {"on":"bd","text":"ログナビは構築がほぼ不要で、導入当日から使える","basis":"stated","grounds":["u15","u16"],
+   "injection":{"text":"ログナビでも導入前の設定作業を計画に含め、構築負担を見積もり直す","basis":"inferred"}},
+  {"on":"ac","text":"既存クラウドと連携できれば、移行と運用を確実に進められる","basis":"inferred",
+   "injection":{"text":"既存の権限やネットワークと切り離した形で監視を構成する","basis":"inferred"}},
+  {"on":"cd","text":"マネージドの見積もりは予算内に収まる","basis":"stated","grounds":["u68","u69"],
+   "injection":{"text":"値上げと1年保存のアーカイブ費用を含めた見積もりを取り直す","basis":"inferred"}},
+  {"on":"dd","text":"ログ量が倍増すると、ログナビの従量課金は予算を超える","basis":"stated","grounds":["u21","u28"],
+   "injection":{"text":"ボリュームディスカウントを交渉して、ログ増加分の単価を下げる","basis":"inferred"}},
+  {"on":"dd","text":"同じ監視対象を二つの基盤で取ると、コストと運用が二重になる","basis":"inferred",
+   "injection":{"text":"移行期間のみ両方を使い、ログの送り先を段階的に一方へ寄せる","basis":"inferred"}}
+ ]}

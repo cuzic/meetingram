@@ -1,0 +1,116 @@
+{
+  "a": {
+    "text": "限られたレビューの場で、成果物が期待どおりかを的確に判断できるようにする。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i5"
+    ]
+  },
+  "b": {
+    "text": "書き込みが中断したとき確定ファイルをどこまで読み出せるか、実際の動きで確かめたい。",
+    "basis": "stated",
+    "grounds": [
+      "u132"
+    ],
+    "nids": [
+      "p-review"
+    ]
+  },
+  "c": {
+    "text": "レビューを速く進めたい。",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "d": {
+    "text": "中断試験の実演からレビューを始める。",
+    "basis": "stated",
+    "grounds": [
+      "u132",
+      "u133"
+    ],
+    "nids": [
+      "p-review"
+    ]
+  },
+  "d2": {
+    "text": "ドキュメントの確認からレビューを始める。",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "成果物が期待どおりかは、中断時の実際の読み出し結果を見ないと判断できない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "レビューを速く進められないと、限られた時間内に必要な判断を終えられない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "ドキュメントだけでは形式しか確認できず、実際の挙動は確かめられない。",
+      "basis": "stated",
+      "grounds": [
+        "u93"
+      ],
+      "nids": [
+        "a9"
+      ],
+      "injection": {
+        "text": "ドキュメントの各記述に対応する試験結果を添え、読みながら実際の挙動も照らし合わせられるようにする。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "ドキュメントを先に見るほうが、レビューは速く進む。",
+      "basis": "stated",
+      "grounds": [
+        "u92"
+      ],
+      "nids": [
+        "p8"
+      ],
+      "injection": {
+        "text": "試験を流している間にドキュメントに目を通す。",
+        "basis": "stated",
+        "grounds": [
+          "u92"
+        ],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "実演とドキュメント確認は同時に進められず、どちらかを先に済ませる必要がある。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "中断試験の実演を先に始め、試験が流れている待ち時間にドキュメントを確認する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

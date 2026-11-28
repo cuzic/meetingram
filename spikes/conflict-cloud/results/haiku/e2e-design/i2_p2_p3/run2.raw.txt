@@ -1,0 +1,17 @@
+{"a":{"text":"書き込み待ちが積み上がっても、録音データを取りこぼさず録音を途切れさせない","basis":"inferred","nids":["p2","p3"]},
+ "b":{"text":"受け取ったデータを取りこぼさず、到着順に書き込みたい","basis":"stated","grounds":["u33"],"nids":["p2"]},
+ "c":{"text":"書き込み待ちで受け口に溜まる量を一定以内に抑え、上限到達を記録したい","basis":"stated","grounds":["u36"],"nids":["p3"]},
+ "d":{"text":"バッファを無制限にして、到着したデータを全部受け入れる"},
+ "d2":{"text":"バッファに固定の上限を付け、上限に達したら手前で待つ"},
+ "assumptions":[
+  {"on":"ab","text":"録音データは到着順に書けないと、後で使えない形になる","basis":"inferred",
+   "injection":{"text":"到着順を保たなくても使えるように、データに時刻などの情報を付けて書く","basis":"inferred"}},
+  {"on":"bd","text":"無制限のバッファなら、書き込みが遅れても全データを受けられる","basis":"stated","grounds":["u33"],
+   "injection":{"text":"書き込みが受け口の到着量に追いつく処理能力を確保する","basis":"inferred"}},
+  {"on":"dd","text":"無制限のバッファはメモリを増やし続け、固定上限とは両立しない","basis":"stated","grounds":["u34"],
+   "injection":{"text":"メモリの使用量に別の上限を設け、無制限にならないようにする","basis":"inferred"}},
+  {"on":"cd","text":"上限に達すると受け口があふれ、データが落ちる","basis":"stated","grounds":["u40"],
+   "injection":{"text":"あふれたときに落とすトラックの優先順位を決め、落とす対象を限定する","basis":"inferred"}},
+  {"on":"ac","text":"書き込み遅れの実態が分からないと、上限の値を決められない","basis":"inferred",
+   "injection":{"text":"測定表で受け口・書き込み開始・ファイルを閉じた時刻の差を見て、遅れの実態を把握する","basis":"inferred"}}
+ ]}

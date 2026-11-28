@@ -1,0 +1,15 @@
+{"a":{"text":"予算が不足しても、今期の人材育成と検証結果の質を両方守りながら費目を調整する","basis":"inferred","nids":["i-adjust"]},
+ "b":{"text":"今期の予算から研修費の支出を外し、予算の余力を確保したい","basis":"stated","grounds":["u100"],"nids":["i-adjustp1"]},
+ "c":{"text":"検証端末の費用を抑え、機種を増やさずに今期の予算を守りたい","basis":"inferred"},
+ "d":{"text":"研修を次期の初めに移す","},
+ "d2":{"text":"検証端末を借りる回数を抑える"},
+ "assumptions":[
+  {"on":"ab","text":"予算が不足したときは、費目の調整によって今期の成果を損なわずに対応できる","basis":"inferred",
+   "injection":{"text":"調整の前に、人の枠と各費目の優先順位を並べて、削る順序を決めておく","basis":"inferred"}},
+  {"on":"bd","text":"研修を次期に移せば、延期で浮いた額が今期の予算の余力になる","basis":"stated","grounds":["u100"],
+   "injection":{"text":"内製の教材を先に準備し、今期中に手順だけ教えて研修費の支出を最小限にする","basis":"inferred"}},
+  {"on":"cd","text":"借用回数を減らしても、検証結果を枠の締め切りまでに出せる","basis":"stated","grounds":["u101"],
+   "injection":{"text":"借用日を月初に固定し、締め切り前に検証を終えられる日程を先に確保する","basis":"inferred"}},
+  {"on":"dd","text":"研修の延期と端末の借用抑制は今期の同じ予算枠を取り合い、両方は同時に行えない","basis":"inferred",
+   "injection":{"text":"両方を小幅に削り、どちらか一方に大きな負担が偏らないようにする","basis":"inferred"}}
+ ]}

@@ -1,0 +1,99 @@
+{
+  "a": {
+    "text": "読み手が入力エラーに気づき、必要なら対処できる状態にする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "同じエラーの繰り返しで読み手の作業を邪魔されないようにしたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "p6"
+    ]
+  },
+  "c": {
+    "text": "一回の区間でエラーが何度出たかを見て、問題の繰り返しの度合いを把握したい",
+    "basis": "stated",
+    "grounds": [
+      "u105"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d": {
+    "text": "警告を一度だけ出し、同じ入力の繰り返しでは続けて出さない",
+    "basis": "stated",
+    "grounds": [
+      "u104"
+    ],
+    "nids": [
+      "p6"
+    ]
+  },
+  "d2": {
+    "text": "繰り返しエラーは件数を付けて表示する",
+    "basis": "stated",
+    "grounds": [
+      "u105"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "エラーの繰り返し警告が続くと読み手は作業を妨げられ、通知の意味が薄れる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "件数が見えれば、読み手や開発側が繰り返しの度合いを見て対処を判断できる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "同じ入力での警告を一度に抑えても、読み手の作業は妨げられない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "警告の後も、録音一覧などから後で確認できる場所を用意する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "件数を付けた繰り返し表示が、読み手の画面を圧迫しない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "dd",
+      "text": "一度だけの警告では、その場で別の画面を見ていた読み手が気づかないことがある",
+      "basis": "stated",
+      "grounds": [
+        "u107"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "表示の時間や次の警告の載せ場所を決め、気づかなかったときの確認先を作る",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

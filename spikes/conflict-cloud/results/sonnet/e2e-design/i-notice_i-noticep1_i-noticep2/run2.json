@@ -1,0 +1,124 @@
+{
+  "a": {
+    "text": "読み手の警告を、異常への対応と原因の調査の両方に役立つ形で届ける。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-notice"
+    ]
+  },
+  "b": {
+    "text": "録音を操作している人が、その場で異常に気づけるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u116",
+      "u117"
+    ],
+    "nids": [
+      "a-notice"
+    ]
+  },
+  "c": {
+    "text": "あとで問題を追いやすくしつつ、画面で頻繁に視線を取られないようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": []
+  },
+  "d": {
+    "text": "録音画面に短い警告を載せる。",
+    "basis": "stated",
+    "grounds": [
+      "u116"
+    ],
+    "nids": [
+      "i-noticep1"
+    ]
+  },
+  "d2": {
+    "text": "警告は診断一覧にだけ載せる。",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "録音中に異常に気づけなければ、その場で再試験できる機会を逃す。",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "録音終了時に異常の有無を必ず知らせ、すぐに再試験へ進めるようにする。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "診断一覧は録音が終わるまで誰も開かないおそれがあるため、録音画面に出さないと録音中に気づけない。",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "録音中は担当者が診断一覧を監視し、異常があれば操作している人にすぐ伝える。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "録音画面に警告を載せると、操作している人が頻繁に視線を取られる。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "録音画面の表示は短くして閉じられるようにし、同じ警告は繰り返し出さずにまとめる。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "あとから問題を追うのに必要な情報は、録音画面の短い表示だけでは確認できない。",
+      "basis": "stated",
+      "grounds": [
+        "u116"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "録音画面には短い表示を出し、相対時刻と件数は別の場所で確認できるようにする。",
+        "basis": "stated",
+        "grounds": [
+          "u116"
+        ],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "診断一覧にだけ載せる案を採ると、録音画面には警告を一切出せない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "「一覧だけ」の条件を外し、録音画面と診断一覧で役割と載せる情報を分ける。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

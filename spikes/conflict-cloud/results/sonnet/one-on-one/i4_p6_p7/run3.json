@@ -1,0 +1,132 @@
+{
+  "a": {
+    "text": "締め切りの見積もりのずれに早く気づけるようにする。",
+    "basis": "stated",
+    "grounds": [
+      "u62",
+      "u63"
+    ],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "後で待ちの原因になりうる不明点を、早い段階で見つけたい。",
+    "basis": "stated",
+    "grounds": [
+      "u65"
+    ],
+    "nids": [
+      "a6"
+    ]
+  },
+  "c": {
+    "text": "別に時間を取る負担なしに、見積もりのずれへの対策を始められるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u66",
+      "u68"
+    ],
+    "nids": [
+      "a7"
+    ]
+  },
+  "d": {
+    "text": "初日に小さな試作を作る。",
+    "basis": "stated",
+    "grounds": [
+      "u64"
+    ],
+    "nids": [
+      "p6"
+    ]
+  },
+  "d2": {
+    "text": "最初に不明点を一つ書き出す。",
+    "basis": "stated",
+    "grounds": [
+      "u68"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "不明点が早く分かれば、見積もりのずれにも早く気づける。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "a8"
+      ],
+      "injection": {
+        "text": "質問を聞いた日と返った日を見比べ、確認にかかる日数も把握する。",
+        "basis": "stated",
+        "grounds": [
+          "u69"
+        ],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "別の時間が必要な対策は始めにくく、見積もりのずれに気づく取り組みとして使えない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "対策に使う時間を、あらかじめ作業の見積もりに含めておく。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "先に見える部分を実際に一つ通してみないと、重要な不明点は早く見つからない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "a6"
+      ],
+      "injection": {
+        "text": "初日に仕上げまでの手順を順にたどり、必要な確認とその相手を洗い出す。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "試作には別の時間が必要だが、不明点を一つ書き出すだけならその時間は要らない。",
+      "basis": "stated",
+      "grounds": [
+        "u66",
+        "u68"
+      ],
+      "nids": [
+        "a7"
+      ],
+      "injection": {
+        "text": "試作は不明点が多い大きな作業に限り、使う時間の上限を決める。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "依頼の大きさや内容にかかわらず、毎回同じ一つの始め方を使わなければならない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "まず不明点を一つ書き出し、手を動かさないと分からない作業だけ小さく試作する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

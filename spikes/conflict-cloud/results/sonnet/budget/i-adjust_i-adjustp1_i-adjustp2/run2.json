@@ -1,0 +1,113 @@
+{
+  "a": {
+    "text": "予算が不足しても、今期の業務に必要な成果への影響を抑える。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjust"
+    ]
+  },
+  "b": {
+    "text": "検証端末を使った比較の結果を、次の枠の締め切りまでに出せるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "a-adjust"
+    ]
+  },
+  "c": {
+    "text": "入ったばかりの人が、今期のうちに手順を覚える機会を保ちたい。",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": []
+  },
+  "d": {
+    "text": "研修を次期の初めに移す。",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d2": {
+    "text": "検証端末を借りる回数を抑える。",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "i-adjustp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "比較の結果が次の枠の締め切りに遅れると、今期の業務に必要な成果が損なわれる。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "新しく入った人が今期のうちに手順を覚えないと、今期の業務に支障が出る。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "今期の業務に必要な手順を絞り、その習得の担当と期限を決める。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "端末を借りる回数を減らすと、相手先の空きが月末に寄った場合、比較の結果が締め切りに間に合わないおそれがある。",
+      "basis": "stated",
+      "grounds": [
+        "u101"
+      ],
+      "nids": [
+        "a-adjust"
+      ],
+      "injection": {
+        "text": "相手先の空き日と締め切りを照らし合わせ、間に合う日の借用を先に確保してから回数を決める。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "今期のうちに手順を覚える機会は、今期に研修を実施しなければ確保できない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "研修を延期する場合は、今期中に現場で個別に教える時間を確保する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "予算の不足を埋めるには研修の延期か端末の借用削減の一方で足り、もう一方は予定どおりにする必要がある。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "不足額と各案で浮く額を確かめ、研修の一部の移動と借用回数の一部削減を組み合わせられるか検討する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

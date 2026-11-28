@@ -1,0 +1,19 @@
+```json
+{"a":{"text":"録音を途切れさせずに、書き込みが遅れても作業を続けられること","basis":"inferred","nids":["a5"]},
+ "b":{"text":"到着したデータを一つも落とさず、到着順に書き出せること","basis":"stated","grounds":["u33"],"nids":["p2"]},
+ "c":{"text":"待ちが長引いてもメモリが際限なく増えず、上限に達したことを把握できること","basis":"stated","grounds":["u34","u36"],"nids":["p3"]},
+ "d":{"text":"バッファを無制限にする"},
+ "d2":{"text":"固定の上限を付けて手前で待つ"},
+ "assumptions":[
+  {"on":"ab","text":"書き込みの遅れは一時的で、処理はいずれ受け口に溜まった量に追いつく","basis":"inferred",
+   "injection":{"text":"測定表で遅れの区間と長さを確認し、一時的な遅れかどうかを判定する","basis":"inferred"}},
+  {"on":"ac","text":"上限が無いと受け口やメモリの使用量が増え続け、録音が止まる恐れがある","basis":"inferred",
+   "injection":{"text":"録音側で許容できる待ち時間を試験で測り、上限の判断材料にする","basis":"inferred"}},
+  {"on":"bd","text":"待ちの間に溜まるデータ量は、実行環境のメモリの範囲に収まる","basis":"inferred",
+   "injection":{"text":"実データで待ちの最大量を測り、メモリに収まるかを確認する","basis":"inferred"}},
+  {"on":"cd","text":"上限に達したことを別に記録すれば、溢れたデータをどう扱うか判断できる","basis":"stated","grounds":["u36"],
+   "injection":{"text":"上限到達時の記録項目と、溢れた場合に落とすトラックの優先順を決める","basis":"inferred"}},
+  {"on":"dd","text":"無制限と固定上限は、同じバッファに対して同時には成り立たない","basis":"inferred",
+   "injection":{"text":"試験結果で受け口に溜まる量を見て、上限値の大きさを決める","basis":"inferred"}}
+ ]}
+```

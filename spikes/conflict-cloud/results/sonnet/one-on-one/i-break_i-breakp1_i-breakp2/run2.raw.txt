@@ -1,0 +1,14 @@
+{"a":{"text":"休憩で仕事の画面から離れ、頭を切り替えて席に戻れるようにする。","basis":"stated","grounds":["u105"],"nids":["i-break"]},
+"b":{"text":"緊急でない連絡への影響を小さく抑えながら、休憩中は仕事の通知に気を取られないようにしたい。","basis":"stated","grounds":["u106"],"nids":["i-breakp1"]},
+"c":{"text":"通知設定の戻し忘れを心配せず、机の前で画面を見る状態から離れたい。","basis":"stated","grounds":["u107"],"nids":["i-breakp2"]},
+"d":{"text":"休憩の十分だけ携帯の通知を止める。"},
+"d2":{"text":"端末を席に置いて歩く。"},
+"assumptions":[
+{"on":"ab","text":"仕事の通知が届くと画面を見てしまい、頭が切り替わらない。","basis":"inferred","injection":{"text":"通知が届いても休憩の終わりまでは開かないと、あらかじめ決めておく。","basis":"inferred"}},
+{"on":"ac","text":"机の前にいて画面を見られる状態が続くと、頭は切り替わらない。","basis":"inferred","injection":{"text":"席にいたまま画面を伏せ、目と手を休める過ごし方を試す。","basis":"inferred"}},
+{"on":"bd","text":"緊急でない連絡は、休憩から戻ってまとめて見れば影響が小さい。","basis":"stated","grounds":["u106"]},
+{"on":"bd","text":"通知を止めると、電話を受ける当番の日に必要な着信にも対応しにくくなる。","basis":"stated","grounds":["u106"],"injection":{"text":"当番の日は、必要な着信だけが鳴る設定にする。","basis":"inferred"}},
+{"on":"cd","text":"端末を持たずに歩けば、通知の設定を変えなくても画面から離れられ、戻し忘れの心配が減る。","basis":"stated","grounds":["u107"],"injection":{"text":"休憩の十分が過ぎると自動で解除される通知停止を使う。","basis":"inferred"}},
+{"on":"cd","text":"休憩には、行き先を決めて歩けるだけの時間がある。","basis":"inferred","nids":["i-breakp2"],"injection":{"text":"予定の間が短い日に備えて、短時間で戻れる行き先を先に決めておく。","basis":"inferred"}},
+{"on":"dd","text":"休憩中に画面から離れる方法は、通知を止めるか端末を置いて歩くかのどちらか一つに決める必要がある。","basis":"inferred","injection":{"text":"予定の余裕や電話当番の有無に応じて、日ごとに二つの方法を使い分ける。","basis":"inferred"}}
+]}

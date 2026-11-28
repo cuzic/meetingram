@@ -1,0 +1,15 @@
+{"a":{"text":"締め切りの見積もりを、終わりの日だけでなく途中のずれも早く見つけて合わせたい","basis":"inferred","nids":["i4"]},
+ "b":{"text":"最初の日に分からない点を出して、質問への待ち時間を減らしたい","basis":"stated","grounds":["u65"],"nids":["p6"]},
+ "c":{"text":"試作の時間を増やさず、すぐ始められる形で不明点を整理したい","basis":"stated","grounds":["u66","u68"],"nids":["p7"]},
+ "d":{"text":"初日に小さな試作を作る"},
+ "d2":{"text":"最初に不明点を一つ書き出す"},
+ "assumptions":[
+  {"on":"ab","text":"待ち時間が長くなるのは、不明点が仕上げ段階まで見つからないからだ","basis":"inferred",
+   "injection":{"text":"担当者の休みや確認事項を、作業の最初の日に一覧で洗い出す","basis":"inferred"}},
+  {"on":"bd","text":"初日に試作を作ると、担当者への確認が必要な点が早く出る","basis":"stated","grounds":["u65"],
+   "injection":{"text":"試作の代わりに、初日に確認先と確認事項だけを先に決める","basis":"inferred"}},
+  {"on":"cd","text":"不明点を書き出すだけでは、確認に何日かかるかは分からない","basis":"stated","grounds":["u69"],
+   "injection":{"text":"聞いた日と返った日を記録し、確認にかかる日数を次回の見積もりに使う","basis":"inferred"}},
+  {"on":"dd","text":"初日の時間は試作と書き出しのどちらかに限られ、両方は同時にできない","basis":"stated","grounds":["u66"],
+   "injection":{"text":"書き出しを数分で終わる形にして、試作と同じ日に両方行う","basis":"inferred"}}
+ ]}

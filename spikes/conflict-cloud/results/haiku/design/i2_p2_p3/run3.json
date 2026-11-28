@@ -1,0 +1,120 @@
+{
+  "a": {
+    "text": "録音を途切れさせず、受け口もメモリも溢れさせずに書き込みを続けること",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "b": {
+    "text": "書き込みが追いついたとき、溜まったデータを到着順に欠けなく書けること",
+    "basis": "stated",
+    "grounds": [
+      "u33"
+    ],
+    "nids": [
+      "p2"
+    ]
+  },
+  "c": {
+    "text": "上限に達した事実を別に記録でき、溜まり量を有限に保てること",
+    "basis": "stated",
+    "grounds": [
+      "u36"
+    ],
+    "nids": [
+      "p3"
+    ]
+  },
+  "d": {
+    "text": "バッファを無制限にする",
+    "basis": "stated",
+    "grounds": [
+      "u33",
+      "u50"
+    ],
+    "nids": [
+      "p2"
+    ]
+  },
+  "d2": {
+    "text": "固定の上限を付けて手前で待つ",
+    "basis": "stated",
+    "grounds": [
+      "u36",
+      "u39",
+      "u50"
+    ],
+    "nids": [
+      "p3"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "溜まったデータは、書き込み側が処理を追いつかせれば到着順にすべて書ける",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "書き込みの処理速度を上げ、溜まりが増え続けない状態を保つ",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "処理が追いつくまで待てば、無制限のバッファは遅れた分のデータをすべて残せる",
+      "basis": "stated",
+      "grounds": [
+        "u33"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "保持できる上限量を決め、超えた分の扱いを事前に定める",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "上限の手前で待てば、録音側の受け口が溢れずに済む",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "受け口の容量を増やし、書き込みの遅れを受け口側で吸収できるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "上限到達を記録しておけば、溢れる前に書き込みの遅れを検知できる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "上限到達の記録を溢れた後にしか残せない構成にする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "溜まりを吸収する場所は、無制限と上限のどちらか一方しか置けない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "上限を十分大きく取り、超えた場合に落とすトラックの優先順を先に決める",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "a": {
+    "text": "期末に余剰予算を宙に浮かせず、今期と来期の資金を無駄なく使う",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "余剰予算の残額と使い道が見通しよく把握できる状態にしたい",
+    "basis": "stated",
+    "grounds": [
+      "u87"
+    ],
+    "nids": [
+      "a15"
+    ]
+  },
+  "c": {
+    "text": "余剰予算を来期の使い道として確実に確保しておきたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "d": {
+    "text": "余剰予算を予備費に移す",
+    "basis": "stated",
+    "grounds": [
+      "u86",
+      "u87"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d2": {
+    "text": "余剰予算を来期に回す",
+    "basis": "stated",
+    "grounds": [
+      "u86"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "端末の見積もりが決まらないと、期末までに余剰額を確定できない",
+      "basis": "stated",
+      "grounds": [
+        "u85"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "端末の見積もりを先に取り、余剰額を先に確定させる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ab",
+      "text": "期末までに余剰の行き先を決めないと、予算が宙に浮いてしまう",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "予備費に移すと、残額と用途が一覧で見通しよく管理できる",
+      "basis": "stated",
+      "grounds": [
+        "u87"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "予備費に移した後も、残額と用途を一覧表で毎月確認する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "予備費に移した分は、期の終わりに今期の予算へ戻せる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "事務に予備費の期末返還の可否を先に確認する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "来期に回した余剰は、手続き上そのまま来期の費目として使える",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "事務に来期への繰越可能な範囲と手続きを確認する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "同じ余剰予算は、予備費と来期繰越の両方に同時には充てられない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

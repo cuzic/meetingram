@@ -1,0 +1,122 @@
+{
+  "a": {
+    "text": "予算が足りなくても、今期に必要な仕事に支障を出さずに費用を収める。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjust"
+    ]
+  },
+  "b": {
+    "text": "端末検証の比較結果を、次の枠の締め切りに間に合うように出せる状態を保ちたい。",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "a-adjust"
+    ]
+  },
+  "c": {
+    "text": "入ったばかりの人が今期のうちに手順を覚える機会を守りたい。",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d": {
+    "text": "研修を次期の初めに移す。",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d2": {
+    "text": "検証端末を借りる回数を抑える。",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "i-adjustp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "検証結果が次の枠の締め切りに遅れると、今期に必要な仕事に支障が出る。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "新しく入った人が今期中に手順を覚えられないと、今期の仕事に支障が出る。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "端末を借りる回数を減らすと、相手先の空きが月末に寄った場合、比較結果が次の枠の締め切りに間に合わない可能性がある。",
+      "basis": "stated",
+      "grounds": [
+        "u101"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "回数を絞る前に相手先の空き日を確認し、締め切りに間に合う借用日を先に押さえる。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "研修を次期に移さなければ、端末の借用を減らさずに予算の不足を埋められない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "人の枠を含む他の費目も見直し、不足を埋める別の財源を探す。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "研修を次期に延期すると、入ったばかりの人は今期のうちに手順を覚える機会を失う。",
+      "basis": "stated",
+      "grounds": [
+        "u100"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "内製の教材と現場の個別指導で今期中に手順を教え、指導時間と延期で浮く額を比べて判断する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "予算の不足は研修か端末のどちらか一方で調整するため、両方の案を同時には採らない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "研修の一部だけを次期に移し、端末の借用も締め切りに影響しない範囲で減らして、不足を分担する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

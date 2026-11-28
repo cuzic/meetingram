@@ -1,0 +1,12 @@
+{"a":{"text":"仕事の区切りを持って、集中と休息を両立させる","basis":"inferred","nids":["i5"]},
+"b":{"text":"仕事の切れ目で確実に一度席を離れて区切りを作りたい","basis":"stated","grounds":["u89","u94"],"nids":["p10"]},
+"c":{"text":"午前と午後を分けて、昼の分が短い日も午後の区切りを持ちたい","basis":"stated","grounds":["u92"],"nids":["p9","a10"]},
+"d":{"text":"会議直後を休憩の区切りにする"},
+"d2":{"text":"午後の中間に短く休む"},
+"assumptions":[
+{"on":"ab","text":"仕事の切れ目で区切れれば、集中と休息の両方が保てる","basis":"inferred","injection":{"text":"作業の切れ目を意識的に決めるルールを一つ作る","basis":"inferred"}},
+{"on":"ac","text":"午後の途中で区切れれば、昼の分が短い日でも午後の疲れを抑えられる","basis":"inferred"},
+{"on":"bd","text":"会議は終わりが決まっているので、その直後が仕事の切れ目になる","basis":"stated","grounds":["u94"],"injection":{"text":"会議の終了時刻を予定表で明確にしておく","basis":"inferred"}},
+{"on":"cd","text":"午後の中間の固定休憩は会議と重なり、そのたびに動かす手間がかかる","basis":"stated","grounds":["u93"],"injection":{"text":"中間は固定せず、会議が重なった日は空いた時間に休む","basis":"inferred"}},
+{"on":"dd","text":"休憩を二つ取ると、午後の作業時間が足りなくなる","basis":"inferred"}
+]}

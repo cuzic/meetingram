@@ -1,0 +1,103 @@
+{
+  "a": {
+    "text": "締め切りの見積もりを実際の進み具合に近づけ、直前になってずれが出ないようにする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "作業の途中で分からない点や待ち時間を、早い段階で見つけて減らしたい",
+    "basis": "stated",
+    "grounds": [
+      "u65"
+    ],
+    "nids": [
+      "p6",
+      "a6"
+    ]
+  },
+  "c": {
+    "text": "試作のための時間を別に取らず、短い依頼でも負担なく最初の一歩を始めたい",
+    "basis": "stated",
+    "grounds": [
+      "u68"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d": {
+    "text": "初日に小さな試作を作る",
+    "basis": "stated",
+    "grounds": [
+      "u64"
+    ],
+    "nids": [
+      "p6"
+    ]
+  },
+  "d2": {
+    "text": "最初に不明点を一つ書き出す",
+    "basis": "stated",
+    "grounds": [
+      "u68"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "見積もりのずれは、途中で分からない点や待ち時間が後から見つかることで生じる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "試作を作れば、確認が必要な点が初日のうちに表に出てくる",
+      "basis": "stated",
+      "grounds": [
+        "u65"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "試作の代わりに、初日に確認が必要な点を洗い出して担当者へ質問を出す",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "不明点を書き出すだけなら、試作より少ない時間で最初の一歩を始められる",
+      "basis": "stated",
+      "grounds": [
+        "u68"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "聞いた日と返答が来た日を記録し、確認にかかる日数を次回の見積もりに使う",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "初日の作業時間は限られており、試作に使うと不明点の書き出しに回せない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "不明点の書き出しを試作の一部に含め、同じ初日の時間で両方を行う",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

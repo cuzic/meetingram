@@ -1,0 +1,17 @@
+{"a":{"text":"読み手がエラーに気づき、必要な対応を取れるようにする","basis":"inferred","nids":["i4"]},
+ "b":{"text":"同じエラーの警告に何度も割り込まれず、作業を続けたい","basis":"stated","grounds":["u104"]},
+ "c":{"text":"繰り返しエラーの程度が分かり、問題の大きさを判断したい","basis":"stated","grounds":["u105"]},
+ "d":{"text":"警告を一度だけ出す"},
+ "d2":{"text":"繰り返しエラーは件数を付ける"},
+ "assumptions":[
+  {"on":"bd","text":"一度の警告で読み手は気づける","basis":"stated","grounds":["u107"],
+   "injection":{"text":"警告を一度出したあとも、確認先から後で見直せるようにする","basis":"inferred"}},
+  {"on":"bd","text":"同じエラーの警告が続くと読み手の作業が妨げられる","basis":"inferred",
+   "injection":{"text":"警告の表示時間を短くし、画面を遮らないようにする","basis":"inferred"}},
+  {"on":"cd","text":"件数がなければ繰り返しの程度が読み手に分からない","basis":"stated","grounds":["u105"],
+   "injection":{"text":"繰り返し回数を別の画面やログで確認できるようにする","basis":"inferred"}},
+  {"on":"ac","text":"気づかなかったときに確認できる先があれば読み手は対応できる","basis":"stated","grounds":["u109"],
+   "injection":{"text":"通知の一覧を残し、後から確認できる場所を用意する","basis":"inferred"}},
+  {"on":"dd","text":"一度だけの警告と件数付きの表示は同じ画面で両立しない","basis":"inferred",
+   "injection":{"text":"警告は一度だけ出し、件数は別の確認先に載せる","basis":"inferred"}}
+ ]}

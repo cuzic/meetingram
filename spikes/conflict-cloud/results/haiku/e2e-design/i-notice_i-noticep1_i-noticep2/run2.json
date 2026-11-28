@@ -1,0 +1,115 @@
+{
+  "a": {
+    "text": "録音中に起きた異常を見逃さず、あとから原因を追えるようにすること",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-notice"
+    ]
+  },
+  "b": {
+    "text": "録音中に異常が起きたとき、操作している人がその場で気づけること",
+    "basis": "stated",
+    "grounds": [
+      "u116"
+    ],
+    "nids": [
+      "i-noticep1"
+    ]
+  },
+  "c": {
+    "text": "録音中に画面で視線を取られず、あとから一覧で問題を追えること",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "d": {
+    "text": "録音画面に短い警告を載せる",
+    "basis": "stated",
+    "grounds": [
+      "u116"
+    ],
+    "nids": [
+      "i-noticep1"
+    ]
+  },
+  "d2": {
+    "text": "診断一覧にだけ警告を載せる",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "録音中に起きた異常は、録音中に気づけないと後から手遅れになることがある",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "録音中に異常が起きたら、件数だけを画面に出して気づけるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "録音後に診断一覧を開けば、問題の時刻と件数をさかのぼって確認できる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "録音画面に短く出せば、操作している人の視界に入り、その場で気づける",
+      "basis": "stated",
+      "grounds": [
+        "u116"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "警告は一行に絞り、録音の操作を邪魔しない位置に置く",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "録音画面に警告を出すと、表示のたびに視線を取られて作業が中断される",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "録音画面では警告の頻度を間引き、全件は一覧に残す",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "同じ警告を録音画面と一覧の両方に出すと、どちらを見ればよいか分からず情報が混ざる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "録音画面は即時の一言、一覧は時刻と件数の詳細と役割を分けて載せる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

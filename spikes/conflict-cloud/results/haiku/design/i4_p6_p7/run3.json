@@ -1,0 +1,91 @@
+{
+  "a": {
+    "text": "読み手が読み手のエラーに気づき、必要な対処を取れること",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "同じエラーの警告で作業を繰り返し中断されたくない",
+    "basis": "stated",
+    "grounds": [
+      "u104"
+    ],
+    "nids": []
+  },
+  "c": {
+    "text": "一つの区間でエラーが何度出たかを把握したい",
+    "basis": "stated",
+    "grounds": [
+      "u105"
+    ],
+    "nids": []
+  },
+  "d": {
+    "text": "警告を一度だけ出す",
+    "basis": "stated",
+    "grounds": [
+      "u104"
+    ],
+    "nids": [
+      "p6"
+    ]
+  },
+  "d2": {
+    "text": "繰り返しエラーには件数を付けて出す",
+    "basis": "stated",
+    "grounds": [
+      "u105"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "bd",
+      "text": "一度の警告で読み手はエラーに気づく",
+      "basis": "stated",
+      "grounds": [
+        "u107"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "未読のエラーを一覧に残し、後から確認できるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "表示が消えても、気づかなかった読み手が後から確認できる場所がある",
+      "basis": "stated",
+      "grounds": [
+        "u109"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "警告の表示を消した後も、エラー一覧から確認できるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "件数を付けても、読み手は通知が多すぎると感じない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "件数は通知の末尾に小さく付け、通知の本数は増やさない",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

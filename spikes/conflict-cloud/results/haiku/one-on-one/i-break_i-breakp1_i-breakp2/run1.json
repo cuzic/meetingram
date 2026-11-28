@@ -1,0 +1,138 @@
+{
+  "a": {
+    "text": "休憩中は仕事から頭を離して、席に戻ったときに気持ちを切り替えられるようにしたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-break"
+    ]
+  },
+  "b": {
+    "text": "緊急でない連絡に休憩中の時間を邪魔されず、落ち着いて休みたい",
+    "basis": "stated",
+    "grounds": [
+      "u106"
+    ],
+    "nids": [
+      "i-breakp1"
+    ]
+  },
+  "c": {
+    "text": "机の前の仕事の画面から離れて、休憩中に頭を切り替えたい",
+    "basis": "stated",
+    "grounds": [
+      "u107"
+    ],
+    "nids": [
+      "i-breakp2"
+    ]
+  },
+  "d": {
+    "text": "休憩の十分だけ携帯の通知を止める",
+    "basis": "stated",
+    "grounds": [
+      "u106"
+    ],
+    "nids": [
+      "i-breakp1"
+    ]
+  },
+  "d2": {
+    "text": "端末を席に置いて歩く",
+    "basis": "stated",
+    "grounds": [
+      "u107"
+    ],
+    "nids": [
+      "i-breakp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "休憩中に仕事の通知を見ないことが、頭を休ませる前提になっている",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "休憩中は通知を見ない時間として予定表に明記し、周りにも共有する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "仕事の画面から物理的に離れることが、頭の切り替えに効く",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "休憩中は席から離れる場所を決めておき、画面を開かずに過ごす",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "通知を止めても、戻ってからまとめて見れば連絡を取りこぼさない",
+      "basis": "stated",
+      "grounds": [
+        "u106"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "通知停止の時間帯でも緊急連絡だけは届くように例外を設定しておく",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "端末を席に置いて歩けば、通知設定を戻し忘れる心配がなくなる",
+      "basis": "stated",
+      "grounds": [
+        "u107"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "端末を置いて歩くときは、通知設定の変更自体をしない運用にする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "予定の間が五分しかない日は、行き先を考えているうちに休憩が終わってしまう",
+      "basis": "stated",
+      "grounds": [
+        "u107"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "五分の日は行き先を決めず、席のそばで立つだけにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "電話を受ける当番の日は、通知を止めると電話や連絡を受けられなくなる",
+      "basis": "stated",
+      "grounds": [
+        "u106"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "当番の日は通知停止の対象から電話を外し、休憩中も着信だけ受けられるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

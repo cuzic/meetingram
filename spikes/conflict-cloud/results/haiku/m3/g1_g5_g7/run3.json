@@ -1,0 +1,133 @@
+{
+  "a": {
+    "text": "来年3月のサポート終了までに、移行工数とベンダーロックインを抑えて監視基盤を乗り換える",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "g2",
+      "g3"
+    ]
+  },
+  "b": {
+    "text": "導入の手間を減らし、すぐにログを見られるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u15",
+      "u16"
+    ],
+    "nids": [
+      "g8"
+    ]
+  },
+  "c": {
+    "text": "既存クラウドの環境とつなぎ、年間コストを予算内に収めたい",
+    "basis": "stated",
+    "grounds": [
+      "u64",
+      "u68"
+    ],
+    "nids": [
+      "g12",
+      "g17"
+    ]
+  },
+  "d": {
+    "text": "SaaSのログナビを採用する",
+    "basis": "stated",
+    "grounds": [
+      "u12"
+    ],
+    "nids": [
+      "g5"
+    ]
+  },
+  "d2": {
+    "text": "利用中クラウドのマネージド監視サービスを採用する",
+    "basis": "stated",
+    "grounds": [
+      "u61",
+      "u62",
+      "u129",
+      "u130"
+    ],
+    "nids": [
+      "g7"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "今のログ監視基盤は来年3月でサポートが切れる",
+      "basis": "stated",
+      "grounds": [
+        "u5"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "サポート延長をベンダーに確認し、移行期限に余裕を持たせる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "ログナビは構築がほぼ不要で、導入当日から使える",
+      "basis": "stated",
+      "grounds": [
+        "u15",
+        "u16"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "導入前に取り込み設定を実測検証し、立ち上がり時間を確認する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "マネージドは既存クラウドの権限・ネットワークとつながり、構築が軽い",
+      "basis": "stated",
+      "grounds": [
+        "u64",
+        "u65"
+      ],
+      "nids": []
+    },
+    {
+      "on": "cd",
+      "text": "マネージドの年間費用は値上げと1年保存を含めても予算内に収まる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "値上げと1年保存アーカイブ込みの見積もりを取り直す",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "移行を期限内に終えるには、収集形式を共通化して送り先を変えられる必要がある",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "収集をOpenTelemetryに統一する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "監視基盤は1つに決める必要があり、2つの案は両立しない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

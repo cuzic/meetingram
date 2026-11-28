@@ -1,0 +1,17 @@
+{"a":{"text":"読み手が通知されたエラーに気づき、適切に対応できる","basis":"inferred","nids":["i4"]},
+ "b":{"text":"同じエラーの通知を何度も見せられず、煩わしさを抑えたい","basis":"inferred"},
+ "c":{"text":"一区間で同じエラーが何度出たかを把握したい","basis":"stated","grounds":["u105"]},
+ "d":{"text":"警告を一度だけ出す"},
+ "d2":{"text":"繰り返しエラーは件数を付ける"},
+ "assumptions":[
+  {"on":"ab","text":"読み手が通知に気づかないと、エラーへの対応が行われない","basis":"inferred",
+   "injection":{"text":"気づかなかった場合に後から確認できる先を通知に添える","basis":"inferred"}},
+  {"on":"ab","text":"一度の警告では読み手が気づかないことがある","basis":"stated","grounds":["u107"],
+   "injection":{"text":"警告を一覧に残し、後から見返せるようにする","basis":"inferred"}},
+  {"on":"bd","text":"同じエラーを一度示せば、繰り返しの通知は不要になる","basis":"stated","grounds":["u104"],
+   "injection":{"text":"二回目以降のエラーは数えるが、画面には改めて出さない","basis":"inferred"}},
+  {"on":"cd","text":"件数がないと、一区間で同じエラーが何度起きたか分からない","basis":"stated","grounds":["u105"],
+   "injection":{"text":"件数は一覧や確認画面に載せ、警告の表示は増やさない","basis":"inferred"}},
+  {"on":"dd","text":"一度だけの警告では、繰り返し回数を画面に示し続けられない","basis":"inferred",
+   "injection":{"text":"警告は一度だけ出し、件数は別の場所に示す","basis":"inferred"}}
+ ]}

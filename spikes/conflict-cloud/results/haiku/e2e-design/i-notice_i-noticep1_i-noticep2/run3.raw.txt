@@ -1,0 +1,17 @@
+{"a":{"text":"録音中に起きた異常を見逃さず、あとから原因を追えるようにして、読み手の警告を正しく扱う","basis":"inferred","nids":["i-notice"]},
+ "b":{"text":"録音中に操作している人がその場で異常に気づけるようにしたい","basis":"stated","grounds":["u116"],"nids":["i-noticep1"]},
+ "c":{"text":"録音中は画面の視線を奪われず、あとで一覧から問題を追えるようにしたい","basis":"stated","grounds":["u117"],"nids":["i-noticep2"]},
+ "d":{"text":"録音画面に短い警告を載せる"},
+ "d2":{"text":"診断一覧にだけ警告を載せる"},
+ "assumptions":[
+  {"on":"ab","text":"録音中の異常はその場で気づかないと、対処する機会を逃してしまう","basis":"inferred",
+   "injection":{"text":"録音後に一覧で確認しても、対処が間に合うように運用を決めておく","basis":"inferred"}},
+  {"on":"ac","text":"事後に原因を追うには、相対時刻と件数を一覧で確認できる必要がある","basis":"inferred",
+   "injection":{"text":"一覧に相対時刻と件数を出し、録音画面の表示を減らしても追跡できるようにする","basis":"inferred"}},
+  {"on":"bd","text":"録音画面に短い警告を出せば、操作している人がその場で異常に気づける","basis":"stated","grounds":["u116"],
+   "injection":{"text":"録音画面には重要な異常だけを出し、警告の表示時間を十分に取る","basis":"inferred"}},
+  {"on":"cd","text":"診断一覧にだけ置くと、録音が終わるまで誰も開かず異常に気づけない","basis":"stated","grounds":["u117"],
+   "injection":{"text":"録音中は一覧を自動で開くか、一覧への案内を画面に出す","basis":"inferred"}},
+  {"on":"dd","text":"録音画面に警告を出すと、操作している人の視線が頻繁に奪われる","basis":"stated","grounds":["u117"],
+   "injection":{"text":"警告の出す間隔と表示の大きさを絞り、視線を奪う回数を減らす","basis":"inferred"}}
+ ]}

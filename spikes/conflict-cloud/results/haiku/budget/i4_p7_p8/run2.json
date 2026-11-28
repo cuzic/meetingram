@@ -1,0 +1,110 @@
+{
+  "a": {
+    "text": "余剰予算を無駄なく使い、必要な支出に備えられるようにする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjust"
+    ]
+  },
+  "b": {
+    "text": "予算の見通しを立てやすくしたい",
+    "basis": "stated",
+    "grounds": [
+      "u87"
+    ],
+    "nids": [
+      "a15"
+    ]
+  },
+  "c": {
+    "text": "来期の支出に余剰予算を充てられる余地を残したい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "p8"
+    ]
+  },
+  "d": {
+    "text": "余剰予算を予備費に移す",
+    "basis": "stated",
+    "grounds": [
+      "u86",
+      "u87"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d2": {
+    "text": "余剰予算を来期に回す",
+    "basis": "stated",
+    "grounds": [
+      "u86"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "予備費に置いておけば、予算が不足したときに必要な額をすぐ使える",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "予備費の取り崩し条件と手続きを事前に整理しておく",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "来期に回しておけば、来期の必要な支出に余剰予算をそのまま充てられる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "来期繰越の可否と上限を事務に確認しておく",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "予備費に置いた額は期末に戻せるので、見通しを立てるために移しても支障がない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "期末に予備費から戻せるかを事務に確認する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "来期に回した額は来期の予算として手続き上使える",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "来期に回す手続きで必要な期限と書類を事務に確認する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "同じ余剰額は予備費と来期繰越のどちらか一方にしか置けない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

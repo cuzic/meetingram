@@ -1,0 +1,113 @@
+{
+  "a": {
+    "text": "両方の確認を、レビュー時間内に抜け漏れなく進められるようにする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "b": {
+    "text": "中断試験で確定ファイルが読み出せるかを、画面で実際に確かめたい",
+    "basis": "stated",
+    "grounds": [
+      "u132"
+    ],
+    "nids": []
+  },
+  "c": {
+    "text": "試験を流している待ち時間に、ドキュメントへ目を通して進めたい",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": []
+  },
+  "d": {
+    "text": "中断試験の実演からレビューを始める",
+    "basis": "stated",
+    "grounds": [
+      "u132",
+      "u133"
+    ],
+    "nids": [
+      "p-review"
+    ]
+  },
+  "d2": {
+    "text": "ドキュメントを先に確認する",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "抜け漏れなく確認するには、動作を実際に見ながら進める必要がある",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "試験の動作を記録表に残せば、実演を見なくても確認できる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "レビュー時間を無駄にしないには、試験の待ち時間を使える作業が要る",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "中断試験を先に見せれば、確定ファイルの読み出し可否を画面で確かめられる",
+      "basis": "stated",
+      "grounds": [
+        "u132"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "ドキュメントに読み出しの期待結果を書いておけば、画面で確かめなくてもよい",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "ドキュメントだけでは形式しか確認できないので、動作の確認にはならない",
+      "basis": "stated",
+      "grounds": [
+        "u93"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "ドキュメントに動作の期待結果まで書けば、形式以上の確認ができる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "試験を流している間にドキュメントを読めば、待ち時間を無駄にしない",
+      "basis": "stated",
+      "grounds": [
+        "u92"
+      ],
+      "nids": []
+    },
+    {
+      "on": "dd",
+      "text": "レビューの最初に確認する対象は一つしか選べない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

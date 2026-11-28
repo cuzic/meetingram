@@ -1,0 +1,14 @@
+{"a":{"text":"午後のメッセージに一日の予定を崩さず、夕方までに適切に返信できるようにする","basis":"inferred","nids":["i1"]},
+ "b":{"text":"昼休み直後に確認し、夕方までに一度は返信できるようにしたい","basis":"stated","grounds":["u24"]},
+ "c":{"text":"打ち合わせが長引いても、読む順番が決まっていて迷わないようにしたい","basis":"stated","grounds":["u25"]},
+ "d":{"text":"昼休みの直後にまとめて読む","basis":"inferred"},
+ "d2":{"text":"予定表の最後の会議が終わってからまとめて読む","basis":"inferred"},
+ "assumptions":[
+  {"on":"bd","text":"昼休み直後なら予定がまだ詰まっておらず、席で確認して返事を出せる","basis":"stated","grounds":["u24"],
+   "injection":{"text":"昼休み直後の確認が無理な日に備え、代わりの時刻を別に決めておく","basis":"inferred"}},
+  {"on":"bd","text":"昼に予定がずれた日は、決めた時間に必ず確認できるとは限らない","basis":"inferred"},
+  {"on":"cd","text":"最後の会議が遅い日は、返事を出す時間が残らない","basis":"stated","grounds":["u25"],
+   "injection":{"text":"最後の会議の終わりに上限の時刻を決め、それを過ぎたら読む時間を確保する","basis":"inferred"}},
+  {"on":"ac","text":"会議の終わりを目印にすれば、読む順番を事前に決めておける","basis":"inferred"},
+  {"on":"dd","text":"昼休み直後と会議後の二つの時点には、同時に従えない","basis":"inferred"}
+ ]}

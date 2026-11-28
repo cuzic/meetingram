@@ -1,0 +1,11 @@
+{"a":{"text":"四週の試行で削れた時間を去年や他の人と公平に比べ、改善の効果を正しく判断する","basis":"inferred","nids":["i-metric"]},
+ "b":{"text":"担当件数の多い週と少ない週があっても、件数で割って同じ単位で差を説明できるようにしたい","basis":"stated","grounds":["u25"],"nids":["i-metricp1"]},
+ "c":{"text":"当番の拘束時間の中で、問い合わせや待ち時間を含めて別の作業に実際に使える時間を把握したい","basis":"stated","grounds":["u26"],"nids":["i-metricp2"]},
+ "d":{"text":"棚卸し一件あたりの作業時間で比較する"},
+ "d2":{"text":"当番の勤務一回あたりの作業時間で比較する"},
+ "assumptions":[
+  {"on":"ab","text":"去年の値と比べるには、担当件数の違いを補正した単位で揃える必要がある","basis":"inferred","injection":{"text":"去年の数字も件数で割り直し、同じ単位で並べて比べる","basis":"inferred"}},
+  {"on":"bd","text":"棚卸しの件数は週ごとに大きくばらつくため、件数で割らないと比較が偏る","basis":"stated","grounds":["u25"],"injection":{"text":"週ごとの件数と作業時間を記録し、件数あたりの値で再集計する","basis":"inferred"}},
+  {"on":"cd","text":"当番の拘束には問い合わせ対応や待ち時間も含まれ、棚卸しの短縮が別作業に回るとは限らない","basis":"stated","grounds":["u26"],"injection":{"text":"当番の拘束時間のうち、別作業に使えた時間を別途記録する","basis":"inferred"}},
+  {"on":"dd","text":"一つの四週データは一つの単位でしか割れず、両方を主指標にすると比較の基準が定まらない","basis":"inferred","injection":{"text":"主指標は一つに決め、もう一方は補助として併記する","basis":"inferred"}}
+ ]}

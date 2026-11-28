@@ -1,0 +1,12 @@
+{"a":{"text":"自分のキャリアに納得しながら、仕事で力を発揮し続けられる状態にある","basis":"inferred","nids":["g2"]},
+ "b":{"text":"技術を深めて、自分の仕事の質を高めていきたい","basis":"stated","grounds":["u12","u63"],"nids":["g14"]},
+ "c":{"text":"新人の成長に関わり、人を育てる実感も持ち続けたい","basis":"stated","grounds":["u12"],"nids":["g17"]},
+ "d":{"text":"スペシャリストとして技術の専門性を深める"},
+ "d2":{"text":"テックリードとして人を見ながら、技術にも関わり続ける"},
+ "assumptions":[
+  {"on":"ab","text":"キャリアに納得するには、技術を深めている実感が要る","basis":"inferred"},
+  {"on":"ac","text":"キャリアに納得するには、人の成長に関わっている実感が要る","basis":"inferred"},
+  {"on":"bd","text":"スペシャリストの評価軸が明確でないと、技術を深める意欲は続きにくい","basis":"stated","grounds":["u73","u74"],"injection":{"text":"スペシャリスト向けの評価軸を明文化して示す","basis":"inferred"}},
+  {"on":"cd","text":"人を見る役割を持っても会議が週8時間を超えなければ、技術に手を動かす時間は確保できる","basis":"inferred","injection":{"text":"テックリードの会議時間の上限を決めて守る","basis":"inferred"}},
+  {"on":"dd","text":"役割を両方持つと会議が増え、手を動かす時間がなくなる","basis":"stated","grounds":["u12","u81","u82"],"injection":{"text":"人を見る役割を期間や案件で区切り、会議を増やさない形にする","basis":"inferred"}}
+ ]}

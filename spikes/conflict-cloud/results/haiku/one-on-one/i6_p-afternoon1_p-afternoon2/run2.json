@@ -1,0 +1,99 @@
+{
+  "a": {
+    "text": "午後のメッセージに一日の予定を崩さず、夕方までに適切に返信できるようにする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i1"
+    ]
+  },
+  "b": {
+    "text": "昼休み直後に確認し、夕方までに一度は返信できるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u24"
+    ],
+    "nids": []
+  },
+  "c": {
+    "text": "打ち合わせが長引いても、読む順番が決まっていて迷わないようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u25"
+    ],
+    "nids": []
+  },
+  "d": {
+    "text": "昼休みの直後にまとめて読む",
+    "basis": "stated",
+    "grounds": [
+      "u24"
+    ],
+    "nids": [
+      "p-afternoon1"
+    ]
+  },
+  "d2": {
+    "text": "予定表の最後の会議が終わってからまとめて読む",
+    "basis": "stated",
+    "grounds": [
+      "u25"
+    ],
+    "nids": [
+      "p-afternoon2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "bd",
+      "text": "昼休み直後なら予定がまだ詰まっておらず、席で確認して返事を出せる",
+      "basis": "stated",
+      "grounds": [
+        "u24"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "昼休み直後の確認が無理な日に備え、代わりの時刻を別に決めておく",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "昼に予定がずれた日は、決めた時間に必ず確認できるとは限らない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "cd",
+      "text": "最後の会議が遅い日は、返事を出す時間が残らない",
+      "basis": "stated",
+      "grounds": [
+        "u25"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "最後の会議の終わりに上限の時刻を決め、それを過ぎたら読む時間を確保する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "会議の終わりを目印にすれば、読む順番を事前に決めておける",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "dd",
+      "text": "昼休み直後と会議後の二つの時点には、同時に従えない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

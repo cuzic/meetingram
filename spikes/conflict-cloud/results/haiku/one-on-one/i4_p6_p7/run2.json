@@ -1,0 +1,121 @@
+{
+  "a": {
+    "text": "見積もりの外れを早く見つけ、締め切りの直前に慌てないようにする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "作業の途中で分からない点を早く表に出したい",
+    "basis": "stated",
+    "grounds": [
+      "u65"
+    ],
+    "nids": [
+      "a6"
+    ]
+  },
+  "c": {
+    "text": "試作ほどの時間を取らずに、不明点の確認を最初から始めたい",
+    "basis": "stated",
+    "grounds": [
+      "u68"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d": {
+    "text": "初日に小さな試作を作る",
+    "basis": "stated",
+    "grounds": [
+      "u64"
+    ],
+    "nids": [
+      "p6"
+    ]
+  },
+  "d2": {
+    "text": "最初に不明点を一つ書き出す",
+    "basis": "stated",
+    "grounds": [
+      "u68"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "見積もりの外れに早く気づくには、作業の前に分からない点が見えている必要がある",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "見積もりを出す前に、分からない点を一覧にして確認する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "短い依頼でも毎回大きな試作を挟むと、作業時間が膨らみ続けてしまう",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "試作は時間のかかる大きな依頼に限り、短い依頼では使わない",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "初日に試作を作れば、作業の途中で不明点が早く表に出てくる",
+      "basis": "stated",
+      "grounds": [
+        "u65"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "試作を使わず、最初の日に確認の依頼を出しておく",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "不明点を書き出しただけでは、確認に何日かかるかは分からない",
+      "basis": "stated",
+      "grounds": [
+        "u69"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "確認を依頼した日と返答があった日を記録し、後で比べる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "試作の工数が増えると、最初の日に軽い書き出しを続けるのも難しくなる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "試作は一部の大きな依頼に限り、書き出しは毎回行う",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

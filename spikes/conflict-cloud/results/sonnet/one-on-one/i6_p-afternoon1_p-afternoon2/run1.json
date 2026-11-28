@@ -1,0 +1,124 @@
+{
+  "a": {
+    "text": "夕方から席を外す日や会議がずれる日でも、午後のメッセージ確認を無理なく運用できるようにする。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i6"
+    ]
+  },
+  "b": {
+    "text": "確認の返事が必要になっても、夕方までに一度は返ってくるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u24"
+    ],
+    "nids": [
+      "p-afternoon1"
+    ]
+  },
+  "c": {
+    "text": "会議が長引いても、いつメッセージを確認するかで迷わないようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u25"
+    ],
+    "nids": [
+      "p-afternoon2"
+    ]
+  },
+  "d": {
+    "text": "昼休みの直後にまとめて読む。",
+    "basis": "stated",
+    "grounds": [
+      "u24"
+    ],
+    "nids": [
+      "p-afternoon1"
+    ]
+  },
+  "d2": {
+    "text": "予定表で最後の会議が終わってから読む。",
+    "basis": "stated",
+    "grounds": [
+      "u25"
+    ],
+    "nids": [
+      "p-afternoon2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "夕方までに一度返事が返ってこないと、午後の確認はうまく運用できない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "急ぎでない用件は返事が翌日でもよいと、周りとあらかじめ決めておく。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "確認するタイミングに迷うようでは、午後の確認はうまく運用できない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "昼休みの直後は予定が詰まる前なので、基本的には席にいて確認できる。",
+      "basis": "stated",
+      "grounds": [
+        "u24"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "お昼に予定がずれた日に代わりに確認する時刻を、あらかじめ決めておく。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "最後の会議の直後という順番を決めておけば、会議が長引いても確認のタイミングに迷わない。",
+      "basis": "stated",
+      "grounds": [
+        "u25"
+      ],
+      "nids": []
+    },
+    {
+      "on": "cd",
+      "text": "時刻を固定すると会議の長引きに対応できず、行動を目印にする必要がある。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "固定の時刻に会議が重なった場合は、その会議の直後に確認すると決めておく。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "午後の確認は一回なので、昼休みの直後と最後の会議の後の両方には置けない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "i6"
+      ],
+      "injection": {
+        "text": "通常は昼休みの直後に読み、その時間に読めなかった日だけ最後の会議の後に読む。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

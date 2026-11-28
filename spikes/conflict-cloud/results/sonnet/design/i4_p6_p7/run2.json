@@ -1,0 +1,113 @@
+{
+  "a": {
+    "text": "読み手がエラーに気づき、状況に応じて対応できるようにする。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i4"
+    ]
+  },
+  "b": {
+    "text": "同じ入力を繰り返し開いても、読み手が同じ警告に何度も煩わされないようにしたい。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "p6"
+    ]
+  },
+  "c": {
+    "text": "一回の区間で同じエラーが何度出たかを、読み手が把握できるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u105"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "d": {
+    "text": "警告は一度だけ出し、続けては出さない。",
+    "basis": "stated",
+    "grounds": [
+      "u104"
+    ],
+    "nids": [
+      "p6"
+    ]
+  },
+  "d2": {
+    "text": "繰り返し出るエラーには件数を付ける。",
+    "basis": "stated",
+    "grounds": [
+      "u105"
+    ],
+    "nids": [
+      "p7"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "同じ警告が何度も出ると、読み手の対応の妨げになる。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "エラーへの適切な扱いは、その問題がどのくらい繰り返すかによって変わる。",
+      "basis": "stated",
+      "grounds": [
+        "u103"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "繰り返しの程度ごとに、エラーを受ける人と扱い方をあらかじめ決める。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "警告は一度出せば、読み手に気づいてもらえる。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "a8"
+      ],
+      "injection": {
+        "text": "警告に気づかなかった場合でも後から見られる確認先を用意する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "エラーの回数を読み手に伝えるには、警告の表示に件数を付ける必要がある。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "件数は警告とは別の確認先に記録し、読み手が後から見られるようにする。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "一度出した警告は後から内容を更新できないため、その後に繰り返した件数を示せない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "警告を出すのは一度だけにして、同じ表示の中の件数を更新する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

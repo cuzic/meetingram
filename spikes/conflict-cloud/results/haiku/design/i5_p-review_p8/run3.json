@@ -1,0 +1,100 @@
+{
+  "a": {
+    "text": "レビューで復旧の正しさを確実に見極め、手戻りを減らしたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i1"
+    ]
+  },
+  "b": {
+    "text": "試験の結果を画面で段階ごとに確かめ、失敗を見逃さずに記録したい",
+    "basis": "stated",
+    "grounds": [
+      "u132"
+    ],
+    "nids": [
+      "i1"
+    ]
+  },
+  "c": {
+    "text": "試験を流している間に資料へ目を通し、レビュー全体の時間を有効に使いたい",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": []
+  },
+  "d": {
+    "text": "中断試験の実演からレビューを始める",
+    "basis": "stated",
+    "grounds": [
+      "u132",
+      "u133"
+    ],
+    "nids": [
+      "p-review"
+    ]
+  },
+  "d2": {
+    "text": "ドキュメントを先に確認する",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "復旧の正しさは、試験を画面で実際に動かして見ないと確かめられない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "資料を先に読めば、試験の待ち時間を使ってレビュー全体を早く終えられる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "ドキュメントは形式しか示せず、実際の読み出し結果は試験の実演でしか見えない",
+      "basis": "stated",
+      "grounds": [
+        "u93"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "ドキュメントに試験結果の画面例を添え、形式以外も確認できるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "資料を先に読めば、試験結果を見る前に確認の見当をつけられる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "dd",
+      "text": "レビューの冒頭では、試験の実演と資料の確認を同時には行えない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "試験を流しながら資料を並行して確認する形にする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

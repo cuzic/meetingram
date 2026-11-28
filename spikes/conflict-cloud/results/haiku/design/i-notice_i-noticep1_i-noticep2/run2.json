@@ -1,0 +1,112 @@
+{
+  "a": {
+    "text": "録音中の異常を操作者が逃さず、あとからも原因を追えるようにする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-notice"
+    ]
+  },
+  "b": {
+    "text": "録音中に、操作している人がその場で異常に気づけるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u116"
+    ],
+    "nids": [
+      "i-noticep1"
+    ]
+  },
+  "c": {
+    "text": "録音中に視線を取られず、あとから一覧で問題を落ち着いて追えるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "d": {
+    "text": "録音画面に短い警告を載せる",
+    "basis": "stated",
+    "grounds": [
+      "u116"
+    ],
+    "nids": [
+      "i-noticep1"
+    ]
+  },
+  "d2": {
+    "text": "診断一覧にだけ警告を載せる",
+    "basis": "stated",
+    "grounds": [
+      "u117"
+    ],
+    "nids": [
+      "i-noticep2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "bd",
+      "text": "録音中の異常は、操作者がその場で気づけないと見逃される",
+      "basis": "stated",
+      "grounds": [
+        "u116"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "録音中は一覧の件数を小さく常時表示し、重大な異常だけ短く知らせる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "表示を閉じたあとも、相対時刻と件数を別の場所で確認できる必要がある",
+      "basis": "stated",
+      "grounds": [
+        "u116"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "録音画面の表示を消しても、一覧で相対時刻と件数を確認できるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "録音中に画面へ警告が出ると、視線を取られて操作の妨げになる",
+      "basis": "stated",
+      "grounds": [
+        "u117"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "警告は短く一度だけ出し、その後は録音画面に残さない",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "いまの表では両方の警告が同じ欄に載るため、同時に満たせない",
+      "basis": "stated",
+      "grounds": [
+        "u115"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "録音画面の欄と一覧の欄を分け、両方に同じ警告を出せるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{"a":{"text":"検証を確実かつ効率よく回し、試験結果を信頼できる状態にする","basis":"inferred","nids":["i2"]},
+ "b":{"text":"急に増えた試験にも、待たずにすぐ検証を回せるようにしたい","basis":"stated","grounds":["u33"],"nids":["a6"]},
+ "c":{"text":"同じ週に試したいものを一日にまとめて組めるようにしたい","basis":"stated","grounds":["u36"],"nids":["a8"]},
+ "d":{"text":"検証用の予備機を一台買う"},
+ "d2":{"text":"検証用端末を借りる"},
+ "assumptions":[
+  {"on":"ab","text":"急な試験が入った日に端末が空いていないと、検証全体が遅れる","basis":"inferred",
+   "injection":{"text":"試験の空き予定を共有し、急な依頼を別の端末で代替できるようにする","basis":"inferred"}},
+  {"on":"ac","text":"試験をまとめて組めないと、検証の作業時間が余分にかかる","basis":"inferred",
+   "injection":{"text":"試験を週単位で計画し、借用の日程を事前に確保する","basis":"inferred"}},
+  {"on":"bd","text":"急な試験に備えるには、借用の手続きを待たずに使える端末を自分で持つ必要がある","basis":"stated","grounds":["u33"],
+   "injection":{"text":"借用の手続きを当日でも済むようにし、自前の端末がなくても即日使えるようにする","basis":"inferred"}},
+  {"on":"cd","text":"試験をまとめて組むには、借用端末を予定どおりの日程で確保できる必要がある","basis":"stated","grounds":["u36"],
+   "injection":{"text":"月ごとの使用予定を先に出し、購入せずに借用の枠を固定する","basis":"inferred"}},
+  {"on":"dd","text":"使用日が月二日しかないなら、一台を常時確保する費用と置き場所は見合わない","basis":"stated","grounds":["u34"],
+   "injection":{"text":"使用日を増やす計画を立て、常時確保した端末の稼働を上げる","basis":"inferred"}}
+ ]}

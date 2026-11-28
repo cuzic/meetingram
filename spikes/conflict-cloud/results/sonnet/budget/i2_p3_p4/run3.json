@@ -1,0 +1,128 @@
+{
+  "a": {
+    "text": "必要な端末検証を、支障なく無駄の少ない形で進められるようにする。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i2"
+    ]
+  },
+  "b": {
+    "text": "検証に使える一台を常に確保し、試験が急に増えても対応できるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u32",
+      "u33"
+    ],
+    "nids": [
+      "a6"
+    ]
+  },
+  "c": {
+    "text": "使う日がまだ少ないうちは、同じ週の試験を借用日程に寄せてまとめて実施したい。",
+    "basis": "stated",
+    "grounds": [
+      "u35",
+      "u36"
+    ],
+    "nids": [
+      "a8"
+    ]
+  },
+  "d": {
+    "text": "検証用の予備機を一台買う。",
+    "basis": "stated",
+    "grounds": [
+      "u32",
+      "u39"
+    ],
+    "nids": [
+      "p3"
+    ]
+  },
+  "d2": {
+    "text": "検証用端末を借りる。",
+    "basis": "stated",
+    "grounds": [
+      "u35"
+    ],
+    "nids": [
+      "p4"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "検証を支障なく進めるには、予定外の試験にもすぐ使える端末が必要である。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "急な試験をどこまで待てるかを決め、待てる試験は次の検証日に回す。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "使う日が少ない間は、端末を常に確保しておくと検証の必要に対して無駄が大きい。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "a7"
+      ],
+      "injection": {
+        "text": "購入と借用の見積もりを同じ条件で比べ、利用日数に対する負担を確かめる。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "端末を借りる場合は、試験が急に一日増えると借りる手続きが必要になる。",
+      "basis": "stated",
+      "grounds": [
+        "u33"
+      ],
+      "nids": [
+        "a6"
+      ],
+      "injection": {
+        "text": "追加の試験日にすぐ端末を借りられるよう、手続きと条件を事前に取り決めておく。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "試験を同じ週の一日に寄せてまとめるには、端末の借用日程という区切りが必要である。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "a8"
+      ],
+      "injection": {
+        "text": "端末を買った場合も、検証日をあらかじめ決めて同じ週の試験をその日にまとめる。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "検証用端末の調達は購入か借用のどちらか一方にする必要があり、併用はできない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "予備機を一台買ったうえで、足りない場合だけ端末を借りる併用案も比較する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

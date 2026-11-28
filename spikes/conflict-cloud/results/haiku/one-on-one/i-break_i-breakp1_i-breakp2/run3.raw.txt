@@ -1,0 +1,19 @@
+{"a":{"text":"休憩を仕事の情報から離れた時間にし、席に戻ったとき頭を切り替えられるようにする","basis":"inferred","nids":["i5"]},
+ "b":{"text":"緊急でない連絡に気を取られず、休憩を休憩として過ごしたい","basis":"stated","grounds":["u106"],"nids":["i-breakp1"]},
+ "c":{"text":"仕事の画面から離れて休憩し、席に戻ったときに頭を切り替えたい","basis":"stated","grounds":["u105","u107"],"nids":["i-breakp2"]},
+ "d":{"text":"休憩の十分だけ携帯の通知を止める"},
+ "d2":{"text":"端末を席に置いて歩く"},
+ "assumptions":[
+  {"on":"ab","text":"緊急でない連絡は、休憩後にまとめて見ても問題がない","basis":"stated","grounds":["u106"],
+   "injection":{"text":"緊急の連絡だけ別の経路で届くよう、連絡の種類と経路を事前に決めておく","basis":"inferred"}},
+  {"on":"bd","text":"通知が止まっていれば、休憩中に仕事の画面を自分から開こうとしない","basis":"inferred",
+   "injection":{"text":"休憩中は仕事のアプリをホーム画面から外しておく","basis":"inferred"}},
+  {"on":"ac","text":"端末を席に置いて歩けば、机の前の仕事の画面から離れられる","basis":"stated","grounds":["u107"],
+   "injection":{"text":"休憩の行き先を前もって一つ決めておき、歩き出すまでの迷いをなくす","basis":"inferred"}},
+  {"on":"ac","text":"五分の休憩でも、席を離れて歩く時間は確保できる","basis":"inferred",
+   "injection":{"text":"五分しかない日は歩かず、席を離れて立つだけにする","basis":"inferred"}},
+  {"on":"cd","text":"端末が手元にないと、休憩中も仕事の画面を見てしまいにくい","basis":"inferred",
+   "injection":{"text":"端末は席から離れた場所（ロッカーなど）に置く","basis":"inferred"}},
+  {"on":"dd","text":"電話当番の日は端末を席から離せず、両案は同じ日には両立しない","basis":"stated","grounds":["u106"],
+   "injection":{"text":"当番の日は通知を止めず、電話を取るために端末を見る時間を決めておく","basis":"inferred"}}
+ ]}

@@ -1,0 +1,17 @@
+{"a":{"text":"基盤チームと影響チームが、手戻りなく互いの仕事を進められる状態を保つ","basis":"inferred","nids":["g3"]},
+ "b":{"text":"仕様変更を事前に知り、手戻りを避けたい","basis":"stated","grounds":["u12","u100","u102"],"nids":["g22"]},
+ "c":{"text":"現場同士で角を立てずに、変更の共有を進めたい","basis":"stated","grounds":["u125"],"nids":["g25"]},
+ "d":{"text":"基盤チームが仕様変更を影響チームへ事前共有するルールを作る"},
+ "d2":{"text":"マネージャー同士で話し、両チームで変更共有の場を作る"},
+ "assumptions":[
+  {"on":"ab","text":"仕様変更が事前に共有されないと、手戻りが繰り返し発生する","basis":"inferred",
+   "injection":{"text":"影響チームが仕様変更を自分から確認する習慣を作る","basis":"inferred"}},
+  {"on":"bd","text":"基盤チームがルールを作れば、変更が影響チームへ事前に届く","basis":"stated","grounds":["u115","u116"],
+   "injection":{"text":"ルールの運用を基盤チームの担当者と影響チームの両方に明示する","basis":"inferred"}},
+  {"on":"bd","text":"基盤チームにはルールを守る余裕がある","basis":"inferred",
+   "injection":{"text":"ルール作成と運用の負担を小さくする仕組みを、基盤チームと一緒に考える","basis":"inferred"}},
+  {"on":"cd","text":"現場同士で変更の話をすると、角が立ってしまう","basis":"stated","grounds":["u125"],
+   "injection":{"text":"変更共有の依頼を、業務上の要望として中立的な言い方で伝える","basis":"inferred"}},
+  {"on":"dd","text":"基盤チームは人手不足で、ルール作成と定例の両方を担う余裕がない","basis":"stated","grounds":["u119","u120"],
+   "injection":{"text":"定例を15分程度に絞り、既存の会議に組み込んで増やさない","basis":"inferred"}}
+ ]}

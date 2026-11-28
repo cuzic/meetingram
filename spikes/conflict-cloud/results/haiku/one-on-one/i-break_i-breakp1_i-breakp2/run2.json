@@ -1,0 +1,102 @@
+{
+  "a": {
+    "text": "休憩の時間を本当の休みとして過ごし、戻ったときに頭を仕事から切り替えられるようにする",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i5"
+    ]
+  },
+  "b": {
+    "text": "休憩中は仕事の通知を気にせず、戻ってからまとめて確認できるようにしたい",
+    "basis": "stated",
+    "grounds": [
+      "u106"
+    ],
+    "nids": [
+      "i-breakp1"
+    ]
+  },
+  "c": {
+    "text": "休憩中は仕事の画面から物理的に離れて、頭を切り替えたい",
+    "basis": "stated",
+    "grounds": [
+      "u107"
+    ],
+    "nids": [
+      "i-breakp2"
+    ]
+  },
+  "d": {
+    "text": "休憩の十分だけ携帯の通知を止める",
+    "basis": "stated",
+    "grounds": [
+      "u106"
+    ],
+    "nids": [
+      "i-breakp1"
+    ]
+  },
+  "d2": {
+    "text": "端末を席に置いて歩く",
+    "basis": "stated",
+    "grounds": [
+      "u107"
+    ],
+    "nids": [
+      "i-breakp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "通知が届くと休憩中も仕事が気になり、頭が切り替わらない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "休憩の間は通知が届かないようにし、画面を見る機会自体を減らす",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "電話当番の日でなければ、通知を止めても重要な連絡を取りこぼさない",
+      "basis": "stated",
+      "grounds": [
+        "u106"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "電話当番の日だけは通知を止めず、緊急の連絡を別の経路で受けられるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "5分の休憩では、歩く行き先を考えているうちに時間が終わってしまう",
+      "basis": "stated",
+      "grounds": [
+        "u107"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "短い休憩では行き先を決めず、席の周りを立って少し歩く",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "通知を止める方法と端末を席に置く方法は、同じ休憩時間に併用する必要がない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    }
+  ]
+}

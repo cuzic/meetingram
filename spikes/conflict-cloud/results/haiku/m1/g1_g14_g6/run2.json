@@ -1,0 +1,146 @@
+{
+  "a": {
+    "text": "顧客との約束を守りつつ、品質の確認できていない機能をユーザーに届けずに済ませたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "g1"
+    ]
+  },
+  "b": {
+    "text": "リスクのある同期機能をユーザーに出さず、他の機能は12月10日に届けたい",
+    "basis": "stated",
+    "grounds": [
+      "u55"
+    ],
+    "nids": [
+      "g15"
+    ]
+  },
+  "c": {
+    "text": "A社など顧客に約束した12月中のリリースを守りたい",
+    "basis": "stated",
+    "grounds": [
+      "u16",
+      "u17"
+    ],
+    "nids": [
+      "g7"
+    ]
+  },
+  "d": {
+    "text": "同期機能だけフィーチャーフラグでオフにして12月10日にリリースする",
+    "basis": "stated",
+    "grounds": [
+      "u51",
+      "u56",
+      "u103",
+      "u104"
+    ],
+    "nids": [
+      "g14"
+    ]
+  },
+  "d2": {
+    "text": "予定通り12月10日に全機能をリリースする",
+    "basis": "stated",
+    "grounds": [
+      "u19",
+      "u20",
+      "u36"
+    ],
+    "nids": [
+      "g6"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "bd",
+      "text": "フラグで機能を止める仕組みは実績があり、同期だけを安全に止められる",
+      "basis": "stated",
+      "grounds": [
+        "u63",
+        "u64"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "フラグ方式で止める範囲を事前に整理し、同じ手順で確認する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "フラグで同期をオフにしても、他の機能に影響は出ない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "開発環境でフラグオフ時の他機能の動作を確認する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "A社が待つのは同期機能で、同期を外すと約束の価値がなくなる",
+      "basis": "stated",
+      "grounds": [
+        "u68",
+        "u69"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "同期を外す場合、A社に同期の提供時期を個別に説明して合意を得る",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "年明けにずれると、競合に先に同様の機能を出される可能性が高い",
+      "basis": "stated",
+      "grounds": [
+        "u24"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "同期を外しても12月に出して、競合より先に機能を届ける",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "同期機能の回帰テストは12月10日までに完了できない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "同期の回帰テストを12月10日までに完了させる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "壊れた同期を出すより、同期だけ遅れる方がよいと考えられている",
+      "basis": "stated",
+      "grounds": [
+        "u73"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "12月前に同期の品質を確認できる体制を作る",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

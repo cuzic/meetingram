@@ -1,0 +1,126 @@
+{
+  "a": {
+    "text": "仕事の切れ目で、無理なく短い休憩を取れるようにする。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i5"
+    ]
+  },
+  "b": {
+    "text": "会議の予定が入っても、休憩を毎回動かす手間なく取れるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u93"
+    ],
+    "nids": [
+      "a11"
+    ]
+  },
+  "c": {
+    "text": "午後に作業の区切りを作れるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "a10"
+    ]
+  },
+  "d": {
+    "text": "会議の直後を休憩の区切りにする。",
+    "basis": "stated",
+    "grounds": [
+      "u94",
+      "u96"
+    ],
+    "nids": [
+      "p10"
+    ]
+  },
+  "d2": {
+    "text": "午後の中間に短い休憩を入れる。",
+    "basis": "stated",
+    "grounds": [
+      "u91"
+    ],
+    "nids": [
+      "p9"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "休憩のたびに予定を動かす手間があると、休憩は無理なく続かない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "固定した休憩が会議と重なった日の移し先を先に決めておき、その都度考えなくて済むようにする。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "自分の判断に任せると仕事をなかなか区切れないので、区切るきっかけがないと休めない。",
+      "basis": "stated",
+      "grounds": [
+        "u89"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "区切るきっかけになる出来事や合図を、あらかじめ決めておく。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "開始時刻を固定した休憩は会議と重なる日があり、そのたびに動かす必要が出る。",
+      "basis": "stated",
+      "grounds": [
+        "u93"
+      ],
+      "nids": [
+        "a11"
+      ],
+      "injection": {
+        "text": "休憩の時刻を固定せず、その日の会議予定を見て空いた時間に枠を置く。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "予定表で先に時間を押さえておかないと、午後の休憩は確保しにくい。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "p9"
+      ],
+      "injection": {
+        "text": "会議の予定の直後に、短い休憩枠も予定表へあらかじめ入れておく。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "休憩の取り方はどの日も同じ一つに決める必要があり、日によって使い分けられない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "会議の後に区切れる日はそこで休み、それ以外の日は午後の中間に休むよう使い分ける。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

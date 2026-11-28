@@ -1,0 +1,121 @@
+{
+  "a": {
+    "text": "今後のキャリアで、仕事への満足と成長を両立させたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "g2"
+    ]
+  },
+  "b": {
+    "text": "技術を深めて、専門性を伸ばしていきたい",
+    "basis": "stated",
+    "grounds": [
+      "u63"
+    ],
+    "nids": [
+      "g14"
+    ]
+  },
+  "c": {
+    "text": "新人の成長に関わり、人を育てる楽しさを仕事で味わい続けたい",
+    "basis": "stated",
+    "grounds": [
+      "u12"
+    ],
+    "nids": [
+      "g17"
+    ]
+  },
+  "d": {
+    "text": "スペシャリストとして技術を深める",
+    "basis": "stated",
+    "grounds": [
+      "u12",
+      "u63"
+    ],
+    "nids": [
+      "g14"
+    ]
+  },
+  "d2": {
+    "text": "テックリードとして人と技術の両方に関わる",
+    "basis": "stated",
+    "grounds": [
+      "u12",
+      "u63"
+    ],
+    "nids": [
+      "g15"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "技術を深めることが、専門性で仕事を続けたいという満足につながる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "人の成長に関わることが、仕事の充実感や満足につながる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "スペシャリストの評価軸が不明確だと、技術を深めても報われにくい",
+      "basis": "stated",
+      "grounds": [
+        "u74"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "スペシャリスト向けの評価基準を具体化し、評価面談で技術の成果を確認する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "スペシャリスト向けの等級があれば、技術を深めた成果が評価される",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "cd",
+      "text": "テックリードになると会議が増え、手を動かす時間が減る",
+      "basis": "stated",
+      "grounds": [
+        "u81",
+        "u82"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "テックリードの会議時間に上限を決め、手を動かす時間を週単位で確保する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "スペシャリストとテックリードを同時に主軸とすることはできない",
+      "basis": "stated",
+      "grounds": [
+        "u66"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "技術中心とテックリード業務の比率を決め、両方を一定割合で持つ",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

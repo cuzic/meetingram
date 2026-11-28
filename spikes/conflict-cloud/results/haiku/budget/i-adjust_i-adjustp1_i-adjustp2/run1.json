@@ -1,0 +1,96 @@
+{
+  "a": {
+    "text": "予算が不足しても、今期の検証と研修の質を落とさずに費目を調整する",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i-adjust"
+    ]
+  },
+  "b": {
+    "text": "研修費の延期で今期の不足額を浮かせ、予算の穴を埋めたい",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i3"
+    ]
+  },
+  "c": {
+    "text": "検証端末の借用回数を減らして、検証にかかる費用を抑えたい",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "d": {
+    "text": "研修を次期の初めに移す",
+    "basis": "stated",
+    "grounds": [
+      "u100"
+    ],
+    "nids": [
+      "i-adjustp1"
+    ]
+  },
+  "d2": {
+    "text": "検証端末を借りる回数を抑える",
+    "basis": "stated",
+    "grounds": [
+      "u101"
+    ],
+    "nids": [
+      "i-adjustp2"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "研修の延期で浮く額が、今期の予算不足を埋めるのに足りる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "研修費の延期が、不足額を埋める現実的な手段である",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "研修の教材を先に内製で準備し、外部支出を増やさず個別指導に切り替える",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "端末の借用回数を減らせば、検証費が不足額を埋めるほど下がる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "最初の一か月の借用を減らす代わりに、機種ごとの借用単価を見直す",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "端末の借用を抑えると、比較結果が次の枠の締め切りに間に合わなくなる",
+      "basis": "stated",
+      "grounds": [
+        "u101"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "相手先の空き日を月末前に押さえ、締め切り前に結果が出る日程を固定する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

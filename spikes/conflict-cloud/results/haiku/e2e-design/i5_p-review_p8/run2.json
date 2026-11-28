@@ -1,0 +1,109 @@
+{
+  "a": {
+    "text": "レビューで実際の動作を確実に確かめ、問題を見逃さないこと",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i5"
+    ]
+  },
+  "b": {
+    "text": "ドキュメントの形式確認だけでなく、実際の動作を画面で確かめたい",
+    "basis": "stated",
+    "grounds": [
+      "u93"
+    ],
+    "nids": [
+      "a9"
+    ]
+  },
+  "c": {
+    "text": "試験を流している間に時間を使い、先にドキュメントへ目を通したい",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "d": {
+    "text": "中断試験の実演からレビューを始める",
+    "basis": "stated",
+    "grounds": [
+      "u132",
+      "u133"
+    ],
+    "nids": [
+      "p-review"
+    ]
+  },
+  "d2": {
+    "text": "ドキュメントを先に確認する",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "形式の確認だけでは動作上の不具合を見つけられない",
+      "basis": "stated",
+      "grounds": [
+        "u93"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "ドキュメントに期待される動作結果を書き、形式以外も読み取れるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "画面で動作を確かめるには、中断試験の実演を先に見る必要がある",
+      "basis": "stated",
+      "grounds": [
+        "u132"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "試験の期待結果をドキュメントに書き、実演なしでも判断できるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "試験の実行中にドキュメントを読んでも、レビューの結論は変わらない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "試験結果を時刻と件数で残し、文書を読んだ後に照合できるようにする",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "レビューの最初に見る対象は一つしか選べない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "ドキュメントの確認を試験の待ち時間に割り当て、両方を同時に進める",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

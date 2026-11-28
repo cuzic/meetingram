@@ -1,0 +1,15 @@
+{"a":{"text":"検証を必要な日に滞りなく、同じ条件で再現性高く回す","basis":"inferred","nids":["i2"]},
+ "b":{"text":"試験が急に増えたときも、すぐ使える検証端末を常時確保しておきたい","basis":"stated","grounds":["u33"],"nids":["a6"]},
+ "c":{"text":"試験を同じ週の借用日程にまとめて組み、無駄な移動や待ちを減らしたい","basis":"stated","grounds":["u36"],"nids":["a8"]},
+ "d":{"text":"検証用の予備機を一台買う"},
+ "d2":{"text":"検証用端末を借りる"},
+ "assumptions":[
+  {"on":"ab","text":"必要な日に試験を回すには、検証に使える端末が手元に要る","basis":"inferred"},
+  {"on":"ac","text":"試験をまとめて組むには、借用日程を確保できる状態が要る","basis":"inferred"},
+  {"on":"bd","text":"借りる手続きでは、急な試験日の増加に間に合わない","basis":"stated","grounds":["u33"],
+   "injection":{"text":"借用の申請手順を短縮し、当日の日程変更にも対応できるようにする","basis":"inferred"}},
+  {"on":"cd","text":"借用端末であれば、試験を同じ週の日程へ寄せられる","basis":"stated","grounds":["u36"],
+   "injection":{"text":"買った一台でも同じ週に試験を寄せられるよう、運用日程を組み直す","basis":"inferred"}},
+  {"on":"dd","text":"検証端末に充てられる予算は、どちらか一案分しかない","basis":"inferred",
+   "injection":{"text":"余剰予算を予備費に移し、両案の見積もりを同条件で比べられるようにする","basis":"inferred"}}
+ ]}

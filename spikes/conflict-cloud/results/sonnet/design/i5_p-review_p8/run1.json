@@ -1,0 +1,110 @@
+{
+  "a": {
+    "text": "限られた時間のレビューで、必要な確認を十分に済ませる。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i5"
+    ]
+  },
+  "b": {
+    "text": "文書の形式だけでなく、書き込みを中断したときに確定ファイルがどこまで読み出せるかという実際の動きも確かめたい。",
+    "basis": "stated",
+    "grounds": [
+      "u93",
+      "u132"
+    ],
+    "nids": [
+      "a9"
+    ]
+  },
+  "c": {
+    "text": "レビューを速く進めたい。",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "d": {
+    "text": "中断試験の実演からレビューを始める。",
+    "basis": "stated",
+    "grounds": [
+      "u132",
+      "u133"
+    ],
+    "nids": [
+      "p-review"
+    ]
+  },
+  "d2": {
+    "text": "ドキュメントを先に確認する。",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "文書で形式を確認するだけでは、必要な確認を十分に済ませたことにならない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "a9"
+      ]
+    },
+    {
+      "on": "ac",
+      "text": "レビューを速く進めないと、必要な確認を時間内に終えられない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "レビューの最初に実演を置かないと、実際の動きを十分に確かめられない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "開始の順番にかかわらず中断試験を見せる時間を確保し、確定ファイルがどこまで読み出せるかを画面で確かめる。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "ドキュメントを先に見るほうが、レビューは速く進む。",
+      "basis": "stated",
+      "grounds": [
+        "u92"
+      ],
+      "nids": [
+        "p8"
+      ]
+    },
+    {
+      "on": "dd",
+      "text": "実演とドキュメントの確認は同時にできず、どちらかを先に済ませる必要がある。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "中断試験の実演から始め、試験を流している間にドキュメントに目を通す。",
+        "basis": "stated",
+        "grounds": [
+          "u92",
+          "u132"
+        ],
+        "nids": []
+      }
+    }
+  ]
+}

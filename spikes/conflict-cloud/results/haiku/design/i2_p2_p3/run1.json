@@ -1,0 +1,116 @@
+{
+  "a": {
+    "text": "書き込みを止めず、録音を途切れさせずに受信データを失わないこと",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": []
+  },
+  "b": {
+    "text": "処理が受信量に追いついている間は、到着順にそのまま欠けなく書き込みたい",
+    "basis": "stated",
+    "grounds": [
+      "u33"
+    ],
+    "nids": []
+  },
+  "c": {
+    "text": "上限に達した事実を別に記録し、受け口や書き込みの滞留を見える形で抑えたい",
+    "basis": "stated",
+    "grounds": [
+      "u36"
+    ],
+    "nids": []
+  },
+  "d": {
+    "text": "バッファを無制限にする",
+    "basis": "stated",
+    "grounds": [
+      "u33",
+      "u50"
+    ],
+    "nids": [
+      "p2"
+    ]
+  },
+  "d2": {
+    "text": "固定の上限を付けて手前で待つ",
+    "basis": "stated",
+    "grounds": [
+      "u36",
+      "u39",
+      "u50"
+    ],
+    "nids": [
+      "p3"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "書き込み処理の速度が受信量に追いつけば、無制限のバッファに溜まり続ける量は小さい",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "書き込み処理の速度を実測し、受信量に追いつくかを試験で確かめる",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "上限到達を別に記録できれば、滞留の原因や量を後から追える",
+      "basis": "stated",
+      "grounds": [
+        "u36"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "上限到達時に記録する専用の通知を書き込み処理に組み込む",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "到着順の書き込みを保つには、無制限のバッファで受信の山を吸収する必要がある",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "上限を受信の山より大きく取り、山が来ても溢れない容量を確保する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "上限に達しても、別の書き込みタスクで待つ間に受け口が溢れずに済む",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "上限到達後に溢れた場合の扱い（どのトラックを落とすか）を先に決める",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "無制限のバッファと固定の上限は同時には採れない",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "上限を十分大きく設定し、到達時の挙動を決めて両案を折衷する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

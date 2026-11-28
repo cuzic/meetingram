@@ -1,0 +1,128 @@
+{
+  "a": {
+    "text": "次のレビューで、限られた時間の中で確認すべき点を相手と確かめられるようにする。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i5"
+    ]
+  },
+  "b": {
+    "text": "中断したときに確定ファイルがどこまで読み出せるかなど、実際の動作を確かめたい。",
+    "basis": "stated",
+    "grounds": [
+      "u132",
+      "u93"
+    ],
+    "nids": [
+      "a9"
+    ]
+  },
+  "c": {
+    "text": "レビューを速く進め、ドキュメントにも目を通せるようにしたい。",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "d": {
+    "text": "中断試験の実演からレビューを始める。",
+    "basis": "stated",
+    "grounds": [
+      "u132",
+      "u133"
+    ],
+    "nids": [
+      "p-review"
+    ]
+  },
+  "d2": {
+    "text": "先にドキュメントを確認する。",
+    "basis": "stated",
+    "grounds": [
+      "u92"
+    ],
+    "nids": [
+      "p8"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "レビューで確認すべき点には、実際に動かさなければ確かめられない挙動が含まれる。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "ac",
+      "text": "レビューの時間には限りがあり、速く進めないと必要な内容を確認しきれない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "必ず確認する項目を事前に絞り、時間内に終えられる範囲を合意しておく。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "bd",
+      "text": "ドキュメントを読むだけでは形式しか確認できない。",
+      "basis": "stated",
+      "grounds": [
+        "u93"
+      ],
+      "nids": [
+        "a9"
+      ]
+    },
+    {
+      "on": "bd",
+      "text": "最初に実演しないと、実際の動作を十分に確かめられない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "順番にかかわらず、中断試験の実演と読み出し結果を確認する時間を確保する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "試験を流している間にドキュメントに目を通せるので、ドキュメントを先に見るほうが速い。",
+      "basis": "stated",
+      "grounds": [
+        "u92"
+      ],
+      "nids": [
+        "p8"
+      ],
+      "injection": {
+        "text": "中断試験の実演を先に始め、試験が流れている待ち時間にドキュメントを確認する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "実演とドキュメント確認は並行できず、どちらか一方を先に終える必要がある。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "試験を流している間にドキュメントを読む進め方にし、結果が出た時点で画面の確認に移る。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

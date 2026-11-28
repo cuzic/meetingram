@@ -1,0 +1,131 @@
+{
+  "a": {
+    "text": "必要な検証を、無理のない負担で支障なく進められるようにする。",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "i2"
+    ]
+  },
+  "b": {
+    "text": "試験が急に増えても対応できるよう、検証に使える一台を常に確保したい。",
+    "basis": "stated",
+    "grounds": [
+      "u33"
+    ],
+    "nids": [
+      "a6"
+    ]
+  },
+  "c": {
+    "text": "同じ週に試したいものを一日に寄せて、試験をまとめて実施したい。",
+    "basis": "stated",
+    "grounds": [
+      "u36"
+    ],
+    "nids": [
+      "a8"
+    ]
+  },
+  "d": {
+    "text": "検証用の予備機を一台買う。",
+    "basis": "stated",
+    "grounds": [
+      "u32",
+      "u39"
+    ],
+    "nids": [
+      "p3"
+    ]
+  },
+  "d2": {
+    "text": "検証用の端末を借りる。",
+    "basis": "stated",
+    "grounds": [
+      "u35"
+    ],
+    "nids": [
+      "p4"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "検証を支障なく進めるには、急に増える試験にもすぐ対応できなければならない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "急な追加試験のうち待てるものと待てないものの基準を決め、待てるものは次の試験日に回す。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "検証の負担を抑えるには、試験を特定の日にまとめる必要がある。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "端末を借りる場合は手続きが挟まるため、急に増えた試験にすぐ使える一台を確保できない。",
+      "basis": "stated",
+      "grounds": [
+        "u33"
+      ],
+      "nids": [
+        "a6"
+      ],
+      "injection": {
+        "text": "追加の試験日にも短い手続きですぐ借りられる条件を、貸出元と事前に取り決められるか確認する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "借用日程という区切りがあってこそ、試したいものを一日に寄せてまとめられる。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [
+        "a8"
+      ],
+      "injection": {
+        "text": "端末の調達方法にかかわらず、あらかじめ試験日を決めて試したいものをその日に集める。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "検証用の端末は、購入か借用のどちらか一方の方法だけで賄わなければならない。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "一台を買ったうえで、足りない分や別の機種が必要な試験だけ端末を借りる併用案を検討する。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "購入か借用かは、使う日数などの条件にかかわらず今の時点で一方に固定する必要がある。",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "当面は端末を借り、使用日数が決めた基準を超えたら購入に切り替える。",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

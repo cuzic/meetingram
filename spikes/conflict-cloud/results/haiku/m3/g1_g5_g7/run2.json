@@ -1,0 +1,134 @@
+{
+  "a": {
+    "text": "移行期限までに監視基盤を確実に切り替え、ベンダー依存と運用コストを抑えて長く使い続ける",
+    "basis": "inferred",
+    "grounds": [],
+    "nids": [
+      "g1",
+      "g3"
+    ]
+  },
+  "b": {
+    "text": "構築の手間をかけず、導入当日から監視を使い始めたい",
+    "basis": "stated",
+    "grounds": [
+      "u15",
+      "u16",
+      "u17"
+    ],
+    "nids": [
+      "g8"
+    ]
+  },
+  "c": {
+    "text": "ログ量が増えても年間の監視費用を予算内に収めたい",
+    "basis": "stated",
+    "grounds": [
+      "u68",
+      "u69",
+      "u70"
+    ],
+    "nids": [
+      "g17"
+    ]
+  },
+  "d": {
+    "text": "SaaSのログナビを採用する",
+    "basis": "stated",
+    "grounds": [
+      "u12"
+    ],
+    "nids": [
+      "g5"
+    ]
+  },
+  "d2": {
+    "text": "利用中クラウドのマネージド監視サービスを採用する",
+    "basis": "stated",
+    "grounds": [
+      "u61",
+      "u62",
+      "u129",
+      "u130"
+    ],
+    "nids": [
+      "g7"
+    ]
+  },
+  "assumptions": [
+    {
+      "on": "ab",
+      "text": "移行期限の来年3月までに切り替えるには、導入が早く進められることが必要である",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "サポート期限を延長する交渉をして、移行に十分な期間を確保する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "ac",
+      "text": "ログ量が増えて年間費用が予算を超えると、監視基盤を継続して運用できなくなる",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": []
+    },
+    {
+      "on": "bd",
+      "text": "ログナビは既存環境への構築がほぼ不要で、導入当日から監視を見られる",
+      "basis": "stated",
+      "grounds": [
+        "u15",
+        "u16"
+      ],
+      "nids": []
+    },
+    {
+      "on": "cd",
+      "text": "マネージド監視はストレージ単価が安く、ログ増加に伴う費用が跳ねにくい",
+      "basis": "stated",
+      "grounds": [
+        "u70"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "来年の値上げと1年保存のアーカイブを含めて、見積もりを取り直す",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "cd",
+      "text": "マネージド監視でも収集をOpenTelemetryにすれば、送り先を変えてロックインを避けられる",
+      "basis": "stated",
+      "grounds": [
+        "u78",
+        "u80"
+      ],
+      "nids": [],
+      "injection": {
+        "text": "収集をベンダー独自形式に依存させず、OpenTelemetryで統一する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    },
+    {
+      "on": "dd",
+      "text": "ログナビとマネージドを両方採用せず、監視基盤を1つに絞る必要がある",
+      "basis": "inferred",
+      "grounds": [],
+      "nids": [],
+      "injection": {
+        "text": "用途ごとに監視基盤を分けて、両方を併用する",
+        "basis": "inferred",
+        "grounds": [],
+        "nids": []
+      }
+    }
+  ]
+}

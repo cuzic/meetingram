@@ -1,0 +1,14 @@
+{"a":{"text":"録音中に読み手のエラーへ確実に気づき、作業を止めずに対処できるようにする","basis":"inferred","nids":["i4"]},
+ "b":{"text":"同じエラーで何度も作業を中断されず、読み続けられるようにしたい","basis":"stated","grounds":["u104"],"nids":["i4"]},
+ "c":{"text":"繰り返しエラーがどれくらい起きたかを把握し、問題の大きさを判断したい","basis":"stated","grounds":["u105"]},
+ "d":{"text":"警告を一度だけ出す"},
+ "d2":{"text":"繰り返しエラーは件数を付ける"},
+ "assumptions":[
+  {"on":"bd","text":"一度の警告で読み手はエラーに気づける","basis":"stated","grounds":["u107"],
+   "injection":{"text":"警告を見逃しても後から確認できる先を用意する","basis":"inferred"}},
+  {"on":"bd","text":"同じエラーは再表示しなくても読み手が状況を把握できる","basis":"inferred"},
+  {"on":"cd","text":"件数が見えれば読み手は繰り返しの規模を判断できる","basis":"inferred"},
+  {"on":"dd","text":"一度だけの警告と件数表示は同じ表示枠を取り合うため両立しない","basis":"inferred",
+   "injection":{"text":"警告と件数を別の表示場所に分けて出す","basis":"inferred"}},
+  {"on":"ac","text":"件数が分からないと読み手はエラーへの対処の優先度を決められない","basis":"inferred"}
+ ]}

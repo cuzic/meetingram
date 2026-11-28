@@ -1,0 +1,15 @@
+{"a":{"text":"作業の区切りを持ち、午前と午後の切り替えを無理なくしたい","basis":"inferred","nids":["i5"]},
+ "b":{"text":"会議が終わったところで一度席を離れ、仕事の区切りを作りたい","basis":"stated","grounds":["u94","u96"],"nids":["p10"]},
+ "c":{"text":"午前と午後を分けやすくし、昼の分が短い日も区切りをつけたい","basis":"stated","grounds":["u92"],"nids":["p9","a10"]},
+ "d":{"text":"会議直後を休憩の区切りにする"},
+ "d2":{"text":"午後の中間に短く休む"},
+ "assumptions":[
+  {"on":"ab","text":"作業の区切りが増えると、午前と午後の切り替えがしやすくなる","basis":"inferred"},
+  {"on":"ac","text":"午後の中間に短い休みがあれば、午前と午後を分けて考えられる","basis":"inferred"},
+  {"on":"bd","text":"会議の終わりは、毎回席を離れて区切れる機会になる","basis":"stated","grounds":["u94"],
+   "injection":{"text":"会議の終了時刻を固定で共有し、終わったら必ず席を離れる習慣にする","basis":"inferred"}},
+  {"on":"cd","text":"午後の中間は会議と重なりにくく、休憩の時間を固定できる","basis":"inferred",
+   "injection":{"text":"会議が入った日は、午後の休憩を前後の空き時間にずらして取る","basis":"inferred"}},
+  {"on":"dd","text":"会議直後と午後の中間は、同じ休憩の枠として両立しない","basis":"inferred",
+   "injection":{"text":"休憩を短く二回に分け、会議直後と午後の中間の両方で取れるようにする","basis":"inferred"}}
+ ]}
